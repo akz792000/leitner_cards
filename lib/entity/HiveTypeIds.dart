@@ -1,4 +1,3 @@
 class HiveTypeIds {
-  static const int CARD_ID = 1;
-  static const int INFO_ID = 2;
+  static const int cardId = 1;
 }

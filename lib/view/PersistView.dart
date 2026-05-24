@@ -4,7 +4,8 @@ import 'package:leitner_cards/entity/CardEntity.dart';
 import 'package:leitner_cards/util/DateTimeUtil.dart';
 
 import '../enums/GroupCode.dart';
-import '../repository/CardRepository.dart';
+import '../service/SyncService.dart';
+import '../util/DialogUtil.dart';
 
 class PersistView extends StatefulWidget {
   final GroupCode groupCode;
@@ -16,13 +17,22 @@ class PersistView extends StatefulWidget {
 }
 
 class _PersistViewState extends State<PersistView> {
-  final CardRepository _cardRepository = Get.find<CardRepository>();
+  final SyncService _syncService = Get.find<SyncService>();
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _faController = TextEditingController();
   final TextEditingController _enController = TextEditingController();
   final TextEditingController _deController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+
+  @override
+  void dispose() {
+    _faController.dispose();
+    _enController.dispose();
+    _deController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   String? _fieldValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -33,22 +43,26 @@ class _PersistViewState extends State<PersistView> {
 
   Future<void> _onPersist() async {
     if (_formKey.currentState!.validate()) {
-      final cardEntity = CardEntity(
-        id: 0,
-        created: DateTimeUtil.now(),
-        modified: DateTimeUtil.now(),
-        level: CardEntity.initLevel,
-        subLevel: CardEntity.initSubLevel,
-        order: 0,
-        fa: _faController.text,
-        en: _enController.text,
-        de: _deController.text,
-        desc: _descController.text,
-        groupCode: widget.groupCode,
-      );
-
-      await _cardRepository.merge(cardEntity);
-      Navigator.pop(context);
+      try {
+        final now = DateTimeUtil.now();
+        final cardEntity = CardEntity(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          created: now,
+          modified: now,
+          level: CardEntity.initLevel,
+          subLevel: CardEntity.initSubLevel,
+          order: 0,
+          fa: _faController.text,
+          en: _enController.text,
+          de: _deController.text,
+          desc: _descController.text,
+          groupCode: widget.groupCode,
+        );
+        await _syncService.saveCard(cardEntity);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) DialogUtil.error(context, e);
+      }
     }
   }
 
@@ -75,33 +89,37 @@ class _PersistViewState extends State<PersistView> {
 
   @override
   Widget build(BuildContext context) {
+    final isEnglish = widget.groupCode == GroupCode.english;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Persist')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              _buildTextField(
-                label: 'Farsi',
-                controller: _faController,
-                textDirection: TextDirection.rtl,
-              ),
+              if (isEnglish)
+                _buildTextField(
+                  label: 'Farsi',
+                  controller: _faController,
+                  textDirection: TextDirection.rtl,
+                ),
               _buildTextField(
                 label: 'English',
                 controller: _enController,
                 validator: _fieldValidator,
               ),
-              _buildTextField(
-                label: 'Deutsch',
-                controller: _deController,
-              ),
+              if (!isEnglish)
+                _buildTextField(
+                  label: 'Deutsch',
+                  controller: _deController,
+                ),
               _buildTextField(
                 label: 'Description',
                 controller: _descController,
               ),
-              const Spacer(),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 height: 50,

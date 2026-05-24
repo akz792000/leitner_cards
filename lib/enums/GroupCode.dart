@@ -2,7 +2,7 @@ enum GroupCode {
   english,
   deutsch;
 
-  String getTitle() {
+  String get title {
     switch (this) {
       case english:
         return "English";

@@ -8,7 +8,7 @@ part of 'CardEntity.dart';
 
 class CardEntityAdapter extends TypeAdapter<CardEntity> {
   @override
-  final int typeId = HiveTypeIds.CARD_ID;
+  final int typeId = HiveTypeIds.cardId;
 
   @override
   CardEntity read(BinaryReader reader) {

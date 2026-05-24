@@ -1,9 +1,11 @@
+import 'package:flutter/material.dart';
+
 class OptionModel {
   final int level;
-  final dynamic image;
+  final Widget image;
   final String title;
   final String subtitle;
-  final Function? onTap;
+  final VoidCallback? onTap;
 
   const OptionModel({
     required this.level,

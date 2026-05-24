@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:convert' as convert;
-import 'package:http/http.dart' as http;
 import 'package:leitner_cards/entity/CardEntity.dart';
 import 'package:leitner_cards/enums/GroupCode.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/RouteConfig.dart';
-import '../entity/InfoEntity.dart';
 import '../repository/CardRepository.dart';
-import '../repository/InfoRepository.dart';
 import '../service/RouteService.dart';
 import 'package:leitner_cards/util/DateTimeUtil.dart';
 
@@ -20,32 +17,17 @@ class DownloadView extends StatefulWidget {
 
 class _DownloadViewState extends State<DownloadView> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
-  final InfoRepository _infoRepository = Get.find<InfoRepository>();
+  final _client = Supabase.instance.client;
 
   final List<Map<String, dynamic>> _items = [
-    {"name": "File_0", "toggle": false, "type": "CARD"},
-    {"name": "File_1", "toggle": false, "type": "CARD"},
-    {"name": "File_2", "toggle": false, "type": "CARD"},
-    {"name": "File_3", "toggle": false, "type": "CARD"},
-    {"name": "Info_1", "toggle": false, "type": "INFO"},
+    {"name": "English Cards", "toggle": false, "groupCode": 0},
+    {"name": "Deutsch Cards", "toggle": false, "groupCode": 1},
   ];
 
   bool _toggle = false;
   int _selectedIndex = 0;
 
-  Future<int> _persistInfo(Map<String, dynamic> element) async {
-    final entity = InfoEntity(
-      id: element["id"] ?? 0,
-      created: DateTimeUtil.now(),
-      modified: DateTimeUtil.now(),
-      key: element["key"] ?? "",
-      value: element["value"] ?? "",
-      groupCode: GroupCode.values[element["groupCode"] ?? GroupCode.english.index],
-    );
-    return await _infoRepository.merge(entity);
-  }
-
-  Future<int> _persistCard(Map<String, dynamic> element) async {
+  Future<void> _persistCard(Map<String, dynamic> element, bool override) async {
     final entity = CardEntity(
       id: element["id"] ?? 0,
       created: DateTimeUtil.now(),
@@ -56,48 +38,29 @@ class _DownloadViewState extends State<DownloadView> {
       fa: element["fa"] ?? "",
       en: element["en"] ?? "",
       de: element["de"] ?? "",
-      desc: element["desc"] ?? "",
-      groupCode: GroupCode.values[element["groupCode"] ?? GroupCode.english.index],
+      desc: element["description"] ?? "",
+      groupCode: GroupCode.values[element["group_code"] ?? GroupCode.english.index],
     );
-    return await _cardRepository.merge(entity);
+
+    final existing = _cardRepository.findById(entity.id);
+    if (existing == null ||
+        override ||
+        existing.fa != entity.fa ||
+        existing.en != entity.en ||
+        existing.de != entity.de ||
+        existing.desc != entity.desc) {
+      await _cardRepository.merge(entity);
+    }
   }
 
   Future<void> _download(Map<String, dynamic> item) async {
-    final url = Uri.https(
-      'raw.githubusercontent.com',
-      '/akz792000/Dictionary/main/${item['name']}.json',
-    );
-
     try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final extractedData = List<Map<String, dynamic>>.from(
-          convert.jsonDecode(response.body),
-        );
-
-        for (final element in extractedData) {
-          if (item['type'] == "CARD") {
-            final existing = _cardRepository.findById(element["id"]);
-            if (existing == null ||
-                item["toggle"] ||
-                existing.fa != (element["fa"] ?? existing.fa) ||
-                existing.en != (element["en"] ?? existing.en) ||
-                existing.de != (element["de"] ?? existing.de) ||
-                existing.desc != (element["desc"] ?? existing.desc)) {
-              await _persistCard(element);
-            }
-          } else {
-            final existing = _infoRepository.findById(element["id"]);
-            if (existing == null ||
-                item["toggle"] ||
-                existing.key != (element["key"] ?? existing.key) ||
-                existing.value != (element["value"] ?? existing.value)) {
-              await _persistInfo(element);
-            }
-          }
-        }
-      } else {
-        debugPrint('Request failed: ${response.statusCode}');
+      final rows = await _client
+          .from('cards')
+          .select()
+          .eq('group_code', item['groupCode']);
+      for (final row in rows) {
+        await _persistCard(row, item['toggle']);
       }
     } catch (e) {
       debugPrint('Download error: $e');
@@ -112,7 +75,7 @@ class _DownloadViewState extends State<DownloadView> {
         await _download(item);
       }
     } finally {
-      Navigator.pop(context); // Close loading screen
+      if (mounted) Navigator.pop(context);
     }
   }
 

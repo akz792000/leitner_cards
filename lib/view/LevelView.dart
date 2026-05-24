@@ -86,7 +86,7 @@ class _LevelViewState extends State<LevelView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.groupCode.getTitle()} Level Cards: $_count"),
+        title: Text("${widget.groupCode.title} Level Cards: $_count"),
         leading: InkWell(
           onTap: () => Navigator.pop(context),
           child: const Icon(Icons.arrow_back_ios),

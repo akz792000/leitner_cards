@@ -1,0 +1,1 @@
+enum LevelDirection { up, down }

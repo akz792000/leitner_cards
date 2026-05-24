@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/CardEntity.dart';
 import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/repository/CardRepository.dart';
 import 'package:leitner_cards/util/DateTimeUtil.dart';
 import 'package:timezone/timezone.dart' as tz;
+import '../service/SyncService.dart';
+import '../util/DialogUtil.dart';
 
 class MergeView extends StatefulWidget {
   final CardEntity cardEntity;
@@ -17,19 +18,20 @@ class MergeView extends StatefulWidget {
 }
 
 class _MergeViewState extends State<MergeView> {
-  final CardRepository _cardRepository = Get.find<CardRepository>();
+  final SyncService _syncService = Get.find<SyncService>();
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _idController;
   late final tz.TZDateTime _created;
-  late final tz.TZDateTime _modified;
-  late final int _level;
-  late final int _subLevel;
   late final TextEditingController _faController;
   late final TextEditingController _enController;
   late final TextEditingController _deController;
   late final TextEditingController _descController;
   late final TextEditingController _orderController;
+  late final TextEditingController _levelController;
+  late final TextEditingController _subLevelController;
+  late final TextEditingController _createdController;
+  late final TextEditingController _modifiedController;
   late final GroupCode _groupCode;
 
   @override
@@ -38,15 +40,31 @@ class _MergeViewState extends State<MergeView> {
     final card = widget.cardEntity;
     _idController = TextEditingController(text: card.id.toString());
     _created = card.created;
-    _modified = card.modified;
-    _level = card.level;
-    _subLevel = card.subLevel;
     _faController = TextEditingController(text: card.fa);
     _enController = TextEditingController(text: card.en);
     _deController = TextEditingController(text: card.de);
     _descController = TextEditingController(text: card.desc);
     _orderController = TextEditingController(text: card.order.toString());
+    _levelController = TextEditingController(text: card.level.toString());
+    _subLevelController = TextEditingController(text: card.subLevel.toString());
+    _createdController = TextEditingController(text: DateTimeUtil.adjustDateTime(card.created));
+    _modifiedController = TextEditingController(text: DateTimeUtil.adjustDateTime(card.modified));
     _groupCode = card.groupCode;
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _faController.dispose();
+    _enController.dispose();
+    _deController.dispose();
+    _descController.dispose();
+    _orderController.dispose();
+    _levelController.dispose();
+    _subLevelController.dispose();
+    _createdController.dispose();
+    _modifiedController.dispose();
+    super.dispose();
   }
 
   String? _fieldValidator(String? value) {
@@ -58,21 +76,25 @@ class _MergeViewState extends State<MergeView> {
 
   Future<void> _onMerge() async {
     if (_formKey.currentState!.validate()) {
-      final mergedCard = CardEntity(
-        id: int.parse(_idController.text),
-        created: _created,
-        modified: DateTimeUtil.now(),
-        level: CardEntity.initLevel,
-        subLevel: CardEntity.initSubLevel,
-        order: int.parse(_orderController.text),
-        fa: _faController.text,
-        en: _enController.text,
-        de: _deController.text,
-        desc: _descController.text,
-        groupCode: _groupCode,
-      );
-      await _cardRepository.merge(mergedCard);
-      Navigator.pop(context);
+      try {
+        final mergedCard = CardEntity(
+          id: int.parse(_idController.text),
+          created: _created,
+          modified: DateTimeUtil.now(),
+          level: CardEntity.initLevel,
+          subLevel: CardEntity.initSubLevel,
+          order: int.parse(_orderController.text),
+          fa: _faController.text,
+          en: _enController.text,
+          de: _deController.text,
+          desc: _descController.text,
+          groupCode: _groupCode,
+        );
+        await _syncService.saveCard(mergedCard);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) DialogUtil.error(context, e);
+      }
     }
   }
 
@@ -105,6 +127,8 @@ class _MergeViewState extends State<MergeView> {
 
   @override
   Widget build(BuildContext context) {
+    final isEnglish = _groupCode == GroupCode.english;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Merge')),
       body: Center(
@@ -114,44 +138,44 @@ class _MergeViewState extends State<MergeView> {
             key: _formKey,
             child: Column(
               children: [
-                _buildTextField(
-                  label: 'Farsi',
-                  controller: _faController,
-                  textDirection: TextDirection.rtl,
-                ),
+                if (isEnglish)
+                  _buildTextField(
+                    label: 'Farsi',
+                    controller: _faController,
+                    textDirection: TextDirection.rtl,
+                  ),
                 _buildTextField(
                   label: 'English',
                   controller: _enController,
                   validator: _fieldValidator,
                 ),
-                _buildTextField(
-                  label: 'Deutsch',
-                  controller: _deController,
-                ),
+                if (!isEnglish)
+                  _buildTextField(
+                    label: 'Deutsch',
+                    controller: _deController,
+                  ),
                 _buildTextField(
                   label: 'Description',
                   controller: _descController,
                 ),
                 _buildTextField(
                   label: 'Level',
-                  controller: TextEditingController(text: _level.toString()),
+                  controller: _levelController,
                   readOnly: true,
                 ),
                 _buildTextField(
                   label: 'SubLevel',
-                  controller: TextEditingController(text: _subLevel.toString()),
+                  controller: _subLevelController,
                   readOnly: true,
                 ),
                 _buildTextField(
                   label: 'Created',
-                  controller:
-                  TextEditingController(text: DateTimeUtil.adjustDateTime(_created)),
+                  controller: _createdController,
                   readOnly: true,
                 ),
                 _buildTextField(
                   label: 'Modified',
-                  controller:
-                  TextEditingController(text: DateTimeUtil.adjustDateTime(_modified)),
+                  controller: _modifiedController,
                   readOnly: true,
                 ),
                 _buildTextField(

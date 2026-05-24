@@ -10,9 +10,11 @@ import '../view/LevelView.dart';
 import '../view/LoadingView.dart';
 import '../view/MergeView.dart';
 import '../view/PersistView.dart';
+import '../view/SyncView.dart';
 
 class RouteConfig {
-  static const String home = "/";
+  static const String sync = "/";
+  static const String home = "/home";
   static const String error = "/error";
   static const String level = "/level";
   static const String data = "/data";
@@ -27,6 +29,9 @@ class RouteConfig {
 
     try {
       switch (settings.name) {
+        case sync:
+          return MaterialPageRoute(builder: (_) => const SyncView());
+
         case home:
           return MaterialPageRoute(builder: (_) => const HomeView());
 

@@ -6,7 +6,7 @@ import 'HiveTypeIds.dart';
 
 part 'CardEntity.g.dart';
 
-@HiveType(typeId: HiveTypeIds.CARD_ID)
+@HiveType(typeId: HiveTypeIds.cardId)
 class CardEntity {
   static const int initLevel = 0;
   static const int initSubLevel = 1;
@@ -43,9 +43,6 @@ class CardEntity {
 
   @HiveField(10)
   GroupCode groupCode;
-
-  // generated
-  String? levelChanged;
 
   // generated
   bool orderChanged = false;

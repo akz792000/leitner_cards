@@ -22,7 +22,6 @@ class _HomeViewState extends State<HomeView> {
   @override
   void initState() {
     super.initState();
-    debugPrint("HomeView initialize");
 
     _optionModels = [
       OptionModel(
@@ -63,7 +62,6 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   void dispose() {
-    debugPrint("HomeView dispose");
     super.dispose();
   }
 

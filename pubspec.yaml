@@ -47,6 +47,8 @@ dependencies:
   get: ^4.6.5
 
   path_provider: any
+  supabase_flutter: ^2.12.4
+  flutter_dotenv: ^6.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -73,6 +75,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - assets/
     - assets/flags/
     - assets/levels/

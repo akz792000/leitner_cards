@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 
 class DialogUtil {
 
+  static void error(BuildContext context, dynamic exception) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(exception.toString()),
+        backgroundColor: Colors.red[700],
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
   static Future<void> okCancel(
       BuildContext context, {
         required String title,

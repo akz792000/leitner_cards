@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/CardEntity.dart';
@@ -9,8 +8,9 @@ import 'package:leitner_cards/view/widget/IconButtonWidget.dart';
 import '../config/RouteConfig.dart';
 import '../enums/LanguageCode.dart';
 import '../enums/GroupCode.dart';
-import '../repository/InfoRepository.dart';
+import '../enums/LevelDirection.dart';
 import '../service/RouteService.dart';
+import '../service/SyncService.dart';
 import '../util/DateTimeUtil.dart';
 import '../util/DialogUtil.dart';
 import 'widget/animated_gradient_background.dart';
@@ -35,7 +35,6 @@ class LeitnerView extends StatefulWidget {
 }
 
 class _LeitnerViewState extends State<LeitnerView> {
-  final InfoRepository _infoRepository = Get.find<InfoRepository>();
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final CardService _cardService = Get.find<CardService>();
   final PageController _pageController = PageController(initialPage: 0, keepPage: true);
@@ -46,6 +45,10 @@ class _LeitnerViewState extends State<LeitnerView> {
   int _level = 1;
   late LanguageCode _languageCode;
 
+  // Per-card transient UI state (not persisted)
+  final Map<int, LevelDirection?> _levelChangedMap = {};
+  final Set<int> _orderChangedSet = {};
+
   @override
   void initState() {
     super.initState();
@@ -53,7 +56,6 @@ class _LeitnerViewState extends State<LeitnerView> {
     _loadCards();
     if (_cards.isNotEmpty) {
       _cardEntity = _cards[0];
-      _cardEntity.levelChanged = null;
       _level = _cardEntity.level;
       _modifyOrder();
     } else {
@@ -63,10 +65,7 @@ class _LeitnerViewState extends State<LeitnerView> {
 
   @override
   void dispose() {
-    for (var card in _cards) {
-      card.orderChanged = false;
-      card.levelChanged = null;
-    }
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -94,9 +93,9 @@ class _LeitnerViewState extends State<LeitnerView> {
   }
 
   void _modifyOrder() async {
-    if (!_cardEntity.orderChanged) {
+    if (!_orderChangedSet.contains(_cardEntity.id)) {
       _cardEntity.order++;
-      _cardEntity.orderChanged = true;
+      _orderChangedSet.add(_cardEntity.id);
       await _cardRepository.merge(_cardEntity);
     }
   }
@@ -115,13 +114,18 @@ class _LeitnerViewState extends State<LeitnerView> {
     _modifyOrder();
   }
 
-  void _changePage(int level, String levelChanged) async {
+  void _changePage(int level, LevelDirection direction) async {
     _cardEntity.level = level;
     _cardEntity.subLevel = CardEntity.initSubLevel;
-    _cardEntity.levelChanged = levelChanged;
     _cardEntity.modified = DateTimeUtil.now();
     await _cardRepository.merge(_cardEntity);
-    setState(() => _level = _cardEntity.level);
+    setState(() {
+      _level = _cardEntity.level;
+      _levelChangedMap[_cardEntity.id] = direction;
+    });
+
+    // Silently push progress to Supabase in the background
+    Get.find<SyncService>().pushProgress(_cardEntity);
 
     if (_index < _cards.length - 1) {
       _pageController.animateToPage(
@@ -144,34 +148,22 @@ class _LeitnerViewState extends State<LeitnerView> {
     _changeValue(_index, _languageCode);
   }
 
-  TextSpan _buildWordSpan(String word, bool underline) {
-    const textStyle = TextStyle(color: Colors.black, fontSize: 30.0);
-    if (underline) {
-      final info = _infoRepository.findByGroupCodeAndKeyUpperCase(
-          widget.groupCode, word.replaceAll(",", ""));
-      if (info != null) {
-        return TextSpan(
-          text: word,
-          style: textStyle.copyWith(decoration: TextDecoration.underline),
-          recognizer: TapGestureRecognizer()..onTap = () => DialogUtil.hint(context, description: info.value),
-        );
-      }
-    }
-    return TextSpan(text: word, style: textStyle);
+  TextSpan _buildWordSpan(String word) {
+    return TextSpan(
+      text: word,
+      style: const TextStyle(color: Colors.black, fontSize: 30.0),
+    );
   }
 
   Widget _getTextChild() {
     String message = '';
-    bool underline = false;
 
     switch (widget.groupCode) {
       case GroupCode.english:
         message = _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
-        underline = _languageCode == LanguageCode.en;
         break;
       case GroupCode.deutsch:
         message = _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
-        underline = _languageCode == LanguageCode.de;
         break;
     }
 
@@ -180,21 +172,27 @@ class _LeitnerViewState extends State<LeitnerView> {
 
     for (var i = 0; i < words.length; i++) {
       if (i != 0) children.add(const TextSpan(text: ' '));
-      children.add(_buildWordSpan(words[i], underline));
+      children.add(_buildWordSpan(words[i]));
     }
 
     return RichText(
-      textDirection: _languageCode.getDirection(),
+      textDirection: _languageCode.direction,
       text: TextSpan(children: children),
     );
   }
 
   List<Widget> _bottomBar() {
+    final levelChanged = _levelChangedMap[_cardEntity.id];
+
     final result = [
       // Dislike
       AnimatedButton(
-        icon: _cardEntity.levelChanged == 'UP' ? const Icon(Icons.thumb_down, size: 30, color: Colors.red) : const Icon(Icons.thumb_down_outlined, size: 30),
-        onPressed: _cardEntity.levelChanged == 'DOWN' ? null : () => _changePage(CardEntity.initLevel, 'DOWN'),
+        icon: levelChanged == LevelDirection.up
+            ? const Icon(Icons.thumb_down, size: 30, color: Colors.red)
+            : const Icon(Icons.thumb_down_outlined, size: 30),
+        onPressed: levelChanged == LevelDirection.down
+            ? null
+            : () => _changePage(CardEntity.initLevel, LevelDirection.down),
         key: const ValueKey("dislike"),
       ),
       // Description
@@ -207,13 +205,17 @@ class _LeitnerViewState extends State<LeitnerView> {
       ),
       // Like
       AnimatedButton(
-        icon: _cardEntity.levelChanged == 'DOWN' ? const Icon(Icons.thumb_up_alt, size: 30, color: Colors.green) : const Icon(Icons.thumb_up_alt_outlined, size: 30),
-        onPressed: _cardEntity.levelChanged == 'UP' ? null : () => _changePage(_cardEntity.level + 1, 'UP'),
+        icon: levelChanged == LevelDirection.down
+            ? const Icon(Icons.thumb_up_alt, size: 30, color: Colors.green)
+            : const Icon(Icons.thumb_up_alt_outlined, size: 30),
+        onPressed: levelChanged == LevelDirection.up
+            ? null
+            : () => _changePage(_cardEntity.level + 1, LevelDirection.up),
         key: const ValueKey("like"),
       ),
     ];
 
-    // Remove buttons that shouldn’t show
+    // Remove buttons that shouldn't show
     result.removeWhere((element) {
       final keyValue = (element.key as ValueKey).value;
       return (keyValue == 'desc' && _cardEntity.desc.isEmpty) ||

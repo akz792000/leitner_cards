@@ -1,9 +1,9 @@
 class ListUtil {
   static List sortAsc(List list) {
-    return list..sort((e1, e2) => e2.compareTo(e1));
+    return list..sort((e1, e2) => e1.compareTo(e2));
   }
 
   static List sortDesc(List list) {
-    return list..sort((e1, e2) => e1.compareTo(e2));
+    return list..sort((e1, e2) => e2.compareTo(e1));
   }
 }

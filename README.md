@@ -61,6 +61,16 @@ flutter pub get
 flutter run
 ```
 
+### Hot Reload & Hot Restart
+
+Once the app is running, you don't need to stop and restart for every change:
+
+| Action | Shortcut (Mac) | When to use |
+|---|---|---|
+| **Hot Reload** ⚡ | `⌘ + \` | UI and logic changes — keeps app state |
+| **Hot Restart** 🔄 | `⇧ + ⌘ + \` | New variables, `initState` changes — resets state |
+| **Full Restart** ▶️ | Stop + Run | New packages, native config, entitlements |
+
 ---
 
 ## Build

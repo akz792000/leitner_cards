@@ -5,8 +5,8 @@ import 'package:leitner_cards/repository/CardRepository.dart';
 import '../config/RouteConfig.dart';
 import '../entity/CardEntity.dart';
 import '../enums/GroupCode.dart';
-import '../helper/ListNotifierHelper.dart';
 import '../service/RouteService.dart';
+import '../service/SyncService.dart';
 import '../util/DialogUtil.dart';
 
 class DataView extends StatefulWidget {
@@ -20,6 +20,7 @@ class DataView extends StatefulWidget {
 
 class _DataViewState extends State<DataView> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final SyncService _syncService = Get.find<SyncService>();
   late List<CardEntity> _cardEntities;
 
   void _initialize() {
@@ -40,8 +41,12 @@ class _DataViewState extends State<DataView> {
       title: "Delete Item",
       description: "Do you want to delete '${cardEntity.en}'?",
       onOk: () async {
-        await _cardRepository.remove(cardEntity);
-        _initialize();
+        try {
+          await _syncService.removeCard(cardEntity);
+          _initialize();
+        } catch (e) {
+          if (mounted) DialogUtil.error(context, e);
+        }
       },
     );
   }
@@ -61,8 +66,12 @@ class _DataViewState extends State<DataView> {
       title: "Delete All",
       description: "Do you want to delete all items?",
       onOk: () async {
-        await _cardRepository.removeList(_cardEntities);
-        _initialize();
+        try {
+          await _syncService.removeCards(_cardEntities);
+          _initialize();
+        } catch (e) {
+          if (mounted) DialogUtil.error(context, e);
+        }
       },
     );
   }
@@ -72,7 +81,7 @@ class _DataViewState extends State<DataView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            "${widget.groupCode.getTitle()} Data Cards: ${_cardEntities.length}"),
+            "${widget.groupCode.title} Data Cards: ${_cardEntities.length}"),
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
           onTap: () => Get.find<RouteService>().pushReplacementNamed(
@@ -81,39 +90,32 @@ class _DataViewState extends State<DataView> {
           ),
         ),
       ),
-      body: ValueListenableBuilder<List>(
-        valueListenable: ListNotifierHelper(_cardEntities),
-        builder: (context, cardEntities, _) {
-          if (cardEntities.isEmpty) {
-            return const Center(child: Text('Empty'));
-          }
-
-          return ListView.builder(
-            itemCount: cardEntities.length,
-            itemBuilder: (context, index) {
-              final card = cardEntities[index];
-              return Container(
-                color: (index % 2 == 0) ? Colors.white : Colors.blue[100],
-                child: InkWell(
-                  onTap: () => Get.find<RouteService>()
-                      .pushNamed(RouteConfig.merge, arguments: {
-                    "cardEntity": card,
-                  }).then((_) => _initialize()),
-                  child: ListTile(
-                    title: Text(card.en),
-                    subtitle: Text(
-                        "Level: ${card.level} - SubLevel: ${card.subLevel} - Order: ${card.order}"),
-                    trailing: IconButton(
-                      onPressed: () => _onRemove(card),
-                      icon: const Icon(Icons.delete, color: Colors.red),
+      body: _cardEntities.isEmpty
+          ? const Center(child: Text('Empty'))
+          : ListView.builder(
+              itemCount: _cardEntities.length,
+              itemBuilder: (context, index) {
+                final card = _cardEntities[index];
+                return Container(
+                  color: (index % 2 == 0) ? Colors.white : Colors.blue[100],
+                  child: InkWell(
+                    onTap: () => Get.find<RouteService>()
+                        .pushNamed(RouteConfig.merge, arguments: {
+                      "cardEntity": card,
+                    }).then((_) => _initialize()),
+                    child: ListTile(
+                      title: Text(card.en),
+                      subtitle: Text(
+                          "Level: ${card.level} - SubLevel: ${card.subLevel} - Order: ${card.order}"),
+                      trailing: IconButton(
+                        onPressed: () => _onRemove(card),
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+                );
+              },
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
         heroTag: 'Add',

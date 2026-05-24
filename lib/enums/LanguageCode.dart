@@ -5,7 +5,7 @@ enum LanguageCode {
   en,
   de;
 
-  TextDirection getDirection() {
+  TextDirection get direction {
     return this == LanguageCode.fa ? TextDirection.rtl : TextDirection.ltr;
   }
 }
