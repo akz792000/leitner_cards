@@ -105,7 +105,7 @@ class _LevelViewState extends State<LevelView> {
             alignment: Alignment.center,
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(10),
               border: isSelected ? Border.all(color: Colors.black26) : null,
               boxShadow: const [

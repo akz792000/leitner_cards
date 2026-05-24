@@ -97,7 +97,9 @@ class _DataViewState extends State<DataView> {
               itemBuilder: (context, index) {
                 final card = _cardEntities[index];
                 return Container(
-                  color: (index % 2 == 0) ? Colors.white : Colors.blue[100],
+                  color: index % 2 == 0
+                      ? Theme.of(context).colorScheme.surface
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: InkWell(
                     onTap: () => Get.find<RouteService>()
                         .pushNamed(RouteConfig.merge, arguments: {

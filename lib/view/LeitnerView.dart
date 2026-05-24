@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/CardEntity.dart';
@@ -130,8 +132,8 @@ class _LeitnerViewState extends State<LeitnerView> {
     if (_index < _cards.length - 1) {
       _pageController.animateToPage(
         _index + 1,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.linear,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
       );
     }
   }
@@ -148,14 +150,17 @@ class _LeitnerViewState extends State<LeitnerView> {
     _changeValue(_index, _languageCode);
   }
 
-  TextSpan _buildWordSpan(String word) {
+  TextSpan _buildWordSpan(BuildContext context, String word) {
     return TextSpan(
       text: word,
-      style: const TextStyle(color: Colors.black, fontSize: 30.0),
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
+        fontSize: 30.0,
+      ),
     );
   }
 
-  Widget _getTextChild() {
+  Widget _getTextChild({required BuildContext context}) {
     String message = '';
 
     switch (widget.groupCode) {
@@ -172,7 +177,7 @@ class _LeitnerViewState extends State<LeitnerView> {
 
     for (var i = 0; i < words.length; i++) {
       if (i != 0) children.add(const TextSpan(text: ' '));
-      children.add(_buildWordSpan(words[i]));
+      children.add(_buildWordSpan(context, words[i]));
     }
 
     return RichText(
@@ -225,8 +230,45 @@ class _LeitnerViewState extends State<LeitnerView> {
     return result;
   }
 
-  Widget _buildCardPage(CardEntity card) {
-    return AnimatedGradientBackground(
+  Widget _verticalFlipTransition(Widget child, Animation<double> animation) {
+    final rotate = Tween<double>(begin: pi / 2, end: 0.0).animate(
+      CurvedAnimation(parent: animation, curve: Curves.easeOut),
+    );
+    return AnimatedBuilder(
+      animation: rotate,
+      child: child,
+      builder: (context, child) => Transform(
+        transform: Matrix4.identity()
+          ..setEntry(3, 1, 0.001)
+          ..rotateX(rotate.value),
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildCardPage(CardEntity card, int pageIndex) {
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, child) {
+        double offset = 0;
+        if (_pageController.hasClients && _pageController.page != null) {
+          offset = (_pageController.page! - pageIndex).abs();
+        }
+        final scale = (1 - offset * 0.08).clamp(0.92, 1.0);
+        final opacity = (1 - offset * 0.35).clamp(0.65, 1.0);
+        return Transform.scale(
+          scale: scale,
+          child: Opacity(opacity: opacity, child: child),
+        );
+      },
+      child: _buildCardContent(),
+    );
+  }
+
+  Widget _buildCardContent() {
+    return Builder(
+      builder: (context) => AnimatedGradientBackground(
       child: Column(
         children: [
           Padding(
@@ -238,7 +280,16 @@ class _LeitnerViewState extends State<LeitnerView> {
             child: AnimatedFlag(imagePath: 'assets/flags/${_languageCode.name}.png'),
           ),
           Expanded(
-            child: Center(child: _getTextChild()),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                transitionBuilder: _verticalFlipTransition,
+                child: KeyedSubtree(
+                  key: ValueKey(_languageCode),
+                  child: _getTextChild(context: context),
+                ),
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(28.0),
@@ -252,8 +303,9 @@ class _LeitnerViewState extends State<LeitnerView> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +327,7 @@ class _LeitnerViewState extends State<LeitnerView> {
           controller: _pageController,
           onPageChanged: _onPageChanged,
           itemCount: _cards.length,
-          itemBuilder: (context, index) => _buildCardPage(_cards[index]),
+          itemBuilder: (context, index) => _buildCardPage(_cards[index], index),
         ),
       ),
     );

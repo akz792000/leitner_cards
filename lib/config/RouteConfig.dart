@@ -10,6 +10,7 @@ import '../view/LevelView.dart';
 import '../view/LoadingView.dart';
 import '../view/MergeView.dart';
 import '../view/PersistView.dart';
+import '../view/StatsView.dart';
 import '../view/SyncView.dart';
 
 class RouteConfig {
@@ -22,6 +23,7 @@ class RouteConfig {
   static const String persist = "/persist";
   static const String merge = "/merge";
   static const String download = "/download";
+  static const String stats = "/stats";
   static const String loading = "/loading";
 
   Route generateRoute(RouteSettings settings) {
@@ -68,6 +70,9 @@ class RouteConfig {
 
         case download:
           return MaterialPageRoute(builder: (_) => const DownloadView());
+
+        case stats:
+          return MaterialPageRoute(builder: (_) => const StatsView());
 
         case loading:
           return MaterialPageRoute(builder: (_) => const LoadingView());

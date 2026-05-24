@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+
+import '../service/ThemeService.dart';
 
 class DrawerWidget extends StatelessWidget {
   const DrawerWidget({super.key});
@@ -43,24 +46,43 @@ class DrawerWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItems(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-    child: Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: const Text("About"),
-          onTap: () => _showAboutDialog(context),
-        ),
-        const Divider(color: Colors.black54),
-        ListTile(
-          leading: const Icon(Icons.logout),
-          title: const Text("Logout"),
-          onTap: () => SystemNavigator.pop(),
-        ),
-      ],
-    ),
-  );
+  Widget _buildMenuItems(BuildContext context) {
+    final themeService = Get.find<ThemeService>();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        children: [
+          // Theme toggle
+          Obx(() => ListTile(
+            leading: Icon(themeService.icon),
+            title: const Text('Theme'),
+            trailing: Text(
+              themeService.label,
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            onTap: () => themeService.toggle(),
+          )),
+          const Divider(color: Colors.black26),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text("About"),
+            onTap: () => _showAboutDialog(context),
+          ),
+          const Divider(color: Colors.black26),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text("Logout"),
+            onTap: () => SystemNavigator.pop(),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showAboutDialog(BuildContext context) {
     showDialog(

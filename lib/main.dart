@@ -8,11 +8,13 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
+import 'config/AppTheme.dart';
 import 'config/DependencyConfig.dart';
 import 'config/RouteConfig.dart';
 import 'entity/CardEntity.dart';
 import 'repository/CardRepository.dart';
 import 'service/RouteService.dart';
+import 'service/ThemeService.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,18 +67,18 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Get.find<ThemeService>();
     return Sizer(
       builder: (context, orientation, deviceType) {
-        return MaterialApp(
-          title: 'zleitner',
-          theme: ThemeData(
-            primarySwatch: Colors.lightBlue,
-            useMaterial3: true, // modern UI
-          ),
+        return Obx(() => MaterialApp(
+          title: 'Learning Leitner',
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeService.mode,
           debugShowCheckedModeBanner: false,
           navigatorKey: Get.find<RouteService>().navigatorKey,
           onGenerateRoute: _routeConfig.generateRoute,
-        );
+        ));
       },
     );
   }
