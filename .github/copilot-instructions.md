@@ -274,6 +274,15 @@ Each level uses an **emoji** inside a coloured circle badge (+ number badge in c
 ### `win32` package
 Stuck at v5 because `win32 ^6.x` requires Dart ≥ 3.10.0 (current: 3.9.2). Do not upgrade.
 
+### Zscaler (corporate proxy) SSL error during `flutter build apk`
+**Error:** `SSLHandshakeException: PKIX path building failed`
+**Cause:** Gradle's JVM doesn't use the macOS Keychain, so it can't see the Zscaler root cert.
+**Fix (already in `android/gradle.properties`):**
+```properties
+org.gradle.jvmargs=... -Djavax.net.ssl.trustStoreType=KeychainStore
+```
+This makes Gradle's JVM use the macOS Keychain where Zscaler's cert is already installed. No need to stop Zscaler.
+
 ---
 
 ## Hot Reload Reference

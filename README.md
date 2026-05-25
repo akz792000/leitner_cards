@@ -83,9 +83,55 @@ flutter pub get
 flutter build apk --release
 ```
 
-Output: `build/app/outputs/apk/release/`
+**Output file:**
+```
+build/app/outputs/apk/release/app-release.apk
+```
+
+To install directly on a connected Android device:
+```bash
+flutter install --release
+```
+
+Or copy the APK to your phone via USB / Google Drive / AirDrop and open it.  
+*(Enable "Install from unknown sources" in Android Settings → Security if prompted.)*
 
 ---
+
+### Android App Bundle (for Play Store)
+
+```bash
+flutter build appbundle --release
+```
+
+**Output file:**
+```
+build/app/outputs/bundle/release/app-release.aab
+```
+
+---
+
+### iOS (on macOS only)
+
+```bash
+flutter build ios --release
+```
+
+Then open Xcode to archive and export the `.ipa`:
+1. `open ios/Runner.xcworkspace`
+2. **Product → Archive**
+3. **Distribute App → Ad Hoc** (for direct install) or **App Store Connect** (for TestFlight/Store)
+
+---
+
+### Quick reference
+
+| Platform | Command | Output path |
+|---|---|---|
+| Android APK | `flutter build apk --release` | `build/app/outputs/apk/release/app-release.apk` |
+| Android Bundle | `flutter build appbundle --release` | `build/app/outputs/bundle/release/app-release.aab` |
+| iOS | `flutter build ios --release` | Archive via Xcode |
+
 
 ## Adding Cards via Supabase
 
@@ -146,7 +192,23 @@ dart run build_runner build
 
 ## Known Issues & Fixes
 
-### Android: No internet access
+### Gradle / JVM SSL error with Zscaler (or any corporate proxy)
+
+**Error:** `SSLHandshakeException: PKIX path building failed`
+
+Zscaler (and other corporate proxies) perform SSL inspection using their own root certificate. This certificate is installed in the macOS Keychain automatically, but the JVM that Gradle uses has its own separate trust store and doesn't see it.
+
+**Fix (already applied in `android/gradle.properties`):**
+
+```properties
+org.gradle.jvmargs=... -Djavax.net.ssl.trustStoreType=KeychainStore
+```
+
+This tells Gradle's JVM to use the macOS Keychain as its trust store — where Zscaler's cert already lives. No need to stop Zscaler or export/import certificates manually.
+
+> If you switch to a new machine or a fresh clone, this flag is already in `android/gradle.properties` so the build will work out of the box.
+
+
 
 On Android, if `Uri.https` downloads are not working:
 
