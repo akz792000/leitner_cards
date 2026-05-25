@@ -87,6 +87,52 @@ Output: `build/app/outputs/apk/release/`
 
 ---
 
+## Adding Cards via Supabase
+
+Cards are stored in the `cards` table in Supabase. On each app launch the local Hive database syncs with Supabase — so inserting rows there is the easiest way to seed content.
+
+### Table columns
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Unique ID — use seconds since epoch (safe until 2106) |
+| `en` | text | English word/phrase |
+| `fa` | text | Farsi translation |
+| `de` | text | German translation (leave `""` for English↔Farsi cards) |
+| `description` | text | Optional hint shown via the 💡 button |
+| `group_code` | integer | `0` = English/Farsi, `1` = Deutsch/English |
+| `modified` | timestamptz | UTC timestamp — controls which side wins on sync |
+
+### Insert with curl
+
+```bash
+BASE_URL="https://<your-project>.supabase.co"
+KEY="<your-anon-key>"
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+BASE_ID=$(date +%s)   # seconds epoch — increment per card to keep IDs unique
+
+curl -s -X POST "$BASE_URL/rest/v1/cards" \
+  -H "apikey: $KEY" \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d "[
+    {\"id\": $((BASE_ID+1)), \"en\": \"apple\",  \"fa\": \"سیب\",  \"de\": \"\", \"description\": \"A common fruit\", \"group_code\": 0, \"modified\": \"$NOW\"},
+    {\"id\": $((BASE_ID+2)), \"en\": \"water\",  \"fa\": \"آب\",   \"de\": \"\", \"description\": \"\",               \"group_code\": 0, \"modified\": \"$NOW\"}
+  ]"
+```
+
+### Insert via Supabase Dashboard
+
+1. Open **Table Editor → cards** in the [Supabase Dashboard](https://supabase.com/dashboard).
+2. Click **Insert row**.
+3. Fill in `id` (e.g. current Unix timestamp), `en`, `fa`, `group_code` (`0` for English/Farsi), `modified` (current UTC time), and optionally `description`.
+4. Save — the card will appear in the app after the next launch (sync runs at startup).
+
+> **Tip:** `group_code: 0` puts the card under the **English** deck; `group_code: 1` puts it under **Deutsch**.
+
+---
+
 ## Hive Code Generation
 
 1. Add `part '<name>.g.dart';` at the top of your model file.
