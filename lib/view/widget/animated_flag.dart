@@ -58,7 +58,7 @@ class _AnimatedFlagState extends State<AnimatedFlag>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.4),
+                  color: Colors.blue.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),

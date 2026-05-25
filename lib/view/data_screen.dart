@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/repository/CardRepository.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
 
-import '../config/RouteConfig.dart';
-import '../entity/CardEntity.dart';
-import '../enums/GroupCode.dart';
-import '../service/RouteService.dart';
-import '../service/SyncService.dart';
-import '../util/DialogUtil.dart';
+import '../config/route_config.dart';
+import '../entity/card_entity.dart';
+import '../enums/group_code.dart';
+import '../service/route_service.dart';
+import '../service/sync_service.dart';
+import '../util/dialog_util.dart';
 
-class DataView extends StatefulWidget {
+class DataScreen extends StatefulWidget {
   final GroupCode groupCode;
 
-  const DataView({super.key, required this.groupCode});
+  const DataScreen({super.key, required this.groupCode});
 
   @override
-  _DataViewState createState() => _DataViewState();
+  _DataScreenState createState() => _DataScreenState();
 }
 
-class _DataViewState extends State<DataView> {
+class _DataScreenState extends State<DataScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final SyncService _syncService = Get.find<SyncService>();
   late List<CardEntity> _cardEntities;

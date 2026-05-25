@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 
-import '../config/RouteConfig.dart';
-import '../service/RouteService.dart';
-import '../service/SyncService.dart';
+import '../config/route_config.dart';
+import '../service/route_service.dart';
+import '../service/sync_service.dart';
 
-class SyncView extends StatefulWidget {
-  const SyncView({super.key});
+class SyncScreen extends StatefulWidget {
+  const SyncScreen({super.key});
 
   @override
-  State<SyncView> createState() => _SyncViewState();
+  State<SyncScreen> createState() => _SyncScreenState();
 }
 
-class _SyncViewState extends State<SyncView> {
+class _SyncScreenState extends State<SyncScreen> {
   String _status = 'Starting...';
 
   @override

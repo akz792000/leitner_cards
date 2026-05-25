@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/CardEntity.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/enums/group_code.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../repository/CardRepository.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import '../repository/card_repository.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 
-class DownloadView extends StatefulWidget {
-  const DownloadView({super.key});
+class DownloadScreen extends StatefulWidget {
+  const DownloadScreen({super.key});
 
   @override
-  State<DownloadView> createState() => _DownloadViewState();
+  State<DownloadScreen> createState() => _DownloadScreenState();
 }
 
-class _DownloadViewState extends State<DownloadView> {
+class _DownloadScreenState extends State<DownloadScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final _client = Supabase.instance.client;
 

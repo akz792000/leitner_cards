@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../config/RouteConfig.dart';
-import '../enums/GroupCode.dart';
-import '../service/RouteService.dart';
-import '../service/ThemeService.dart';
+import '../config/route_config.dart';
+import '../enums/group_code.dart';
+import '../service/route_service.dart';
+import '../service/theme_service.dart';
 
-class DrawerWidget extends StatelessWidget {
-  const DrawerWidget({super.key});
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {

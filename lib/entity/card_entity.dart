@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
+import 'package:leitner_cards/enums/group_code.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-import 'HiveTypeIds.dart';
+import 'hive_type_ids.dart';
 
-part 'CardEntity.g.dart';
+part 'card_entity.g.dart';
 
 @HiveType(typeId: HiveTypeIds.cardId)
 class CardEntity {

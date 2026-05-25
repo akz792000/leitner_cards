@@ -9,13 +9,13 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
-import 'config/AppTheme.dart';
-import 'config/DependencyConfig.dart';
-import 'config/RouteConfig.dart';
-import 'entity/CardEntity.dart';
-import 'repository/CardRepository.dart';
-import 'service/RouteService.dart';
-import 'service/ThemeService.dart';
+import 'config/app_theme.dart';
+import 'config/dependency_config.dart';
+import 'config/route_config.dart';
+import 'entity/card_entity.dart';
+import 'repository/card_repository.dart';
+import 'service/route_service.dart';
+import 'service/theme_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
 
-import '../repository/CardRepository.dart';
-import '../service/CardService.dart';
-import '../service/RouteService.dart';
-import '../service/SyncService.dart';
-import '../service/ThemeService.dart';
+import '../repository/card_repository.dart';
+import '../service/card_service.dart';
+import '../service/route_service.dart';
+import '../service/sync_service.dart';
+import '../service/theme_service.dart';
 
 class DependencyConfig {
   static Future registerDependencies() async {

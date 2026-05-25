@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/CardEntity.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 import 'package:timezone/timezone.dart' as tz;
-import '../service/SyncService.dart';
-import '../util/DialogUtil.dart';
+import '../service/sync_service.dart';
+import '../util/dialog_util.dart';
 
-class MergeView extends StatefulWidget {
+class MergeScreen extends StatefulWidget {
   final CardEntity cardEntity;
 
-  const MergeView({super.key, required this.cardEntity});
+  const MergeScreen({super.key, required this.cardEntity});
 
   @override
-  _MergeViewState createState() => _MergeViewState();
+  _MergeScreenState createState() => _MergeScreenState();
 }
 
-class _MergeViewState extends State<MergeView> {
+class _MergeScreenState extends State<MergeScreen> {
   final SyncService _syncService = Get.find<SyncService>();
   final _formKey = GlobalKey<FormState>();
 

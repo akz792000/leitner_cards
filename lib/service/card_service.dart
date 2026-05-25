@@ -1,12 +1,12 @@
 import 'dart:math';
 
 import 'package:get/get.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 
-import '../entity/CardEntity.dart';
-import '../repository/CardRepository.dart';
-import '../util/ListUtil.dart';
+import '../entity/card_entity.dart';
+import '../repository/card_repository.dart';
+import '../util/list_util.dart';
 
 class CardService {
   final CardRepository _cardRepository = Get.find<CardRepository>();

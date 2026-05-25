@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'CardEntity.dart';
+part of 'card_entity.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator

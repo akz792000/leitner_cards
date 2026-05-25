@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
+import 'package:leitner_cards/enums/group_code.dart';
 
-import '../view/DataView.dart';
-import '../view/DownloadView.dart';
-import '../view/ErrorView.dart';
-import '../view/HomeView.dart';
-import '../view/LeitnerView.dart';
-import '../view/LevelView.dart';
-import '../view/LoadingView.dart';
-import '../view/MergeView.dart';
-import '../view/PersistView.dart';
-import '../view/StatsView.dart';
-import '../view/SyncView.dart';
+import '../view/data_screen.dart';
+import '../view/download_screen.dart';
+import '../view/error_screen.dart';
+import '../view/home_screen.dart';
+import '../view/leitner_screen.dart';
+import '../view/level_screen.dart';
+import '../view/loading_screen.dart';
+import '../view/merge_screen.dart';
+import '../view/persist_screen.dart';
+import '../view/stats_screen.dart';
+import '../view/sync_screen.dart';
 
 class RouteConfig {
   static const String sync = "/";
@@ -32,57 +32,57 @@ class RouteConfig {
     try {
       switch (settings.name) {
         case sync:
-          return MaterialPageRoute(builder: (_) => const SyncView());
+          return MaterialPageRoute(builder: (_) => const SyncScreen());
 
         case home:
-          return MaterialPageRoute(builder: (_) => const HomeView());
+          return MaterialPageRoute(builder: (_) => const HomeScreen());
 
         case level:
           return MaterialPageRoute(
-              builder: (_) => LevelView(
+              builder: (_) => LevelScreen(
                 groupCode: _getRequired<GroupCode>(args, "groupCode"),
               ));
 
         case data:
           return MaterialPageRoute(
-              builder: (_) => DataView(
+              builder: (_) => DataScreen(
                 groupCode: _getRequired<GroupCode>(args, "groupCode"),
               ));
 
         case leitner:
           return MaterialPageRoute(
-              builder: (_) => LeitnerView(
+              builder: (_) => LeitnerScreen(
                 groupCode: _getRequired<GroupCode>(args, "groupCode"),
                 level: _getRequired<int>(args, "level"),
               ));
 
         case persist:
           return MaterialPageRoute(
-              builder: (_) => PersistView(
+              builder: (_) => PersistScreen(
                 groupCode: _getRequired<GroupCode>(args, "groupCode"),
               ));
 
         case merge:
           return MaterialPageRoute(
-              builder: (_) => MergeView(
+              builder: (_) => MergeScreen(
                 cardEntity: _getRequired(args, "cardEntity"),
               ));
 
         case download:
-          return MaterialPageRoute(builder: (_) => const DownloadView());
+          return MaterialPageRoute(builder: (_) => const DownloadScreen());
 
         case stats:
-          return MaterialPageRoute(builder: (_) => const StatsView());
+          return MaterialPageRoute(builder: (_) => const StatsScreen());
 
         case loading:
-          return MaterialPageRoute(builder: (_) => const LoadingView());
+          return MaterialPageRoute(builder: (_) => const LoadingScreen());
 
         default:
-          return MaterialPageRoute(builder: (_) => const ErrorView());
+          return MaterialPageRoute(builder: (_) => const ErrorScreen());
       }
     } catch (e) {
       return MaterialPageRoute(
-          builder: (_) => ErrorView(
+          builder: (_) => ErrorScreen(
             errorMessage: e.toString(),
           ));
     }

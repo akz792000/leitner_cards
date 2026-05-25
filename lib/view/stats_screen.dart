@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/repository/CardRepository.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 
-class StatsView extends StatelessWidget {
-  const StatsView({super.key});
+class StatsScreen extends StatelessWidget {
+  const StatsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/repository/CardRepository.dart';
-import 'package:leitner_cards/view/LeitnerView.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/view/leitner_screen.dart';
 
-import '../config/RouteConfig.dart';
-import '../service/RouteService.dart';
+import '../config/route_config.dart';
+import '../service/route_service.dart';
 
-class LevelView extends StatefulWidget {
+class LevelScreen extends StatefulWidget {
   final GroupCode groupCode;
 
-  const LevelView({super.key, required this.groupCode});
+  const LevelScreen({super.key, required this.groupCode});
 
   @override
-  State<LevelView> createState() => _LevelViewState();
+  State<LevelScreen> createState() => _LevelScreenState();
 }
 
-class _LevelViewState extends State<LevelView> {
+class _LevelScreenState extends State<LevelScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   late int _count;
   late Map<int, int> _levelMap;
@@ -254,7 +254,7 @@ class _LevelViewState extends State<LevelView> {
               onPressed: () async {
                 await Get.find<RouteService>().pushReplacementNamed(
                   RouteConfig.leitner,
-                  arguments: {"groupCode": widget.groupCode, "level": LeitnerView.allLimitedLevel},
+                  arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLimitedLevel},
                 );
               },
             ),
@@ -294,7 +294,7 @@ class _LevelViewState extends State<LevelView> {
               onPressed: () async {
                 await Get.find<RouteService>().pushReplacementNamed(
                   RouteConfig.leitner,
-                  arguments: {"groupCode": widget.groupCode, "level": LeitnerView.allLevel},
+                  arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLevel},
                 );
               },
             ),

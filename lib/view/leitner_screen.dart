@@ -3,41 +3,41 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/CardEntity.dart';
-import 'package:leitner_cards/service/CardService.dart';
-import 'package:leitner_cards/repository/CardRepository.dart';
-import 'package:leitner_cards/view/widget/IconButtonWidget.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/service/card_service.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/view/widget/icon_button_widget.dart';
 
-import '../config/RouteConfig.dart';
-import '../enums/LanguageCode.dart';
-import '../enums/GroupCode.dart';
-import '../enums/LevelDirection.dart';
-import '../service/RouteService.dart';
-import '../service/SyncService.dart';
-import '../util/DateTimeUtil.dart';
-import '../util/DialogUtil.dart';
+import '../config/route_config.dart';
+import '../enums/language_code.dart';
+import '../enums/group_code.dart';
+import '../enums/level_direction.dart';
+import '../service/route_service.dart';
+import '../service/sync_service.dart';
+import '../util/date_time_util.dart';
+import '../util/dialog_util.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
 import 'widget/animated_flag.dart';
 
-class LeitnerView extends StatefulWidget {
+class LeitnerScreen extends StatefulWidget {
   static const int allLevel = -1;
   static const int allLimitedLevel = -2;
 
   final GroupCode groupCode;
   final int level;
 
-  const LeitnerView({
+  const LeitnerScreen({
     super.key,
     required this.groupCode,
     required this.level,
   });
 
   @override
-  State<LeitnerView> createState() => _LeitnerViewState();
+  State<LeitnerScreen> createState() => _LeitnerScreenState();
 }
 
-class _LeitnerViewState extends State<LeitnerView> {
+class _LeitnerScreenState extends State<LeitnerScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final CardService _cardService = Get.find<CardService>();
   final PageController _pageController = PageController(initialPage: 0, keepPage: true);
@@ -119,10 +119,10 @@ class _LeitnerViewState extends State<LeitnerView> {
 
   void _loadCards() {
     switch (widget.level) {
-      case LeitnerView.allLevel:
+      case LeitnerScreen.allLevel:
         _cards = _cardService.findAllBasedOnLeitner(widget.groupCode);
         break;
-      case LeitnerView.allLimitedLevel:
+      case LeitnerScreen.allLimitedLevel:
         _cards = _cardRepository.findAllByGroupCode(widget.groupCode);
         break;
       default:
@@ -255,7 +255,7 @@ class _LeitnerViewState extends State<LeitnerView> {
     result.removeWhere((element) {
       final keyValue = (element.key as ValueKey).value;
       return (keyValue == 'desc' && _cardEntity.desc.isEmpty) ||
-          (keyValue == 'like' && widget.level != LeitnerView.allLevel);
+          (keyValue == 'like' && widget.level != LeitnerScreen.allLevel);
     });
 
     return result;

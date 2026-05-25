@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/CardEntity.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 
-import '../enums/GroupCode.dart';
-import '../service/SyncService.dart';
-import '../util/DialogUtil.dart';
+import '../enums/group_code.dart';
+import '../service/sync_service.dart';
+import '../util/dialog_util.dart';
 
-class PersistView extends StatefulWidget {
+class PersistScreen extends StatefulWidget {
   final GroupCode groupCode;
 
-  const PersistView({super.key, required this.groupCode});
+  const PersistScreen({super.key, required this.groupCode});
 
   @override
-  _PersistViewState createState() => _PersistViewState();
+  _PersistScreenState createState() => _PersistScreenState();
 }
 
-class _PersistViewState extends State<PersistView> {
+class _PersistScreenState extends State<PersistScreen> {
   final SyncService _syncService = Get.find<SyncService>();
   final _formKey = GlobalKey<FormState>();
 

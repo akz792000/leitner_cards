@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
+import 'package:leitner_cards/enums/group_code.dart';
 
-import '../config/RouteConfig.dart';
-import '../service/RouteService.dart';
-import 'DrawerWidgetView.dart';
+import '../config/route_config.dart';
+import '../service/route_service.dart';
+import 'app_drawer.dart';
 
-class HomeView extends StatelessWidget {
-  const HomeView({super.key});
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const DrawerWidget(),
+      drawer: const AppDrawer(),
       body: Builder(
         builder: (context) => Column(
         children: [

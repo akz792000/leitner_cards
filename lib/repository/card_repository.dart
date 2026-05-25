@@ -2,11 +2,11 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:leitner_cards/enums/GroupCode.dart';
-import 'package:leitner_cards/util/DateTimeUtil.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/util/date_time_util.dart';
 
-import '../entity/CardEntity.dart';
-import '../util/ListUtil.dart';
+import '../entity/card_entity.dart';
+import '../util/list_util.dart';
 
 class CardRepository {
   static const String boxId = "card";

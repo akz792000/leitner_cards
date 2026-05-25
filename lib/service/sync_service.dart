@@ -3,10 +3,10 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-import '../entity/CardEntity.dart';
-import '../enums/GroupCode.dart';
-import '../repository/CardRepository.dart';
-import '../util/DateTimeUtil.dart';
+import '../entity/card_entity.dart';
+import '../enums/group_code.dart';
+import '../repository/card_repository.dart';
+import '../util/date_time_util.dart';
 
 class SyncService {
   final CardRepository _cardRepository = Get.find<CardRepository>();
