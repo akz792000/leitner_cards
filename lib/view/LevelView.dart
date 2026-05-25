@@ -39,10 +39,83 @@ class _LevelViewState extends State<LevelView> {
   }
 
   Color _levelColor(int level) {
-    if (level == 0) return Colors.red.shade400;
-    if (level <= 2) return Colors.orange.shade400;
-    if (level <= 4) return Colors.amber.shade500;
-    return Colors.green.shade500;
+    const colors = [
+      Color(0xFFF44336), // 0  red
+      Color(0xFFFF5722), // 1  deep orange
+      Color(0xFFFF9800), // 2  orange
+      Color(0xFFFFC107), // 3  amber
+      Color(0xFFFFEB3B), // 4  yellow
+      Color(0xFFCDDC39), // 5  lime
+      Color(0xFF8BC34A), // 6  light green
+      Color(0xFF4CAF50), // 7  green
+      Color(0xFF009688), // 8  teal
+      Color(0xFF00BCD4), // 9  cyan
+      Color(0xFF03A9F4), // 10 light blue
+      Color(0xFF2196F3), // 11 blue
+      Color(0xFF3F51B5), // 12 indigo
+      Color(0xFF673AB7), // 13 deep purple
+      Color(0xFF9C27B0), // 14 purple
+      Color(0xFFE91E63), // 15 pink
+    ];
+    return colors[level.clamp(0, colors.length - 1)];
+  }
+
+  String _levelEmoji(int level) {
+    const emojis = [
+      '🥚', // 0  – not started
+      '🐣', // 1  – hatching
+      '🐥', // 2  – chick
+      '🌱', // 3  – seedling
+      '🌿', // 4  – growing
+      '🌳', // 5  – tree
+      '⚡', // 6  – energised
+      '🔥', // 7  – on fire
+      '💡', // 8  – bright idea
+      '🎯', // 9  – focused
+      '⭐', // 10 – star
+      '🌟', // 11 – glowing star
+      '💫', // 12 – shooting star
+      '🏆', // 13 – trophy
+      '👑', // 14 – crown
+      '💎', // 15 – diamond
+    ];
+    return emojis[level.clamp(0, emojis.length - 1)];
+  }
+
+  Widget _levelBadge(int level) {
+    final color = _levelColor(level);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: color.withAlpha(30),
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Center(
+            child: Text(_levelEmoji(level), style: const TextStyle(fontSize: 22)),
+          ),
+        ),
+        Positioned(
+          right: -4,
+          bottom: -4,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Center(
+              child: Text(
+                '$level',
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildHeader() {
@@ -110,7 +183,7 @@ class _LevelViewState extends State<LevelView> {
               ),
             ),
             const SizedBox(width: 16),
-            Image.asset('assets/levels/$level.png', width: 40, height: 40),
+            _levelBadge(level),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -150,7 +223,7 @@ class _LevelViewState extends State<LevelView> {
 
   @override
   Widget build(BuildContext context) {
-    final levels = _levelMap.entries.toList();
+    final levels = _levelMap.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
 
     return Scaffold(
       appBar: AppBar(

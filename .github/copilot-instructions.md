@@ -126,10 +126,32 @@ All screens share the same visual language. **Follow these rules strictly:**
 | Deutsch accent | `Colors.orange.shade700` |
 | English gradient | `[Color(0xFF1565C0), Color(0xFF42A5F5)]` |
 | Deutsch gradient | `[Color(0xFFE65100), Color(0xFFFFB74D)]` |
-| Level 0 | `Colors.red.shade400` |
-| Level 1–2 | `Colors.orange.shade400` |
-| Level 3–4 | `Colors.amber.shade500` |
-| Level 5+ | `Colors.green.shade500` |
+
+**Level colours — each level has its own unique colour. Use this exact palette everywhere (LevelView, DataView, StatsView):**
+```dart
+Color _levelColor(int level) {
+  const colors = [
+    Color(0xFFF44336), // 0  red
+    Color(0xFFFF5722), // 1  deep orange
+    Color(0xFFFF9800), // 2  orange
+    Color(0xFFFFC107), // 3  amber
+    Color(0xFFFFEB3B), // 4  yellow
+    Color(0xFFCDDC39), // 5  lime
+    Color(0xFF8BC34A), // 6  light green
+    Color(0xFF4CAF50), // 7  green
+    Color(0xFF009688), // 8  teal
+    Color(0xFF00BCD4), // 9  cyan
+    Color(0xFF03A9F4), // 10 light blue
+    Color(0xFF2196F3), // 11 blue
+    Color(0xFF3F51B5), // 12 indigo
+    Color(0xFF673AB7), // 13 deep purple
+    Color(0xFF9C27B0), // 14 purple
+    Color(0xFFE91E63), // 15 pink
+  ];
+  return colors[level.clamp(0, colors.length - 1)];
+}
+```
+Never group levels into tiers sharing a colour — every level must be visually distinct.
 
 ### AppBar
 ```dart
@@ -221,7 +243,31 @@ if (kDebugMode) HttpOverrides.global = _DevHttpOverrides();
 This is safe — `kDebugMode` is `false` in release builds, so production users are never affected.
 
 ### iOS exit
-`exit(0)` crashes iOS apps. Use `SystemNavigator.pop()` instead (already fixed in `DrawerWidgetView`).
+The exit/quit button was **removed** from the drawer. iOS HIG discourages quit buttons; `SystemNavigator.pop()` was unreliable. Do not add it back.
+
+### HomeView — no AppBar
+`HomeView` has **no `appBar`** on its `Scaffold`. The burger menu (hamburger `IconButton`) lives inside the gradient hero header widget (`_buildHeader(BuildContext context)`). The `body` is wrapped in a `Builder` to provide a descendant `context` for `Scaffold.of()` (needed to open the drawer).
+
+### Drawer design
+`DrawerWidgetView` is a full redesign:
+- Gradient header with avatar, name, subtitle
+- Navigation tiles: English, Deutsch, Statistics, Sync
+- Settings tiles: Theme toggle (Obx), About
+- Version footer with safe-area padding
+Do not simplify it back to a plain `ListView`.
+
+### Level list order
+`LevelView` sorts levels **ascending** (0, 1, 2 …) before building the list:
+```dart
+final levels = _levelMap.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+```
+
+### Level icons
+Each level uses an **emoji** inside a coloured circle badge (+ number badge in corner). PNG assets are no longer used. Emoji progression (0–15):
+```
+0:🥚  1:🐣  2:🐥  3:🌱  4:🌿  5:🌳  6:⚡  7:🔥
+8:💡  9:🎯  10:⭐  11:🌟  12:💫  13:🏆  14:👑  15:💎
+```
 
 ### `win32` package
 Stuck at v5 because `win32 ^6.x` requires Dart ≥ 3.10.0 (current: 3.9.2). Do not upgrade.
