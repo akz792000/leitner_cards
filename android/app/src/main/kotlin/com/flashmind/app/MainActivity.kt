@@ -1,4 +1,4 @@
-package com.example.leitner_cards
+package com.flashmind.app
 
 import io.flutter.embedding.android.FlutterActivity
 
