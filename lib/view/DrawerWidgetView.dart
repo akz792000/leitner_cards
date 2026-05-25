@@ -1,85 +1,224 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../config/RouteConfig.dart';
+import '../enums/GroupCode.dart';
+import '../service/RouteService.dart';
 import '../service/ThemeService.dart';
 
 class DrawerWidget extends StatelessWidget {
   const DrawerWidget({super.key});
 
   @override
-  Widget build(BuildContext context) => Drawer(
-    child: SingleChildScrollView(
+  Widget build(BuildContext context) {
+    return Drawer(
       child: Column(
         children: [
           _buildHeader(context),
-          const SizedBox(height: 16),
-          _buildMenuItems(context),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionLabel('Navigation'),
+                  const SizedBox(height: 4),
+                  _navTile(
+                    context,
+                    icon: Icons.flag_outlined,
+                    iconColor: Colors.blue.shade600,
+                    title: 'English',
+                    subtitle: 'English ↔ Farsi deck',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(
+                        RouteConfig.level,
+                        arguments: {'groupCode': GroupCode.english},
+                      );
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.flag_outlined,
+                    iconColor: Colors.orange.shade700,
+                    title: 'Deutsch',
+                    subtitle: 'Deutsch ↔ English deck',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(
+                        RouteConfig.level,
+                        arguments: {'groupCode': GroupCode.deutsch},
+                      );
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.bar_chart_outlined,
+                    iconColor: Colors.purple,
+                    title: 'Statistics',
+                    subtitle: 'Your learning progress',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(RouteConfig.stats);
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.cloud_sync_outlined,
+                    iconColor: Colors.teal,
+                    title: 'Sync Cards',
+                    subtitle: 'Download from cloud',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(RouteConfig.download);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionLabel('Settings'),
+                  const SizedBox(height: 4),
+                  Obx(() {
+                    final themeService = Get.find<ThemeService>();
+                    return _navTile(
+                      context,
+                      icon: themeService.icon,
+                      iconColor: Colors.indigo,
+                      title: 'Theme',
+                      subtitle: themeService.label,
+                      onTap: () => themeService.toggle(),
+                    );
+                  }),
+                  _navTile(
+                    context,
+                    icon: Icons.info_outline,
+                    iconColor: Colors.blueGrey,
+                    title: 'About',
+                    subtitle: 'App info & developer',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAboutDialog(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _buildFooter(context),
         ],
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildHeader(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top + 16;
-
-    return Material(
-      color: Colors.blue.shade400,
-      child: Container(
-        width: double.infinity,
-        alignment: Alignment.topCenter,
-        padding: EdgeInsets.only(top: topPadding, bottom: 16),
-        child: const Column(
-          children: [
-            CircleAvatar(
-              radius: 60,
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const CircleAvatar(
+              radius: 30,
               backgroundImage: AssetImage('assets/image.png'),
             ),
-            SizedBox(height: 12),
-            Text(
-              'Ali Karimizandi',
-              style: TextStyle(fontSize: 28, color: Colors.white),
-            ),
-          ],
+          ),
+          const SizedBox(width: 14),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ali Karimizandi',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Language Learner',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+          color: Colors.grey,
         ),
       ),
     );
   }
 
-  Widget _buildMenuItems(BuildContext context) {
-    final themeService = Get.find<ThemeService>();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        children: [
-          // Theme toggle
-          Obx(() => ListTile(
-            leading: Icon(themeService.icon),
-            title: const Text('Theme'),
-            trailing: Text(
-              themeService.label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
+  Widget _navTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withAlpha(26),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 20, color: iconColor),
               ),
-            ),
-            onTap: () => themeService.toggle(),
-          )),
-          const Divider(color: Colors.black26),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text("About"),
-            onTap: () => _showAboutDialog(context),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const Divider(color: Colors.black26),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text("Logout"),
-            onTap: () => SystemNavigator.pop(),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Text(
+        'Learning Leitner v2.0',
+        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -94,7 +233,6 @@ class DrawerWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // App icon
               Container(
                 width: 72,
                 height: 72,
@@ -105,20 +243,13 @@ class DrawerWidget extends StatelessWidget {
                 child: const Icon(Icons.school_outlined, size: 40, color: Colors.blue),
               ),
               const SizedBox(height: 16),
-
-              // App name & version
               const Text(
                 'Learning Leitner',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              Text(
-                'Version 2.0.0',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
+              Text('Version 2.0.0', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
               const SizedBox(height: 16),
-
-              // Description
               Text(
                 'A spaced-repetition flashcard app based on the Leitner system, '
                 'helping you learn English and Deutsch vocabulary efficiently.',
@@ -126,37 +257,24 @@ class DrawerWidget extends StatelessWidget {
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
               ),
               const SizedBox(height: 20),
-
               const Divider(),
               const SizedBox(height: 12),
-
-              // Developer info
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage('assets/image.png'),
-                  ),
+                  const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/image.png')),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Ali Karimizandi',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      Text(
-                        'Developer',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                      ),
+                      const Text('Ali Karimizandi',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text('Developer', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Close button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -171,3 +289,4 @@ class DrawerWidget extends StatelessWidget {
     );
   }
 }
+

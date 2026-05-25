@@ -12,18 +12,11 @@ class HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Learning Leitner'),
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: Colors.blue.shade600,
-        foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
       drawer: const DrawerWidget(),
-      body: Column(
+      body: Builder(
+        builder: (context) => Column(
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -80,14 +73,16 @@ class HomeView extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+      padding: EdgeInsets.fromLTRB(8, topPadding + 8, 20, 24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.shade600, Colors.blue.shade400],
@@ -95,36 +90,37 @@ class HomeView extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
+          IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            tooltip: 'Menu',
+          ),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(51),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.school, color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 14),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(51),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.school, color: Colors.white, size: 28),
+              Text(
+                'Welcome back!',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
-              const SizedBox(width: 14),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back!',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  Text(
-                    'Ready to learn today?',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Text(
+                'Ready to learn today?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
