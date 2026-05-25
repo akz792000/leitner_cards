@@ -15,10 +15,10 @@ import '../enums/level_direction.dart';
 import '../service/route_service.dart';
 import '../service/sync_service.dart';
 import '../util/date_time_util.dart';
-import '../util/dialog_util.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
 import 'widget/animated_flag.dart';
+import 'widget/description_sheet.dart';
 
 class LeitnerScreen extends StatefulWidget {
   static const int allLevel = -1;
@@ -236,7 +236,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         const Icon(Icons.light_mode_outlined, size: 30),
         onPressed: _cardEntity.desc.isEmpty
             ? null
-            : () => DialogUtil.ok(context, title: "Description", description: _cardEntity.desc),
+            : () => DescriptionSheet.show(context, card: _cardEntity, groupCode: widget.groupCode),
         key: const ValueKey("desc"),
       ),
       // Like
