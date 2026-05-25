@@ -204,7 +204,3 @@ Detailed guides are in the [`docs/`](./docs/) folder:
 ### Country Flags
 - Source: https://flagdownload.com
 - Style: Flat rounded, 256px
-
-### Icons / Emoji
-- Source: https://www.flaticon.com/free-icons/emoticons
-- Size: 512px
