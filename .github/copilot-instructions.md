@@ -3,6 +3,8 @@
 This file is the single source of truth for GitHub Copilot (and future AI sessions) working on this project.
 Read this before making any changes.
 
+> 🚨 **NEVER commit or push without the user explicitly asking. This is a hard rule — no exceptions.**
+
 ---
 
 ## Project Overview
