@@ -42,6 +42,25 @@ class _AnimatedGradientBackgroundState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Deep muted slate palette — easy on eyes, AMOLED-friendly, professional
+    // Dark mode: near-black navy shimmer
+    // Light mode: soft cool-grey with a hint of blue
+    final darkColors = const [
+      Color(0xFF0D1B2A), // midnight navy
+      Color(0xFF152232), // deep slate blue
+      Color(0xFF1A2B3C), // slate
+      Color(0xFF0F1923), // near black
+    ];
+
+    final lightColors = const [
+      Color(0xFFE8EDF2), // cool white
+      Color(0xFFD6DFE8), // light silver-blue
+      Color(0xFFCDD8E3), // muted sky
+      Color(0xFFD8E3EC), // pale slate
+    ];
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -50,13 +69,8 @@ class _AnimatedGradientBackgroundState
             gradient: LinearGradient(
               begin: _beginAnimation.value,
               end: _endAnimation.value,
-              colors: const [
-                Color(0xFF557A9A),
-                Color(0xFF6A8CB3),
-                Color(0xFF809FCD),
-                Color(0xFFA0B8E0),
-              ],
-              stops: [0.0, 0.4, 0.7, 1.0],
+              colors: isDark ? darkColors : lightColors,
+              stops: const [0.0, 0.35, 0.7, 1.0],
             ),
           ),
           child: widget.child,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _seed = Colors.blue;
+  // Muted indigo-slate — professional, low eye strain, pairs with dark card backgrounds
+  static const _seed = Color(0xFF3D5A80);
 
   static final ThemeData light = ThemeData(
     useMaterial3: true,

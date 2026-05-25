@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -51,6 +52,18 @@ class _LeitnerViewState extends State<LeitnerView> {
   final Map<int, LevelDirection?> _levelChangedMap = {};
   final Set<int> _orderChangedSet = {};
 
+  // Burn-in protection
+  Timer? _idleTimer;
+  Timer? _pixelShiftTimer;
+  bool _isDimmed = false;
+  double _shiftX = 0;
+  double _shiftY = 0;
+  final _rng = Random();
+
+  static const _dimAfter = Duration(minutes: 2);
+  static const _shiftInterval = Duration(seconds: 30);
+  static const _maxShift = 2.0;
+
   @override
   void initState() {
     super.initState();
@@ -63,12 +76,36 @@ class _LeitnerViewState extends State<LeitnerView> {
     } else {
       _index = -1;
     }
+    _startBurnInProtection();
   }
 
   @override
   void dispose() {
+    _idleTimer?.cancel();
+    _pixelShiftTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _startBurnInProtection() {
+    _resetIdleTimer();
+    _pixelShiftTimer = Timer.periodic(_shiftInterval, (_) => _shiftPixels());
+  }
+
+  void _resetIdleTimer() {
+    _idleTimer?.cancel();
+    if (_isDimmed) setState(() => _isDimmed = false);
+    _idleTimer = Timer(_dimAfter, () {
+      if (mounted) setState(() => _isDimmed = true);
+    });
+  }
+
+  void _shiftPixels() {
+    if (!mounted) return;
+    setState(() {
+      _shiftX = (_rng.nextDouble() * _maxShift * 2) - _maxShift;
+      _shiftY = (_rng.nextDouble() * _maxShift * 2) - _maxShift;
+    });
   }
 
   LanguageCode _getInitialLanguageCode() {
@@ -321,13 +358,38 @@ class _LeitnerViewState extends State<LeitnerView> {
           ),
         ),
       ),
-      body: GestureDetector(
-        onVerticalDragEnd: _onVerticalDragEnd,
-        child: PageView.builder(
-          controller: _pageController,
-          onPageChanged: _onPageChanged,
-          itemCount: _cards.length,
-          itemBuilder: (context, index) => _buildCardPage(_cards[index], index),
+      body: Listener(
+        onPointerDown: (_) => _resetIdleTimer(),
+        child: Stack(
+          children: [
+            // Pixel-shifted content
+            Transform.translate(
+              offset: Offset(_shiftX, _shiftY),
+              child: GestureDetector(
+                onVerticalDragEnd: _onVerticalDragEnd,
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: _onPageChanged,
+                  itemCount: _cards.length,
+                  itemBuilder: (context, index) => _buildCardPage(_cards[index], index),
+                ),
+              ),
+            ),
+            // Dim overlay — appears after 2 min of no interaction
+            if (_isDimmed)
+              GestureDetector(
+                onTap: _resetIdleTimer,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  child: const Center(
+                    child: Text(
+                      'Tap to wake',
+                      style: TextStyle(color: Colors.white38, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
