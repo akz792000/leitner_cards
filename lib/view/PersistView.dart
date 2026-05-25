@@ -25,6 +25,12 @@ class _PersistViewState extends State<PersistView> {
   final TextEditingController _deController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
+  bool get _isEnglish => widget.groupCode == GroupCode.english;
+  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
+  List<Color> get _gradient => _isEnglish
+      ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
+      : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
+
   @override
   void dispose() {
     _faController.dispose();
@@ -34,31 +40,26 @@ class _PersistViewState extends State<PersistView> {
     super.dispose();
   }
 
-  String? _fieldValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Field can\'t be empty';
-    }
-    return null;
-  }
+  String? _required(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'This field is required' : null;
 
   Future<void> _onPersist() async {
     if (_formKey.currentState!.validate()) {
       try {
         final now = DateTimeUtil.now();
-        final cardEntity = CardEntity(
+        await _syncService.saveCard(CardEntity(
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           created: now,
           modified: now,
           level: CardEntity.initLevel,
           subLevel: CardEntity.initSubLevel,
           order: 0,
-          fa: _faController.text,
-          en: _enController.text,
-          de: _deController.text,
-          desc: _descController.text,
+          fa: _faController.text.trim(),
+          en: _enController.text.trim(),
+          de: _deController.text.trim(),
+          desc: _descController.text.trim(),
           groupCode: widget.groupCode,
-        );
-        await _syncService.saveCard(cardEntity);
+        ));
         if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) DialogUtil.error(context, e);
@@ -66,71 +67,127 @@ class _PersistViewState extends State<PersistView> {
     }
   }
 
-  Widget _buildTextField({
+  Widget _buildField({
     required String label,
+    required String hint,
     required TextEditingController controller,
+    required IconData icon,
     TextDirection? textDirection,
     String? Function(String?)? validator,
+    int maxLines = 1,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8.0),
-        TextFormField(
-          controller: controller,
-          textDirection: textDirection,
-          validator: validator,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: TextFormField(
+        controller: controller,
+        textDirection: textDirection,
+        validator: validator,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon, color: _accentColor),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: _accentColor, width: 2),
+          ),
         ),
-        const SizedBox(height: 24.0),
-      ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEnglish = widget.groupCode == GroupCode.english;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Persist')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              if (isEnglish)
-                _buildTextField(
-                  label: 'Farsi',
-                  controller: _faController,
-                  textDirection: TextDirection.rtl,
+      appBar: AppBar(
+        title: const Text('Add Card'),
+        backgroundColor: _accentColor,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: _gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Row(
+              children: [
+                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png', width: 40, height: 40),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.groupCode.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    const Text('New flashcard', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  ],
                 ),
-              _buildTextField(
-                label: 'English',
-                controller: _enController,
-                validator: _fieldValidator,
-              ),
-              if (!isEnglish)
-                _buildTextField(
-                  label: 'Deutsch',
-                  controller: _deController,
-                ),
-              _buildTextField(
-                label: 'Description',
-                controller: _descController,
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _onPersist,
-                  child: const Text('Persist'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_isEnglish)
+                      _buildField(
+                        label: 'Farsi',
+                        hint: 'فارسی',
+                        controller: _faController,
+                        icon: Icons.translate,
+                        textDirection: TextDirection.rtl,
+                      ),
+                    _buildField(
+                      label: 'English',
+                      hint: 'e.g. apple',
+                      controller: _enController,
+                      icon: Icons.spellcheck,
+                      validator: _required,
+                    ),
+                    if (!_isEnglish)
+                      _buildField(
+                        label: 'Deutsch',
+                        hint: 'z.B. Apfel',
+                        controller: _deController,
+                        icon: Icons.translate,
+                      ),
+                    _buildField(
+                      label: 'Description',
+                      hint: 'Optional hint shown during study',
+                      controller: _descController,
+                      icon: Icons.lightbulb_outline,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _accentColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _onPersist,
+                        icon: const Icon(Icons.add_card),
+                        label: const Text('Add Card', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

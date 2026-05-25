@@ -34,6 +34,12 @@ class _MergeViewState extends State<MergeView> {
   late final TextEditingController _modifiedController;
   late final GroupCode _groupCode;
 
+  bool get _isEnglish => _groupCode == GroupCode.english;
+  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
+  List<Color> get _gradient => _isEnglish
+      ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
+      : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
+
   @override
   void initState() {
     super.initState();
@@ -67,30 +73,25 @@ class _MergeViewState extends State<MergeView> {
     super.dispose();
   }
 
-  String? _fieldValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Field can\'t be empty';
-    }
-    return null;
-  }
+  String? _required(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'This field is required' : null;
 
   Future<void> _onMerge() async {
     if (_formKey.currentState!.validate()) {
       try {
-        final mergedCard = CardEntity(
+        await _syncService.saveCard(CardEntity(
           id: int.parse(_idController.text),
           created: _created,
           modified: DateTimeUtil.now(),
           level: CardEntity.initLevel,
           subLevel: CardEntity.initSubLevel,
           order: int.parse(_orderController.text),
-          fa: _faController.text,
-          en: _enController.text,
-          de: _deController.text,
-          desc: _descController.text,
+          fa: _faController.text.trim(),
+          en: _enController.text.trim(),
+          de: _deController.text.trim(),
+          desc: _descController.text.trim(),
           groupCode: _groupCode,
-        );
-        await _syncService.saveCard(mergedCard);
+        ));
         if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) DialogUtil.error(context, e);
@@ -98,106 +99,214 @@ class _MergeViewState extends State<MergeView> {
     }
   }
 
-  Widget _buildTextField({
+  Widget _buildField({
     required String label,
+    required String hint,
     required TextEditingController controller,
+    required IconData icon,
+    TextDirection? textDirection,
+    String? Function(String?)? validator,
+    bool readOnly = false,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
-    bool readOnly = false,
-    String? Function(String?)? validator,
-    TextDirection? textDirection,
+    int maxLines = 1,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8.0),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          readOnly: readOnly,
-          validator: validator,
-          textDirection: textDirection,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: TextFormField(
+        controller: controller,
+        textDirection: textDirection,
+        validator: validator,
+        readOnly: readOnly,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        maxLines: maxLines,
+        style: readOnly ? TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant) : null,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon, color: readOnly ? Colors.grey : _accentColor),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: _accentColor, width: 2),
+          ),
+          filled: readOnly,
+          fillColor: readOnly ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
         ),
-        const SizedBox(height: 24.0),
-      ],
+      ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isEnglish = _groupCode == GroupCode.english;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Merge')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
+  Widget _buildMetadataSection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
               children: [
-                if (isEnglish)
-                  _buildTextField(
-                    label: 'Farsi',
-                    controller: _faController,
-                    textDirection: TextDirection.rtl,
-                  ),
-                _buildTextField(
-                  label: 'English',
-                  controller: _enController,
-                  validator: _fieldValidator,
-                ),
-                if (!isEnglish)
-                  _buildTextField(
-                    label: 'Deutsch',
-                    controller: _deController,
-                  ),
-                _buildTextField(
-                  label: 'Description',
-                  controller: _descController,
-                ),
-                _buildTextField(
-                  label: 'Level',
-                  controller: _levelController,
-                  readOnly: true,
-                ),
-                _buildTextField(
-                  label: 'SubLevel',
-                  controller: _subLevelController,
-                  readOnly: true,
-                ),
-                _buildTextField(
-                  label: 'Created',
-                  controller: _createdController,
-                  readOnly: true,
-                ),
-                _buildTextField(
-                  label: 'Modified',
-                  controller: _modifiedController,
-                  readOnly: true,
-                ),
-                _buildTextField(
-                  label: 'Order',
-                  controller: _orderController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: _fieldValidator,
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _onMerge,
-                    child: const Text('Merge'),
+                Icon(Icons.info_outline, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'CARD METADATA',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _metaChip('Level', _levelController.text, Icons.layers_outlined),
+                _metaChip('Sub-level', _subLevelController.text, Icons.subdirectory_arrow_right),
+                _metaChip('Order', _orderController.text, Icons.sort),
+                _metaChip('Created', _createdController.text, Icons.calendar_today_outlined),
+                _metaChip('Modified', _modifiedController.text, Icons.edit_calendar_outlined),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metaChip(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Card'),
+        backgroundColor: _accentColor,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: _gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Row(
+              children: [
+                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png', width: 40, height: 40),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _groupCode.title,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ID: ${_idController.text}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_isEnglish)
+                      _buildField(
+                        label: 'Farsi',
+                        hint: 'فارسی',
+                        controller: _faController,
+                        icon: Icons.translate,
+                        textDirection: TextDirection.rtl,
+                      ),
+                    _buildField(
+                      label: 'English',
+                      hint: 'e.g. apple',
+                      controller: _enController,
+                      icon: Icons.spellcheck,
+                      validator: _required,
+                    ),
+                    if (!_isEnglish)
+                      _buildField(
+                        label: 'Deutsch',
+                        hint: 'z.B. Apfel',
+                        controller: _deController,
+                        icon: Icons.translate,
+                      ),
+                    _buildField(
+                      label: 'Description',
+                      hint: 'Optional hint',
+                      controller: _descController,
+                      icon: Icons.lightbulb_outline,
+                      maxLines: 2,
+                    ),
+                    _buildMetadataSection(),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _accentColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _onMerge,
+                        icon: const Icon(Icons.save_outlined),
+                        label: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
