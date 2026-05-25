@@ -285,9 +285,31 @@ See: [Stack Overflow answer](https://stackoverflow.com/questions/71347054/flutte
 ~/Library/Android/sdk/platform-tools/adb logcat -d | grep -E "FATAL|AndroidRuntime|flutter|flashmind"
 ```
 
-### Alternative — No USB needed
+### Alternative — Wireless ADB (no cable needed)
 
-Install **Logcat Reader** from the Play Store. After a crash, open it and filter by `flutter` or `flashmind` to see the error directly on the phone.
+Your phone and Mac must be on the **same WiFi network**.
+
+1. Go to **Settings → Developer options → Wireless debugging** → turn it **ON**
+2. Tap **"Pair device with pairing code"**
+3. Note the **IP:PORT** and **6-digit pairing code** shown on screen
+4. On your Mac run:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb pair <IP:PORT>
+# Enter the 6-digit code when prompted
+```
+
+5. Then connect:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb connect <IP:PORT>
+~/Library/Android/sdk/platform-tools/adb devices
+# Should show: adb-xxxxx  device
+```
+
+> ⚠️ Use the **Pair** IP:PORT for pairing, then use the **main Wireless debugging** IP:PORT for connecting (they are different ports).
+
+
 
 ## Assets
 
