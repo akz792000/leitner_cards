@@ -223,9 +223,9 @@ class _LeitnerViewState extends State<LeitnerView> {
     final result = [
       // Dislike
       AnimatedButton(
-        icon: levelChanged == LevelDirection.up
-            ? const Icon(Icons.thumb_down, size: 30, color: Colors.red)
-            : const Icon(Icons.thumb_down_outlined, size: 30),
+        icon: const Icon(Icons.thumb_down_outlined, size: 30, color: Colors.white),
+        isActive: levelChanged == LevelDirection.down,
+        activeColor: Colors.redAccent,
         onPressed: levelChanged == LevelDirection.down
             ? null
             : () => _changePage(CardEntity.initLevel, LevelDirection.down),
@@ -241,9 +241,9 @@ class _LeitnerViewState extends State<LeitnerView> {
       ),
       // Like
       AnimatedButton(
-        icon: levelChanged == LevelDirection.down
-            ? const Icon(Icons.thumb_up_alt, size: 30, color: Colors.green)
-            : const Icon(Icons.thumb_up_alt_outlined, size: 30),
+        icon: const Icon(Icons.thumb_up_alt_outlined, size: 30, color: Colors.white),
+        isActive: levelChanged == LevelDirection.up,
+        activeColor: Colors.green,
         onPressed: levelChanged == LevelDirection.up
             ? null
             : () => _changePage(_cardEntity.level + 1, LevelDirection.up),

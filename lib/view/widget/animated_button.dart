@@ -3,8 +3,16 @@ import 'package:flutter/material.dart';
 class AnimatedButton extends StatefulWidget {
   final Widget icon;
   final VoidCallback? onPressed;
+  final bool isActive;
+  final Color activeColor;
 
-  const AnimatedButton({super.key, required this.icon, this.onPressed});
+  const AnimatedButton({
+    super.key,
+    required this.icon,
+    this.onPressed,
+    this.isActive = false,
+    this.activeColor = Colors.blueAccent,
+  });
 
   @override
   State<AnimatedButton> createState() => _AnimatedButtonState();
@@ -40,6 +48,10 @@ class _AnimatedButtonState extends State<AnimatedButton>
 
   @override
   Widget build(BuildContext context) {
+    final List<Color> gradientColors = widget.isActive
+        ? [widget.activeColor, widget.activeColor.withValues(alpha: 0.75)]
+        : [Colors.blueAccent, Colors.lightBlue];
+
     return SlideTransition(
       position: _floatAnimation,
       child: ScaleTransition(
@@ -50,8 +62,8 @@ class _AnimatedButtonState extends State<AnimatedButton>
           shadowColor: Colors.black45,
           child: Ink(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.blueAccent, Colors.lightBlue],
+              gradient: LinearGradient(
+                colors: gradientColors,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
