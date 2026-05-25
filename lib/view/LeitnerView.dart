@@ -187,16 +187,6 @@ class _LeitnerViewState extends State<LeitnerView> {
     _changeValue(_index, _languageCode);
   }
 
-  TextSpan _buildWordSpan(BuildContext context, String word) {
-    return TextSpan(
-      text: word,
-      style: TextStyle(
-        color: Theme.of(context).colorScheme.onSurface,
-        fontSize: 30.0,
-      ),
-    );
-  }
-
   Widget _getTextChild({required BuildContext context}) {
     String message = '';
 
@@ -209,17 +199,21 @@ class _LeitnerViewState extends State<LeitnerView> {
         break;
     }
 
-    final words = message.split(' ');
-    final children = <TextSpan>[];
-
-    for (var i = 0; i < words.length; i++) {
-      if (i != 0) children.add(const TextSpan(text: ' '));
-      children.add(_buildWordSpan(context, words[i]));
-    }
-
-    return RichText(
-      textDirection: _languageCode.direction,
-      text: TextSpan(children: children),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: SingleChildScrollView(
+        child: Text(
+          message,
+          textDirection: _languageCode.direction,
+          textAlign: _languageCode.direction == TextDirection.rtl
+              ? TextAlign.right
+              : TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 28.0,
+          ),
+        ),
+      ),
     );
   }
 
@@ -267,23 +261,6 @@ class _LeitnerViewState extends State<LeitnerView> {
     return result;
   }
 
-  Widget _verticalFlipTransition(Widget child, Animation<double> animation) {
-    final rotate = Tween<double>(begin: pi / 2, end: 0.0).animate(
-      CurvedAnimation(parent: animation, curve: Curves.easeOut),
-    );
-    return AnimatedBuilder(
-      animation: rotate,
-      child: child,
-      builder: (context, child) => Transform(
-        transform: Matrix4.identity()
-          ..setEntry(3, 1, 0.001)
-          ..rotateX(rotate.value),
-        alignment: Alignment.center,
-        child: child,
-      ),
-    );
-  }
-
   Widget _buildCardPage(CardEntity card, int pageIndex) {
     return AnimatedBuilder(
       animation: _pageController,
@@ -319,8 +296,7 @@ class _LeitnerViewState extends State<LeitnerView> {
           Expanded(
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
-                transitionBuilder: _verticalFlipTransition,
+                duration: const Duration(milliseconds: 250),
                 child: KeyedSubtree(
                   key: ValueKey(_languageCode),
                   child: _getTextChild(context: context),
