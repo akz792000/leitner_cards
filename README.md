@@ -255,6 +255,40 @@ See: [Stack Overflow answer](https://stackoverflow.com/questions/71347054/flutte
 
 ---
 
+## Debugging on Android Device (e.g. Samsung A52)
+
+### Step 1 — Enable Developer Options
+
+1. Go to **Settings → About phone → Software information**
+2. Tap **Build number** 7 times rapidly
+3. Enter your PIN/password when prompted
+4. You'll see **"Developer mode has been turned on"**
+
+### Step 2 — Enable USB Debugging
+
+1. Go back to **Settings** — you'll now see **Developer options** near the bottom
+2. Open it and turn on **USB debugging**
+
+### Step 3 — Connect to Mac and view logs
+
+1. Plug the phone into your Mac via USB cable
+2. On the phone tap **"Allow"** when asked to trust the computer
+3. Verify the device is detected:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb devices
+```
+
+4. Launch the app on the phone, then capture crash logs:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb logcat -d | grep -E "FATAL|AndroidRuntime|flutter|flashmind"
+```
+
+### Alternative — No USB needed
+
+Install **Logcat Reader** from the Play Store. After a crash, open it and filter by `flutter` or `flashmind` to see the error directly on the phone.
+
 ## Assets
 
 ### Country Flags
