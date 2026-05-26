@@ -1,4 +1,4 @@
-# Copilot Instructions — Leitner Cards
+# Copilot Instructions — Leitner Cards (FlashMind)
 
 This file is the single source of truth for GitHub Copilot (and future AI sessions) working on this project.
 Read this before making any changes.
@@ -9,9 +9,9 @@ Read this before making any changes.
 
 ## Project Overview
 
-**Leitner Cards** is a Flutter flashcard app implementing the Leitner spaced repetition system.
-Users study cards that move to higher levels when answered correctly and drop back when wrong,
-optimising review frequency. Two language decks are supported:
+**FlashMind** (package: `com.flashmind.app`) is a Flutter flashcard app implementing the Leitner spaced
+repetition system. Users study cards that move to higher levels when answered correctly and drop back
+when wrong. Two language decks:
 
 - **English ↔ Farsi** (`GroupCode.english`, `group_code: 0`)
 - **Deutsch ↔ English** (`GroupCode.deutsch`, `group_code: 1`)
@@ -22,12 +22,12 @@ optimising review frequency. Two language decks are supported:
 
 | Layer | Technology |
 |---|---|
-| UI | Flutter 3.35.6 / Dart 3.9.2 |
+| UI | Flutter 3.x / Dart 3.x |
 | State management | GetX (`get` package) |
 | Local storage | Hive |
 | Remote storage | Supabase (PostgreSQL) |
 | Navigation | GetX named routes (custom `RouteService`) |
-| Theming | Material 3, `ColorScheme.fromSeed` |
+| Theming | Material 3, `ColorScheme.fromSeed`, seed `Color(0xFF3D5A80)` |
 | Date/timezone | `intl` + `timezone` package |
 
 ---
@@ -36,10 +36,10 @@ optimising review frequency. Two language decks are supported:
 
 - **GitHub account:** `akz792000`
 - **Remote:** `git@github.personal.com:akz792000/leitner_cards.git`
-  - Uses SSH alias `github.personal.com` → maps to key `~/.ssh/id_rsa`
-  - The other account `KarimizandiA` uses `github.com` → `~/.ssh/id_ed25519`
+  - SSH alias `github.personal.com` → key `~/.ssh/id_rsa`
+  - Other account `KarimizandiA` uses `github.com` → `~/.ssh/id_ed25519`
 - **Branch:** `main`
-- **⚠️ Do NOT commit or push unless the user explicitly says so.**
+- **⚠️ NEVER commit or push unless the user explicitly says so.**
 
 ---
 
@@ -49,77 +49,97 @@ optimising review frequency. Two language decks are supported:
 - **Key:** loaded from `.env` via `flutter_dotenv` (never hardcode)
 - **Tables:**
   - `cards` — card content (id, en, fa, de, description, group_code, modified)
-  - `progress` — per-card level/sublevel/order (synced separately)
-- **RLS:** Row Level Security is **disabled** — this is intentional for a single-user personal app
-- **Sync:** Bidirectional on startup via `SyncService.syncOnStartup()`. Remote wins if `modified` timestamp is newer.
-
-### Inserting cards via curl
-
-```bash
-BASE_URL="https://utjodpuzeytossfezaol.supabase.co"
-KEY="<anon key from .env>"
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-BASE_ID=$(date +%s)
-
-curl -s -X POST "$BASE_URL/rest/v1/cards" \
-  -H "apikey: $KEY" \
-  -H "Authorization: Bearer $KEY" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: return=representation" \
-  -d "[{\"id\": $((BASE_ID+1)), \"en\": \"apple\", \"fa\": \"سیب\", \"de\": \"\", \"description\": \"\", \"group_code\": 0, \"modified\": \"$NOW\"}]"
-```
+  - `progress` — per-card level/sublevel/order (card_id, level, sub_level, order, modified)
+- **RLS:** disabled — intentional for single-user personal app
+- **Sync:** Bidirectional on startup via `SyncService.syncOnStartup()`. Remote wins if `modified` newer.
+- **Free tier limit:** 500MB — but text-only cards are tiny. Future plan: bundle card content as JSON
+  assets, sync only `progress` table to Supabase (saves cloud storage dramatically).
 
 ---
 
-## Architecture
+## Project Structure
+
+All Dart files use **snake_case** filenames and **Screen** suffix for screen classes (Flutter convention).
 
 ```
 lib/
 ├── config/
-│   ├── AppTheme.dart          # Light + dark ThemeData (Material 3)
-│   ├── DependencyConfig.dart  # GetX DI — ThemeService MUST be first
-│   └── RouteConfig.dart       # All route constants + switch
+│   ├── app_theme.dart           # Light + dark ThemeData, seed Color(0xFF3D5A80)
+│   ├── dependency_config.dart   # GetX DI — ThemeService MUST be registered first
+│   └── route_config.dart        # All route constants + GoRouter switch
 ├── entity/
-│   ├── CardEntity.dart        # Hive model — @HiveType(typeId: HiveTypeIds.cardId)
-│   ├── CardEntity.g.dart      # ⚠️ Manually patched — uses HiveTypeIds.cardId by name
-│   └── HiveTypeIds.dart       # cardId = 0 (was CARD_ID — renamed)
+│   ├── card_entity.dart         # Hive model — @HiveType(typeId: HiveTypeIds.cardId)
+│   ├── card_entity.g.dart       # ⚠️ Manually patched — references HiveTypeIds.cardId by name
+│   └── hive_type_ids.dart       # cardId = 0
 ├── enums/
-│   ├── GroupCode.dart         # english / deutsch — has .title getter
-│   ├── LanguageCode.dart      # en / fa / de — has .direction getter (TextDirection)
-│   └── LevelDirection.dart    # up / down (replaces old 'UP'/'DOWN' strings)
-├── model/
-│   └── OptionModel.dart       # image: Widget, onTap: VoidCallback?
+│   ├── group_code.dart          # english / deutsch — has .title getter
+│   ├── language_code.dart       # en / fa / de — has .direction getter (TextDirection)
+│   └── level_direction.dart     # up / down
+├── models/
+│   └── option_model.dart        # image: Widget, onTap: VoidCallback?
 ├── repository/
-│   └── CardRepository.dart    # Hive CRUD — findAllByGroupCode, findAllLevelBasedByGroupCode
+│   └── card_repository.dart     # Hive CRUD
 ├── service/
-│   ├── DependencyConfig.dart  # (see config/)
-│   ├── RouteService.dart      # pushNamed / pushReplacementNamed wrappers
-│   ├── SyncService.dart       # saveCard / removeCard / removeCards — all-or-nothing (Hive+Supabase)
-│   └── ThemeService.dart      # GetX service, persists theme to Hive 'settings' box
+│   ├── card_service.dart        # Business logic (Leitner algorithm)
+│   ├── route_service.dart       # pushNamed / pushReplacementNamed wrappers
+│   ├── sync_service.dart        # saveCard / removeCard — all-or-nothing (Hive + Supabase)
+│   └── theme_service.dart       # GetX service, persists theme to Hive 'settings' box
 ├── util/
-│   ├── DateTimeUtil.dart
-│   ├── DialogUtil.dart
-│   └── ListUtil.dart          # sortAsc / sortDesc — comparators were inverted, now fixed
+│   ├── color_util.dart
+│   ├── date_time_util.dart
+│   ├── dialog_util.dart         # error(), ok(), okCancel(), hint()
+│   ├── list_notifier_helper.dart
+│   └── list_util.dart           # sortAsc / sortDesc
 └── view/
-    ├── HomeView.dart          # StatelessWidget — gradient header, language cards, tool cards
-    ├── LevelView.dart         # Level picker — coloured header, level cards with left border
-    ├── DataView.dart          # Card list — en+fa/de rows, level badge, empty state
-    ├── PersistView.dart       # Add card form — OutlinedInputBorder, FilledButton
-    ├── MergeView.dart         # Edit card form — same as Persist + metadata chip section
-    ├── DownloadView.dart      # Sync from Supabase — deck toggle cards, FilledButton
-    ├── LeitnerView.dart       # Flashcard study — AnimatedSwitcher flip, page depth effect
-    ├── StatsView.dart         # Statistics — tabs per language, summary cards, level bars
-    ├── SyncView.dart          # Startup sync screen
-    ├── DrawerWidgetView.dart  # Drawer — theme toggle tile (Obx)
-    ├── LoadingView.dart
-    └── ErrorView.dart
+    ├── app_drawer.dart          # class AppDrawer — gradient header, nav tiles, theme toggle
+    ├── data_screen.dart         # class DataScreen
+    ├── download_screen.dart     # class DownloadScreen
+    ├── error_screen.dart        # class ErrorScreen
+    ├── home_screen.dart         # class HomeScreen — no AppBar, burger in gradient header
+    ├── leitner_screen.dart      # class LeitnerScreen — main study view
+    ├── level_screen.dart        # class LevelScreen
+    ├── loading_screen.dart      # class LoadingScreen
+    ├── merge_screen.dart        # class MergeScreen — edit card form
+    ├── persist_screen.dart      # class PersistScreen — add card form
+    ├── stats_screen.dart        # class StatsScreen
+    ├── sync_screen.dart         # class SyncScreen — startup sync
+    └── widget/
+        ├── animated_button.dart          # AnimatedButton — isActive, activeColor params
+        ├── animated_flag.dart
+        ├── animated_gradient_background.dart  # dark/light adaptive gradient
+        ├── description_sheet.dart        # DescriptionSheet.show() — modal bottom sheet
+        └── icon_button_widget.dart
 ```
 
 ---
 
-## Design System
+## LeitnerScreen — Key Details
 
-All screens share the same visual language. **Follow these rules strictly:**
+**Static constants:** `LeitnerScreen.allLevel = -1`, `LeitnerScreen.allLimitedLevel = -2`
+**Burn-in protection (AMOLED):**
+- Pixel shifting: `Timer.periodic(30s)` shifts entire view ±2px via `Transform.translate`
+- Auto-dim: after 2 minutes idle, `Colors.black` overlay (alpha 0.85) covers screen. Tap to wake.
+- Uses `Listener(onPointerDown:)` to catch all touches including children
+
+**Text display:** plain `Text` at 28px, `SingleChildScrollView` for long content, RTL-aware
+
+**Thumb buttons:** `AnimatedButton` with `isActive`/`activeColor`:
+- Like → `activeColor: Colors.green` when `levelChanged == LevelDirection.up`
+- Dislike → `activeColor: Colors.redAccent` when `levelChanged == LevelDirection.down`
+
+**Description button:** opens `DescriptionSheet.show()` — draggable modal bottom sheet
+
+---
+
+## AnimatedGradientBackground (Card Background)
+
+Adapts to theme brightness:
+- **Dark:** `#0D1B2A → #152232 → #1A2B3C → #0F1923` (midnight navy, AMOLED-friendly)
+- **Light:** `#E8EDF2 → #D6DFE8 → #CDD8E3 → #D8E3EC` (cool silver-white)
+
+---
+
+## Design System
 
 ### Colours
 | Context | Colour |
@@ -128,178 +148,104 @@ All screens share the same visual language. **Follow these rules strictly:**
 | Deutsch accent | `Colors.orange.shade700` |
 | English gradient | `[Color(0xFF1565C0), Color(0xFF42A5F5)]` |
 | Deutsch gradient | `[Color(0xFFE65100), Color(0xFFFFB74D)]` |
+| App theme seed | `Color(0xFF3D5A80)` — muted steel blue |
 
-**Level colours — each level has its own unique colour. Use this exact palette everywhere (LevelView, DataView, StatsView):**
+**Level colours — each level has its own unique colour:**
 ```dart
 Color _levelColor(int level) {
   const colors = [
-    Color(0xFFF44336), // 0  red
-    Color(0xFFFF5722), // 1  deep orange
-    Color(0xFFFF9800), // 2  orange
-    Color(0xFFFFC107), // 3  amber
-    Color(0xFFFFEB3B), // 4  yellow
-    Color(0xFFCDDC39), // 5  lime
-    Color(0xFF8BC34A), // 6  light green
-    Color(0xFF4CAF50), // 7  green
-    Color(0xFF009688), // 8  teal
-    Color(0xFF00BCD4), // 9  cyan
-    Color(0xFF03A9F4), // 10 light blue
-    Color(0xFF2196F3), // 11 blue
-    Color(0xFF3F51B5), // 12 indigo
-    Color(0xFF673AB7), // 13 deep purple
-    Color(0xFF9C27B0), // 14 purple
-    Color(0xFFE91E63), // 15 pink
+    Color(0xFFF44336), Color(0xFFFF5722), Color(0xFFFF9800), Color(0xFFFFC107),
+    Color(0xFFFFEB3B), Color(0xFFCDDC39), Color(0xFF8BC34A), Color(0xFF4CAF50),
+    Color(0xFF009688), Color(0xFF00BCD4), Color(0xFF03A9F4), Color(0xFF2196F3),
+    Color(0xFF3F51B5), Color(0xFF673AB7), Color(0xFF9C27B0), Color(0xFFE91E63),
   ];
   return colors[level.clamp(0, colors.length - 1)];
 }
 ```
-Never group levels into tiers sharing a colour — every level must be visually distinct.
 
-### AppBar
-```dart
-AppBar(
-  backgroundColor: _accentColor,  // blue or orange
-  foregroundColor: Colors.white,
-  iconTheme: const IconThemeData(color: Colors.white),
-  elevation: 0,
-)
+### Level icons (emoji in coloured circle)
+```
+0:🥚  1:🐣  2:🐥  3:🌱  4:🌿  5:🌳  6:⚡  7:🔥
+8:💡  9:🎯  10:⭐  11:🌟  12:💫  13:🏆  14:👑  15:💎
 ```
 
-### Cards / containers
-- `BorderRadius.circular(14)` for large cards, `12` for form fields
-- `boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]`
-- Background: `Theme.of(context).colorScheme.surface`
-- Borders: `Theme.of(context).colorScheme.outlineVariant`
-
-### Form fields
-```dart
-InputDecoration(
-  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: BorderSide(color: _accentColor, width: 2),
-  ),
-  prefixIcon: Icon(icon, color: _accentColor),
-)
-```
-
-### Primary button
-```dart
-FilledButton.icon(
-  style: FilledButton.styleFrom(
-    backgroundColor: _accentColor,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-)
-```
-
-### Section labels
-```dart
-Text('SECTION TITLE', style: TextStyle(
-  fontSize: 11, fontWeight: FontWeight.bold,
-  letterSpacing: 1, color: Theme.of(context).colorScheme.onSurfaceVariant,
-))
-```
-
-### Dark mode tokens
-Always use these — never hardcode white/black for backgrounds or text:
+### Dark mode tokens — always use, never hardcode colours
 - Card background → `colorScheme.surface`
 - Elevated surface → `colorScheme.surfaceContainerHighest`
 - Secondary text → `colorScheme.onSurfaceVariant`
 - Borders → `colorScheme.outlineVariant`
+
+### AppBar
+```dart
+AppBar(backgroundColor: _accentColor, foregroundColor: Colors.white, elevation: 0)
+```
+
+### Cards / containers
+- `BorderRadius.circular(14)` large, `12` form fields
+- `boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]`
+
+### Deprecated API
+Always use `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated in Flutter 3.x)
 
 ---
 
 ## Key Rules & Gotchas
 
 ### Hive IDs
-- Max Hive key: `0xFFFFFFFF` (~4.3 billion)
-- `DateTime.now().millisecondsSinceEpoch` **overflows** this — always use `~/ 1000` (seconds epoch)
-- `CardEntity.g.dart` is NOT purely generated — it references `HiveTypeIds.cardId` by name.
-  Re-running `build_runner` will **overwrite** it and break the rename. Re-apply manually if needed.
+- Max Hive key: `0xFFFFFFFF`. Use seconds epoch `DateTime.now().millisecondsSinceEpoch ~/ 1000`.
+- `card_entity.g.dart` references `HiveTypeIds.cardId` by name — re-running `build_runner` will
+  overwrite it. Re-apply manually if needed.
 
 ### SyncService — all-or-nothing
-`saveCard`, `removeCard`, `removeCards` write to **both** Hive and Supabase.
-If either fails the other is rolled back. Never write to Hive or Supabase directly from views.
+`saveCard`, `removeCard`, `removeCards` write to both Hive and Supabase with rollback.
+Never write directly to Hive or Supabase from views.
 
 ### ThemeService must be registered first
-`DependencyConfig` registers `ThemeService` before all other services because
-`MyApp.build()` calls `Get.find<ThemeService>()` before the widget tree renders.
+`DependencyConfig` registers `ThemeService` before all other services.
 
-### LevelDirection enum
-`LevelDirection.up` / `LevelDirection.down` — replaces old magic strings `'UP'`/`'DOWN'`.
-UI state (`_levelChangedMap`, `_orderChangedSet`) lives in `_LeitnerViewState`, NOT on `CardEntity`.
+### Android package path
+`applicationId = "com.flashmind.app"` — the Kotlin folder path must match exactly:
+`android/app/src/main/kotlin/com/flashmind/app/MainActivity.kt`
+Changing only `build.gradle.kts` is not enough — the folder must also be moved.
 
-### File naming
-All Dart files use `PascalCase` (e.g. `CardEntity.dart`). This triggers 35+ `info`-level
-`file_names` warnings from the linter — this is **expected and intentional**. Do not rename files.
+### Wireless ADB (Samsung A52)
+Two separate steps required:
+1. `adb pair <IP:PAIRING_PORT>` — short-lived port shown in "Pair device with pairing code" dialog
+2. `adb connect <IP:MAIN_PORT>` — persistent port shown on main "Wireless debugging" screen
+These ports are always different. See `docs/android-device-debugging-guide.md` for full steps.
 
-### iOS Simulator SSL certificate error
-`CERTIFICATE_VERIFY_FAILED: application verification failure` when calling Supabase from iOS Simulator.
-**Cause:** Dart's BoringSSL cannot verify Supabase's certificate chain in the simulator environment.
-**Fix (already applied in `main.dart`):**
-```dart
-if (kDebugMode) HttpOverrides.global = _DevHttpOverrides();
-// _DevHttpOverrides sets badCertificateCallback = true — debug only, no effect in release
-```
-This is safe — `kDebugMode` is `false` in release builds, so production users are never affected.
+### iOS Simulator SSL
+`CERTIFICATE_VERIFY_FAILED` from Supabase — fixed in `main.dart` with `_DevHttpOverrides`
+(debug only, `kDebugMode` guard, no effect in release).
 
-### iOS exit
-The exit/quit button was **removed** from the drawer. iOS HIG discourages quit buttons; `SystemNavigator.pop()` was unreliable. Do not add it back.
-
-### HomeView — no AppBar
-`HomeView` has **no `appBar`** on its `Scaffold`. The burger menu (hamburger `IconButton`) lives inside the gradient hero header widget (`_buildHeader(BuildContext context)`). The `body` is wrapped in a `Builder` to provide a descendant `context` for `Scaffold.of()` (needed to open the drawer).
-
-### Drawer design
-`DrawerWidgetView` is a full redesign:
-- Gradient header with avatar, name, subtitle
-- Navigation tiles: English, Deutsch, Statistics, Sync
-- Settings tiles: Theme toggle (Obx), About
-- Version footer with safe-area padding
-Do not simplify it back to a plain `ListView`.
-
-### Level list order
-`LevelView` sorts levels **ascending** (0, 1, 2 …) before building the list:
-```dart
-final levels = _levelMap.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
-```
-
-### Level icons
-Each level uses an **emoji** inside a coloured circle badge (+ number badge in corner). PNG assets are no longer used. Emoji progression (0–15):
-```
-0:🥚  1:🐣  2:🐥  3:🌱  4:🌿  5:🌳  6:⚡  7:🔥
-8:💡  9:🎯  10:⭐  11:🌟  12:💫  13:🏆  14:👑  15:💎
-```
-
-### `win32` package
-Stuck at v5 because `win32 ^6.x` requires Dart ≥ 3.10.0 (current: 3.9.2). Do not upgrade.
-
-### Zscaler (corporate proxy) SSL error during `flutter build apk`
-**Error:** `SSLHandshakeException: PKIX path building failed`
-**Cause:** Gradle's JVM doesn't use the macOS Keychain, so it can't see the Zscaler root cert.
-**Fix (already in `android/gradle.properties`):**
+### Zscaler (corporate proxy) SSL during `flutter build apk`
+Fixed in `android/gradle.properties`:
 ```properties
 org.gradle.jvmargs=... -Djavax.net.ssl.trustStoreType=KeychainStore
 ```
-This makes Gradle's JVM use the macOS Keychain where Zscaler's cert is already installed. No need to stop Zscaler.
+
+### HomeScreen — no AppBar
+Burger menu lives inside the gradient header. `body` wrapped in `Builder` for `Scaffold.of()`.
+
+### iOS exit button
+Removed — iOS HIG discourages quit buttons. Do not add back.
 
 ---
 
-## Hot Reload Reference
+## Docs
 
-| Action | Shortcut (Mac) | When to use |
-|---|---|---|
-| Hot Reload ⚡ | `⌘ + \` | UI/logic changes — keeps state |
-| Hot Restart 🔄 | `⇧ + ⌘ + \` | New variables, `initState` changes |
-| Full Restart ▶️ | Stop + Run | New packages, native config |
+- `docs/android-device-debugging-guide.md` — wireless ADB + ClassNotFoundException fix
+- `docs/known-issues-and-fixes.md` — Gradle SSL, JVM symlink, Android Studio issues
 
 ---
 
 ## Workflow Conventions
 
 1. **Never commit or push without explicit user instruction.**
-2. Run `flutter analyze` after every change. Zero errors required before asking to commit.
-3. Dark mode must work on all new screens — use design tokens, never hardcode colours.
-4. Keep `CardEntity.g.dart` in sync if `HiveTypeIds` changes — `build_runner` will overwrite it.
-5. All new routes go in `RouteConfig` (constant + switch case).
-6. All new GetX services go in `DependencyConfig.dart`.
+2. Run `flutter analyze lib/` after every change — zero errors before committing.
+3. Dark mode must work on all screens — use design tokens, never hardcode colours.
+4. All new routes go in `route_config.dart` (constant + switch case).
+5. All new GetX services go in `dependency_config.dart`.
+6. File names: `snake_case.dart`. Class names for screens: `*Screen`. Widgets: descriptive names.
+
+
