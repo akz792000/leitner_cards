@@ -1,8 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repository/card_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
@@ -15,48 +17,65 @@ class DownloadScreen extends StatefulWidget {
 
 class _DownloadScreenState extends State<DownloadScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
-  final _client = Supabase.instance.client;
+
+  static const String _baseUrl =
+      'https://raw.githubusercontent.com/akz792000/Dictionary/main';
 
   final List<Map<String, dynamic>> _items = [
-    {"name": "English / Farsi", "icon": "en", "toggle": false, "groupCode": 0},
-    {"name": "Deutsch / English", "icon": "de", "toggle": false, "groupCode": 1},
+    {
+      "name": "English / Farsi",
+      "icon": "en",
+      "toggle": false,
+      "url": "$_baseUrl/en_fa.json",
+    },
+    {
+      "name": "Deutsch / English",
+      "icon": "de",
+      "toggle": false,
+      "url": "$_baseUrl/de_en.json",
+    },
   ];
 
   bool _loading = false;
 
   Future<void> _persistCard(Map<String, dynamic> element, bool override) async {
+    final id = element["id"] as int? ?? 0;
+    final existing = _cardRepository.findById(id);
+
     final entity = CardEntity(
-      id: element["id"] ?? 0,
-      created: DateTimeUtil.now(),
-      modified: DateTimeUtil.now(),
-      level: CardEntity.initLevel,
-      subLevel: CardEntity.initSubLevel,
-      order: 0,
+      id: id,
+      created: existing?.created ?? DateTimeUtil.now(),
+      modified: existing?.modified ?? DateTimeUtil.now(),
+      // Preserve progress unless override is on
+      level: (override || existing == null) ? CardEntity.initLevel : existing.level,
+      subLevel: (override || existing == null) ? CardEntity.initSubLevel : existing.subLevel,
+      order: (override || existing == null) ? 0 : existing.order,
       fa: element["fa"] ?? "",
       en: element["en"] ?? "",
       de: element["de"] ?? "",
-      desc: element["description"] ?? "",
-      groupCode: GroupCode.values[element["group_code"] ?? GroupCode.english.index],
+      desc: element["desc"] ?? "",
+      groupCode: GroupCode.values[element["groupCode"] ?? GroupCode.english.index],
     );
-    final existing = _cardRepository.findById(entity.id);
-    if (existing == null ||
-        override ||
+
+    final contentChanged = existing == null ||
         existing.fa != entity.fa ||
         existing.en != entity.en ||
         existing.de != entity.de ||
-        existing.desc != entity.desc) {
+        existing.desc != entity.desc;
+
+    if (override || contentChanged) {
       await _cardRepository.merge(entity);
     }
   }
 
   Future<void> _download(Map<String, dynamic> item) async {
-    try {
-      final rows = await _client.from('cards').select().eq('group_code', item['groupCode']);
-      for (final row in rows) {
-        await _persistCard(row, item['toggle']);
-      }
-    } catch (e) {
-      debugPrint('Download error: $e');
+    final response = await http.get(Uri.parse(item['url'] as String));
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download ${item['name']}: HTTP ${response.statusCode}');
+    }
+    final List<dynamic> rows = json.decode(response.body);
+    for (final row in rows) {
+      await _persistCard(row as Map<String, dynamic>, item['toggle'] as bool);
     }
   }
 
@@ -114,11 +133,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Sync from Supabase',
+                      const Text('Download from GitHub',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 3),
                       Text(
-                        'Enable "Override" to replace existing cards with the remote version.',
+                        'Enable "Override" to reset card progress and replace with latest content.',
                         style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                       ),
                     ],
@@ -148,7 +167,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
           ..._items.asMap().entries.map((entry) {
             final i = entry.key;
             final item = entry.value;
-            final isEnglish = item['groupCode'] == 0;
+            final isEnglish = item['icon'] == 'en';
             final accentColor = isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
 
             return Container(
@@ -170,7 +189,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                 ),
                 title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  item['toggle'] ? 'Override ON — remote wins' : 'Override OFF — keeps local progress',
+                  item['toggle'] ? 'Override ON — resets progress' : 'Override OFF — keeps local progress',
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
                 trailing: Switch(

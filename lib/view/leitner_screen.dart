@@ -13,7 +13,6 @@ import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
 import '../service/route_service.dart';
-import '../service/sync_service.dart';
 import '../util/date_time_util.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
@@ -162,9 +161,6 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       _level = _cardEntity.level;
       _levelChangedMap[_cardEntity.id] = direction;
     });
-
-    // Silently push progress to Supabase in the background
-    Get.find<SyncService>().pushProgress(_cardEntity);
 
     if (_index < _cards.length - 1) {
       _pageController.animateToPage(

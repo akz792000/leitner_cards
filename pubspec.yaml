@@ -38,8 +38,7 @@ dependencies:
   flutter_spinkit: ^5.1.0
   get: ^4.6.5
   path_provider: any
-  supabase_flutter: ^2.12.4
-  flutter_dotenv: ^6.0.1
+  http: ^1.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -67,7 +66,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - .env
     - assets/
     - assets/flags/
 
