@@ -48,6 +48,8 @@ class HomeScreen extends StatelessWidget {
                       arguments: {'groupCode': GroupCode.deutsch},
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildVisualCard(context),
                   const SizedBox(height: 28),
                   _buildSectionLabel('Tools'),
                   const SizedBox(height: 12),
@@ -137,6 +139,73 @@ class HomeScreen extends StatelessWidget {
         fontWeight: FontWeight.w700,
         letterSpacing: 1.2,
         color: Colors.grey,
+      ),
+    );
+  }
+
+  Widget _buildVisualCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.visualLeitner),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00695C), Color(0xFF26A69A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00695C).withAlpha(100),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(51),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.image_outlined, color: Colors.white, size: 30),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Visual English',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Learn English by describing images',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(51),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
+import '../view/visual_leitner_screen.dart';
 import '../view/data_screen.dart';
 import '../view/download_screen.dart';
 import '../view/error_screen.dart';
@@ -15,6 +16,7 @@ import '../view/sync_screen.dart';
 
 class RouteConfig {
   static const String sync = "/";
+  static const String visualLeitner = "/visual-leitner";
   static const String home = "/home";
   static const String error = "/error";
   static const String level = "/level";
@@ -31,6 +33,9 @@ class RouteConfig {
 
     try {
       switch (settings.name) {
+        case visualLeitner:
+          return MaterialPageRoute(builder: (_) => const VisualLeitnerScreen());
+
         case sync:
           return MaterialPageRoute(builder: (_) => const SyncScreen());
 
