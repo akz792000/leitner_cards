@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/progress_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../service/sync_service.dart';
@@ -26,6 +28,7 @@ class MergeScreen extends StatefulWidget {
 
 class _MergeScreenState extends State<MergeScreen> {
   final SyncService _syncService = Get.find<SyncService>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _idController;
@@ -41,7 +44,7 @@ class _MergeScreenState extends State<MergeScreen> {
   late final TextEditingController _modifiedController;
   late final GroupCode _groupCode;
 
-  bool get _isEnglish => _groupCode == GroupCode.english;
+  bool get _isEnglish => _groupCode == GroupCode.faEn;
   Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
   List<Color> get _gradient => _isEnglish
       ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
@@ -51,18 +54,19 @@ class _MergeScreenState extends State<MergeScreen> {
   void initState() {
     super.initState();
     final card = widget.cardEntity;
+    final progress = _progressRepository.findOrCreate(card.id);
     _idController = TextEditingController(text: card.id.toString());
     _created = card.created;
     _faController = TextEditingController(text: card.fa);
     _enController = TextEditingController(text: card.en);
     _deController = TextEditingController(text: card.de);
     _descController = TextEditingController(text: card.desc);
-    _orderController = TextEditingController(text: card.order.toString());
-    _levelController = TextEditingController(text: card.level.toString());
-    _subLevelController = TextEditingController(text: card.subLevel.toString());
+    _orderController = TextEditingController(text: progress.order.toString());
+    _levelController = TextEditingController(text: progress.level.toString());
+    _subLevelController = TextEditingController(text: progress.subLevel.toString());
     _createdController = TextEditingController(text: DateTimeUtil.adjustDateTime(card.created));
-    _modifiedController = TextEditingController(text: DateTimeUtil.adjustDateTime(card.modified));
-    _groupCode = card.groupCode;
+    _modifiedController = TextEditingController(text: DateTimeUtil.adjustDateTime(progress.modified));
+    _groupCode = GroupCode.fromCode(card.groupCode);
   }
 
   @override
@@ -86,19 +90,23 @@ class _MergeScreenState extends State<MergeScreen> {
   Future<void> _onMerge() async {
     if (_formKey.currentState!.validate()) {
       try {
+        final cardId = int.parse(_idController.text);
         await _syncService.saveCard(CardEntity(
-          id: int.parse(_idController.text),
+          id: cardId,
           created: _created,
           modified: DateTimeUtil.now(),
-          level: CardEntity.initLevel,
-          subLevel: CardEntity.initSubLevel,
-          order: int.parse(_orderController.text),
+          groupCode: _groupCode.code,
           fa: _faController.text.trim(),
           en: _enController.text.trim(),
           de: _deController.text.trim(),
           desc: _descController.text.trim(),
-          groupCode: _groupCode,
         ));
+        // Reset progress when editing card content
+        final progress = _progressRepository.findOrCreate(cardId);
+        progress.level = ProgressEntity.initLevel;
+        progress.subLevel = ProgressEntity.initSubLevel;
+        progress.modified = DateTimeUtil.now();
+        await _progressRepository.merge(progress);
         if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) DialogUtil.error(context, e);

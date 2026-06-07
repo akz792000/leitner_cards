@@ -1,70 +1,62 @@
 import 'package:hive/hive.dart';
-import 'package:leitner_cards/enums/group_code.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../enums/group_code.dart';
 import 'hive_type_ids.dart';
 
 part 'card_entity.g.dart';
 
-/// Persisted flashcard for language study.
+/// Unified Hive entity for all flashcard types.
 ///
-/// Each card belongs to one [GroupCode] deck (English↔Farsi or Deutsch↔English).
-/// The Leitner schedule is driven by [level], [subLevel], and [modified]:
-/// - Level 0 cards are always shown.
-/// - Level N cards appear every 2^(N-1) days; [subLevel] counts daily sessions
-///   within a level and resets to [initSubLevel] whenever the level changes.
-/// - [id] uses seconds-epoch (`millisecondsSinceEpoch ~/ 1000`); max 0xFFFFFFFF.
+/// Covers three deck types via [groupCode]:
+/// - FA_EN: English ↔ Farsi language cards (en + fa fields)
+/// - EN_DE: Deutsch ↔ English language cards (en + de fields)
+/// - VISUAL: Image-based bilingual cards (image + en + de fields)
+///
+/// Progress fields (level, subLevel, order) live in [ProgressEntity], not here.
+///
+/// ⚠️ card_entity.g.dart is maintained manually — do NOT run build_runner.
 @HiveType(typeId: HiveTypeIds.cardId)
 class CardEntity {
-  static const int initLevel = 0; // starting level for new / reset cards
-  static const int initSubLevel = 1; // sub-level always starts at 1
-
   @HiveField(0)
-  int id; // seconds-epoch identifier, also used as Hive key
+  int id; // seconds-epoch (DateTime.millisecondsSinceEpoch ~/ 1000)
 
   @HiveField(1)
-  tz.TZDateTime created; // first time the card was saved locally
+  tz.TZDateTime created; // when card was first downloaded
 
   @HiveField(2)
-  tz.TZDateTime modified; // updated on every level/sub-level change; drives scheduling
+  tz.TZDateTime modified; // when card content last changed (from JSON update)
 
   @HiveField(3)
-  int level; // Leitner bucket (0 = new, higher = less frequent review)
+  String groupCode; // stored as string: "FA_EN", "EN_DE", "VISUAL"
 
   @HiveField(4)
-  int subLevel; // session counter within the current level
+  String image; // PNG filename for VISUAL cards; empty for language cards
 
   @HiveField(5)
-  int order; // how many times this card has been shown (used for sorting)
+  String en; // English text (all decks)
 
   @HiveField(6)
-  String fa; // Farsi translation
+  String fa; // Farsi text (FA_EN only)
 
   @HiveField(7)
-  String en; // English word / phrase
+  String de; // German text (EN_DE and VISUAL)
 
   @HiveField(8)
-  String de; // German translation
+  String desc; // optional notes/description
 
-  @HiveField(9)
-  String desc; // optional hint shown in the description sheet
+  CardEntity({
+    required this.id,
+    required this.created,
+    required this.modified,
+    required this.groupCode,
+    this.image = '',
+    this.en = '',
+    this.fa = '',
+    this.de = '',
+    this.desc = '',
+  });
 
-  @HiveField(10)
-  GroupCode groupCode;
-
-  /// True when [order] was already incremented this session — prevents double-counting.
-  bool orderChanged = false;
-
-  CardEntity(
-      {required this.id,
-      required this.created,
-      required this.modified,
-      required this.level,
-      required this.subLevel,
-      required this.order,
-      required this.fa,
-      required this.en,
-      required this.de,
-      required this.desc,
-      required this.groupCode});
+  /// Convenience getter for typed enum access.
+  GroupCode get group => GroupCode.fromCode(groupCode);
 }

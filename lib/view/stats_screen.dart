@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 /// Learning-progress statistics screen, one tab per [GroupCode] deck.
 ///
-/// Stats are computed synchronously from the Hive box on each build — no
-/// separate state is needed since the data is already in-memory. The private
-/// [_StatsData] value object isolates computation from rendering.
+/// Stats are computed synchronously from the Hive boxes on each build — no
+/// separate state is needed since the data is already in-memory.
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
@@ -41,33 +41,36 @@ class _StatsTab extends StatelessWidget {
   const _StatsTab({required this.groupCode});
 
   _StatsData _compute() {
-    final repo = Get.find<CardRepository>();
-    final cards = repo.findAllByGroupCode(groupCode);
+    final cardRepo = Get.find<CardRepository>();
+    final progressRepo = Get.find<ProgressRepository>();
+    final cards = cardRepo.findAllByGroupCode(groupCode);
 
     if (cards.isEmpty) return _StatsData.empty();
 
+    final progressList = cards.map((c) => progressRepo.findOrCreate(c.id)).toList();
+
     final total = cards.length;
-    final started = cards.where((c) => c.level > 0).length;
-    final totalReviews = cards.fold<int>(0, (sum, c) => sum + c.order);
-    final maxLevel = cards.map((c) => c.level).reduce((a, b) => a > b ? a : b);
+    final started = progressList.where((p) => p.level > 0).length;
+    final totalReviews = progressList.fold<int>(0, (sum, p) => sum + p.order);
+    final maxLevel = progressList.map((p) => p.level).reduce((a, b) => a > b ? a : b);
 
     // Level distribution (sorted ascending)
     final levelMap = <int, int>{};
-    for (final card in cards) {
-      levelMap[card.level] = (levelMap[card.level] ?? 0) + 1;
+    for (final p in progressList) {
+      levelMap[p.level] = (levelMap[p.level] ?? 0) + 1;
     }
     final sortedLevels = levelMap.keys.toList()..sort();
 
     // Recent activity
     final now = DateTimeUtil.now();
-    final today = cards.where((c) {
-      return c.modified.year == now.year &&
-          c.modified.month == now.month &&
-          c.modified.day == now.day;
+    final today = progressList.where((p) {
+      return p.modified.year == now.year &&
+          p.modified.month == now.month &&
+          p.modified.day == now.day;
     }).length;
 
-    final lastModified = cards
-        .map((c) => c.modified)
+    final lastModified = progressList
+        .map((p) => p.modified)
         .reduce((a, b) => a.isAfter(b) ? a : b);
 
     return _StatsData(

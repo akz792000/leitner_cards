@@ -1,32 +1,23 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:leitner_cards/enums/group_code.dart';
-import 'package:leitner_cards/util/date_time_util.dart';
 
 import '../entity/card_entity.dart';
-import '../util/list_util.dart';
+import '../enums/group_code.dart';
 
-/// Hive persistence layer for [CardEntity].
+/// Hive CRUD for the "card" box — content only, no progress data.
 ///
-/// All reads are synchronous (Hive in-memory box); writes are async.
-/// Use [SyncService] for writes from the UI so rollback is handled correctly.
+/// All card types (FA_EN, EN_DE, VISUAL) live in this single box,
+/// distinguished by [CardEntity.groupCode].
 class CardRepository {
-  static const String boxId = "card";
+  static const String boxId = 'card';
 
   Box<CardEntity> get _box => Hive.box<CardEntity>(boxId);
 
+  /// Listenable for reactive UI (ValueListenableBuilder).
   ValueListenable<Box<CardEntity>> listenable() => _box.listenable();
 
-  /// Upserts by [card.id]: adds if id == 0, otherwise overwrites the existing key.
-  Future<int> merge(CardEntity card) async {
-    if (card.id == 0) {
-      card.id = await _box.add(card);
-    }
-    await _box.put(card.id, card);
-    return card.id;
-  }
+  /// Insert or update a card (upsert by id).
+  Future<void> merge(CardEntity card) async => await _box.put(card.id, card);
 
   Future<void> remove(CardEntity card) async => await _box.delete(card.id);
 
@@ -39,33 +30,18 @@ class CardRepository {
 
   CardEntity? findById(int id) => _box.get(id);
 
-  List findAll() => _box.values.toList();
+  List<CardEntity> findAll() => _box.values.toList();
 
+  /// All cards for a specific deck.
   List<CardEntity> findAllByGroupCode(GroupCode groupCode) =>
-      _box.values.where((c) => c.groupCode == groupCode).toList();
+      _box.values.where((c) => c.groupCode == groupCode.code).toList();
 
-  List<CardEntity> findAllByLevelAndGroupCode(int level, GroupCode groupCode) =>
-      _box.values.where((c) => c.level == level && c.groupCode == groupCode).toList();
-
-  /// Returns cards that are due for review based on the Leitner schedule.
-  ///
-  /// Level 1 is always eligible. For level N ≥ 2 the card is eligible when
-  /// it was created at least 2^(N-1) days ago.
-  List<CardEntity> findAllByDateDifference() => _box.values
-      .where((c) => c.level == 1 || DateTimeUtil.daysToNow(c.created) >= pow(2, c.level - 1))
-      .toList();
-
-  /// Returns a level → card-count map sorted descending by level (highest first).
-  Map<int, int> findAllLevelBasedByGroupCode(GroupCode groupCode) {
-    final elements = findAllByGroupCode(groupCode);
-
-    final groupLevel = <int, int>{};
-    for (final card in elements) {
-      groupLevel[card.level] = (groupLevel[card.level] ?? 0) + 1;
+  /// Card count per groupCode — used by stats screen.
+  Map<String, int> findAllGroupCodeBased() {
+    final result = <String, int>{};
+    for (final card in _box.values) {
+      result[card.groupCode] = (result[card.groupCode] ?? 0) + 1;
     }
-
-    final sortedKeys = ListUtil.sortDesc(groupLevel.keys.toList());
-
-    return {for (final key in sortedKeys) key: groupLevel[key]!};
+    return result;
   }
 }

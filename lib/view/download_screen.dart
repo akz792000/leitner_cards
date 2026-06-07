@@ -4,18 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:leitner_cards/entity/card_entity.dart';
-import 'package:leitner_cards/entity/visual_card_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import '../repository/card_repository.dart';
-import '../repository/visual_card_repository.dart';
+import '../repository/progress_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 /// Manual re-download screen for card decks.
 ///
 /// Each deck row has an "Override" toggle. When off, only cards with changed
 /// content are updated and local progress (level/subLevel/order) is preserved.
-/// When on, every card in that deck is reset to level 0 — useful after a
-/// major content update in the GitHub source JSON.
+/// When on, every card in that deck has its progress reset to level 0 — useful
+/// after a major content update in the GitHub source JSON.
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
 
@@ -25,7 +24,7 @@ class DownloadScreen extends StatefulWidget {
 
 class _DownloadScreenState extends State<DownloadScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
-  final VisualCardRepository _visualCardRepository = Get.find<VisualCardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
 
   static const String _baseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main';
@@ -35,28 +34,29 @@ class _DownloadScreenState extends State<DownloadScreen> {
       "name": "English / Farsi",
       "icon": "en",
       "toggle": false,
-      "url": "$_baseUrl/en_fa.json",
-      "visual": false,
+      "url": "$_baseUrl/fa_en.json",
+      "groupCode": GroupCode.faEn,
     },
     {
       "name": "Deutsch / English",
       "icon": "de",
       "toggle": false,
-      "url": "$_baseUrl/de_en.json",
-      "visual": false,
+      "url": "$_baseUrl/en_de.json",
+      "groupCode": GroupCode.enDe,
     },
     {
-      "name": "Visual / English",
+      "name": "Visual",
       "icon": "vi",
       "toggle": false,
-      "url": "$_baseUrl/vi_en.json",
-      "visual": true,
+      "url": "$_baseUrl/visual.json",
+      "groupCode": GroupCode.visual,
     },
   ];
 
   bool _loading = false;
 
-  Future<void> _persistCard(Map<String, dynamic> element, bool override) async {
+  Future<void> _persistCard(
+      Map<String, dynamic> element, GroupCode groupCode, bool override) async {
     final id = element["id"] as int? ?? 0;
     final existing = _cardRepository.findById(id);
 
@@ -64,50 +64,31 @@ class _DownloadScreenState extends State<DownloadScreen> {
       id: id,
       created: existing?.created ?? DateTimeUtil.now(),
       modified: existing?.modified ?? DateTimeUtil.now(),
-      level: (override || existing == null) ? CardEntity.initLevel : existing.level,
-      subLevel: (override || existing == null) ? CardEntity.initSubLevel : existing.subLevel,
-      order: (override || existing == null) ? 0 : existing.order,
-      fa: element["fa"] ?? "",
+      groupCode: groupCode.code,
+      image: element["image"] ?? "",
       en: element["en"] ?? "",
+      fa: element["fa"] ?? "",
       de: element["de"] ?? "",
       desc: element["desc"] ?? "",
-      groupCode: GroupCode.values[element["groupCode"] ?? GroupCode.english.index],
     );
 
     final contentChanged = existing == null ||
-        existing.fa != entity.fa ||
+        existing.image != entity.image ||
         existing.en != entity.en ||
+        existing.fa != entity.fa ||
         existing.de != entity.de ||
         existing.desc != entity.desc;
 
     if (override || contentChanged) {
       await _cardRepository.merge(entity);
     }
-  }
 
-  Future<void> _persistVisualCard(Map<String, dynamic> element, bool override) async {
-    final id = element["id"] as int? ?? 0;
-    final existing = _visualCardRepository.findById(id);
-
-    final entity = VisualCardEntity(
-      id: id,
-      created: existing?.created ?? DateTimeUtil.now(),
-      modified: existing?.modified ?? DateTimeUtil.now(),
-      level: (override || existing == null) ? VisualCardEntity.initLevel : existing.level,
-      subLevel: (override || existing == null) ? VisualCardEntity.initSubLevel : existing.subLevel,
-      order: (override || existing == null) ? 0 : existing.order,
-      image: element["image"] ?? "",
-      en: element["en"] ?? "",
-      de: element["de"] ?? "",
-    );
-
-    final contentChanged = existing == null ||
-        existing.image != entity.image ||
-        existing.en != entity.en ||
-        existing.de != entity.de;
-
-    if (override || contentChanged) {
-      await _visualCardRepository.merge(entity);
+    if (override) {
+      final progress = _progressRepository.findOrCreate(id);
+      progress.level = 0;
+      progress.subLevel = 1;
+      progress.modified = DateTimeUtil.now();
+      await _progressRepository.merge(progress);
     }
   }
 
@@ -117,14 +98,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
       throw Exception('Failed to download ${item['name']}: HTTP ${response.statusCode}');
     }
     final List<dynamic> rows = json.decode(response.body);
-    final bool isVisual = item['visual'] as bool;
+    final GroupCode groupCode = item['groupCode'] as GroupCode;
     final bool override = item['toggle'] as bool;
     for (final row in rows) {
-      if (isVisual) {
-        await _persistVisualCard(row as Map<String, dynamic>, override);
-      } else {
-        await _persistCard(row as Map<String, dynamic>, override);
-      }
+      await _persistCard(row as Map<String, dynamic>, groupCode, override);
     }
   }
 
@@ -281,4 +258,3 @@ class _DownloadScreenState extends State<DownloadScreen> {
     );
   }
 }
-

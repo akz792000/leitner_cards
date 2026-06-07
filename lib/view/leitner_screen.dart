@@ -4,8 +4,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/progress_entity.dart';
 import 'package:leitner_cards/service/card_service.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/view/widget/icon_button_widget.dart';
 
 import '../config/route_config.dart';
@@ -54,17 +56,18 @@ class LeitnerScreen extends StatefulWidget {
 
 class _LeitnerScreenState extends State<LeitnerScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final CardService _cardService = Get.find<CardService>();
   final PageController _pageController = PageController(initialPage: 0, keepPage: true);
 
-  late List<CardEntity> _cards;
+  late List<(CardEntity, ProgressEntity)> _pairs;
   late CardEntity _cardEntity;
+  late ProgressEntity _progressEntity;
   int _index = 0;
   int _level = 1;
   late LanguageCode _languageCode;
 
   // Tracks whether the like/dislike button has been tapped for each card id.
-  // Used to prevent double-voting and to colour the active button.
   final Map<int, LevelDirection?> _levelChangedMap = {};
   final Set<int> _orderChangedSet = {};
 
@@ -85,9 +88,10 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     super.initState();
     _languageCode = _getInitialLanguageCode();
     _loadCards();
-    if (_cards.isNotEmpty) {
-      _cardEntity = _cards[0];
-      _level = _cardEntity.level;
+    if (_pairs.isNotEmpty) {
+      _cardEntity = _pairs[0].$1;
+      _progressEntity = _pairs[0].$2;
+      _level = _progressEntity.level;
       _modifyOrder();
     } else {
       _index = -1;
@@ -126,9 +130,10 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
 
   LanguageCode _getInitialLanguageCode() {
     switch (widget.groupCode) {
-      case GroupCode.english:
+      case GroupCode.faEn:
         return LanguageCode.fa;
-      case GroupCode.deutsch:
+      case GroupCode.enDe:
+      case GroupCode.visual:
         return LanguageCode.en;
     }
   }
@@ -136,32 +141,39 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   void _loadCards() {
     switch (widget.level) {
       case LeitnerScreen.allLevel:
-        _cards = _cardService.findAllBasedOnLeitner(widget.groupCode);
+        _pairs = _cardService.findAllBasedOnLeitner(widget.groupCode);
         break;
       case LeitnerScreen.allLimitedLevel:
-        _cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+        final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+        _pairs = cards
+            .map((c) => (c, _progressRepository.findOrCreate(c.id)))
+            .toList();
         break;
       default:
-        _cards = _cardRepository.findAllByLevelAndGroupCode(widget.level, widget.groupCode);
+        final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+        _pairs = cards
+            .map((c) => (c, _progressRepository.findOrCreate(c.id)))
+            .where((pair) => pair.$2.level == widget.level)
+            .toList();
         break;
     }
   }
 
   /// Increments [order] the first time a card is shown in this session.
-  /// The set guard prevents re-counting when the user swipes back to a card.
   void _modifyOrder() async {
     if (!_orderChangedSet.contains(_cardEntity.id)) {
-      _cardEntity.order++;
+      _progressEntity.order++;
       _orderChangedSet.add(_cardEntity.id);
-      await _cardRepository.merge(_cardEntity);
+      await _progressRepository.merge(_progressEntity);
     }
   }
 
   void _changeValue(int index, LanguageCode languageCode) {
     setState(() {
-      _cardEntity = _cards[index];
+      _cardEntity = _pairs[index].$1;
+      _progressEntity = _pairs[index].$2;
       _languageCode = languageCode;
-      _level = _cardEntity.level;
+      _level = _progressEntity.level;
     });
   }
 
@@ -174,16 +186,16 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   /// Persists the new level/subLevel, updates local state, then advances the
   /// [PageView] to the next card (if one exists).
   void _changePage(int level, LevelDirection direction) async {
-    _cardEntity.level = level;
-    _cardEntity.subLevel = CardEntity.initSubLevel;
-    _cardEntity.modified = DateTimeUtil.now();
-    await _cardRepository.merge(_cardEntity);
+    _progressEntity.level = level;
+    _progressEntity.subLevel = ProgressEntity.initSubLevel;
+    _progressEntity.modified = DateTimeUtil.now();
+    await _progressRepository.merge(_progressEntity);
     setState(() {
-      _level = _cardEntity.level;
+      _level = _progressEntity.level;
       _levelChangedMap[_cardEntity.id] = direction;
     });
 
-    if (_index < _cards.length - 1) {
+    if (_index < _pairs.length - 1) {
       _pageController.animateToPage(
         _index + 1,
         duration: const Duration(milliseconds: 400),
@@ -194,10 +206,11 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
 
   void _onVerticalDragEnd(DragEndDetails details) {
     switch (widget.groupCode) {
-      case GroupCode.english:
+      case GroupCode.faEn:
         _languageCode = _languageCode == LanguageCode.en ? LanguageCode.fa : LanguageCode.en;
         break;
-      case GroupCode.deutsch:
+      case GroupCode.enDe:
+      case GroupCode.visual:
         _languageCode = _languageCode == LanguageCode.de ? LanguageCode.en : LanguageCode.de;
         break;
     }
@@ -208,10 +221,11 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     String message = '';
 
     switch (widget.groupCode) {
-      case GroupCode.english:
+      case GroupCode.faEn:
         message = _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
         break;
-      case GroupCode.deutsch:
+      case GroupCode.enDe:
+      case GroupCode.visual:
         message = _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
         break;
     }
@@ -245,7 +259,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         activeColor: Colors.redAccent,
         onPressed: levelChanged == LevelDirection.down
             ? null
-            : () => _changePage(CardEntity.initLevel, LevelDirection.down),
+            : () => _changePage(ProgressEntity.initLevel, LevelDirection.down),
         key: const ValueKey("dislike"),
       ),
       // Description
@@ -263,7 +277,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         activeColor: Colors.green,
         onPressed: levelChanged == LevelDirection.up
             ? null
-            : () => _changePage(_cardEntity.level + 1, LevelDirection.up),
+            : () => _changePage(_progressEntity.level + 1, LevelDirection.up),
         key: const ValueKey("like"),
       ),
     ];
@@ -341,7 +355,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Item ${_index + 1} of ${_cards.length}'),
+        title: Text('Item ${_index + 1} of ${_pairs.length}'),
         centerTitle: true,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
@@ -363,8 +377,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
                 child: PageView.builder(
                   controller: _pageController,
                   onPageChanged: _onPageChanged,
-                  itemCount: _cards.length,
-                  itemBuilder: (context, index) => _buildCardPage(_cards[index], index),
+                  itemCount: _pairs.length,
+                  itemBuilder: (context, index) => _buildCardPage(_pairs[index].$1, index),
                 ),
               ),
             ),
@@ -388,3 +402,17 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     );
   }
 }
+
+/// The main flashcard study view implementing the Leitner interaction loop.
+///
+/// [level] controls which cards are loaded:
+/// - [allLevel] (-1): runs the full Leitner algorithm via [CardService].
+/// - [allLimitedLevel] (-2): shows every card in the deck regardless of schedule.
+/// - Any positive int: shows only cards at that exact level.
+///
+/// Vertical swipe toggles between the two language sides of the card.
+/// Thumb-up promotes the card to the next level; thumb-down resets to level 0.
+///
+/// Burn-in protection for AMOLED screens:
+/// - Whole view shifts ±2 px every 30 s (pixel shifting).
+/// - After 2 min of inactivity a black overlay dims the screen; tap to wake.

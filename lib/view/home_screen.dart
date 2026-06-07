@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
+import '../config/app_theme.dart';
 import '../config/route_config.dart';
 import '../service/route_service.dart';
 import 'app_drawer.dart';
@@ -38,7 +39,7 @@ class HomeScreen extends StatelessWidget {
                     gradientColors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
                     onTap: () => Get.find<RouteService>().pushNamed(
                       RouteConfig.level,
-                      arguments: {'groupCode': GroupCode.english},
+                      arguments: {'groupCode': GroupCode.faEn},
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -49,32 +50,12 @@ class HomeScreen extends StatelessWidget {
                     subtitle: 'Lerne Deutsch auf Englisch',
                     gradientColors: [Color(0xFFE65100), Color(0xFFFF8A65)],
                     onTap: () => Get.find<RouteService>().pushNamed(
-                      RouteConfig.level,
-                      arguments: {'groupCode': GroupCode.deutsch},
-                    ),
+                       RouteConfig.level,
+                       arguments: {'groupCode': GroupCode.enDe},
+                     ),
                   ),
                   const SizedBox(height: 16),
                   _buildVisualCard(context),
-                  const SizedBox(height: 28),
-                  _buildSectionLabel('Tools'),
-                  const SizedBox(height: 12),
-                  _buildToolCard(
-                    context,
-                    icon: Icons.bar_chart_outlined,
-                    iconColor: Colors.purple,
-                    title: 'Statistics',
-                    subtitle: 'View your learning progress',
-                    onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.stats),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildToolCard(
-                    context,
-                    icon: Icons.cloud_download_outlined,
-                    iconColor: Colors.teal,
-                    title: 'Sync Cards',
-                    subtitle: 'Download the latest cards from the cloud',
-                    onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.download),
-                  ),
                 ],
               ),
             ),
@@ -89,7 +70,8 @@ class HomeScreen extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(8, topPadding + 8, 20, 24),
+      // Match standard AppBar height: status bar + kToolbarHeight (56).
+      padding: EdgeInsets.only(top: topPadding, left: 8, right: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.shade600, Colors.blue.shade400],
@@ -97,7 +79,9 @@ class HomeScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
       ),
-      child: Row(
+      child: SizedBox(
+        height: AppTheme.toolbarHeight,
+        child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.menu, color: Colors.white, size: 26),
@@ -116,11 +100,8 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 14),
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Welcome back!',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
               Text(
                 'Ready to learn today?',
                 style: TextStyle(
@@ -132,6 +113,7 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -150,7 +132,10 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildVisualCard(BuildContext context) {
     return GestureDetector(
-      onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.visualLeitner),
+      onTap: () => Get.find<RouteService>().pushNamed(
+        RouteConfig.level,
+        arguments: {'groupCode': GroupCode.visual},
+      ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
@@ -186,7 +171,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Visual English',
+                    'Visual',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -276,67 +261,6 @@ class HomeScreen extends StatelessWidget {
               child: const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final outline = Theme.of(context).colorScheme.outlineVariant;
-
-    return Material(
-      color: surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: outline),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconColor.withAlpha(26),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ],
-          ),
         ),
       ),
     );

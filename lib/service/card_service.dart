@@ -1,72 +1,75 @@
 import 'dart:math';
 
 import 'package:get/get.dart';
-import 'package:leitner_cards/enums/group_code.dart';
-import 'package:leitner_cards/util/date_time_util.dart';
 
 import '../entity/card_entity.dart';
+import '../entity/progress_entity.dart';
+import '../enums/group_code.dart';
 import '../repository/card_repository.dart';
+import '../repository/progress_repository.dart';
+import '../util/date_time_util.dart';
 import '../util/list_util.dart';
 
-/// Business logic for the Leitner spaced-repetition algorithm.
+/// Business logic for language-card Leitner scheduling.
 ///
-/// The core rule: level 0 cards are always included.  For level N ≥ 1, a card
-/// must sit in the current level for 2^(N-1) daily sessions before it surfaces.
-/// [subLevel] tracks how many sessions have elapsed; when it reaches the
-/// maximum it is added to the result set and both level and subLevel are reset
-/// by [LeitnerScreen] on thumb-up/thumb-down.
+/// Joins [CardEntity] (content) with [ProgressEntity] (level/schedule)
+/// at query time. The two are linked by cardId.
 class CardService {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
 
-  /// Returns cards due today according to the Leitner schedule, ordered by
-  /// level ascending and then by [CardEntity.order] within each level.
+  /// Returns cards due for study today for the given [groupCode], ordered by
+  /// Leitner algorithm (level 0 first, then by subLevel gating).
   ///
-  /// Side-effect: increments [subLevel] (and persists) for cards that have a
-  /// day's gap but haven't reached their sub-level ceiling yet.
-  List<CardEntity> findAllBasedOnLeitner(GroupCode groupCode) {
-    final elements = _cardRepository.findAllByGroupCode(groupCode).cast<CardEntity>();
+  /// Returns a list of (CardEntity, ProgressEntity) pairs.
+  List<(CardEntity, ProgressEntity)> findAllBasedOnLeitner(GroupCode groupCode) {
+    final cards = _cardRepository.findAllByGroupCode(groupCode);
 
-    // Group cards by level
-    final Map<int, List<CardEntity>> groupedByLevel = {};
-    for (final element in elements) {
-      groupedByLevel[element.level] = groupedByLevel[element.level] ?? [];
-      groupedByLevel[element.level]!.add(element);
+    // Build a map of cardId → ProgressEntity (create default if missing)
+    final progressMap = <int, ProgressEntity>{};
+    for (final card in cards) {
+      progressMap[card.id] = _progressRepository.findOrCreate(card.id);
     }
 
-    // Sort keys ascending (lowest level first)
-    final sortedKeys = ListUtil.sortAsc(groupedByLevel.keys.toList());
+    // Group by level
+    final Map<int, List<CardEntity>> groupedByLevel = {};
+    for (final card in cards) {
+      final level = progressMap[card.id]!.level;
+      groupedByLevel[level] = groupedByLevel[level] ?? [];
+      groupedByLevel[level]!.add(card);
+    }
 
-    final List<CardEntity> result = [];
+    final sortedKeys = ListUtil.sortAsc(groupedByLevel.keys.toList());
+    final List<(CardEntity, ProgressEntity)> result = [];
 
     for (final key in sortedKeys) {
-      final List<CardEntity> items = groupedByLevel[key]!;
-      final List<CardEntity> addedItems = [];
+      final items = groupedByLevel[key]!;
+      final List<(CardEntity, ProgressEntity)> addedItems = [];
 
-      if (key == CardEntity.initLevel) {
-        addedItems.addAll(items);
+      if (key == ProgressEntity.initLevel) {
+        // Level 0: always due
+        for (final card in items) {
+          addedItems.add((card, progressMap[card.id]!));
+        }
       } else {
         final int maxSubLevelCount = pow(2, key - 1).toInt();
-
-        /**
-          * For each card that has aged at least one full day since last modification:
-          * - If subLevel hasn't reached the ceiling, increment it and defer the card.
-          * - Once subLevel hits the ceiling, include the card in today's study set.
-          */
-        for (final item in items) {
-          if (DateTimeUtil.daysToNowWithoutTime(item.modified) >= 1) {
-            if (item.subLevel < maxSubLevelCount) {
-              item.subLevel++;
-              item.modified = DateTimeUtil.now();
-              _cardRepository.merge(item);
+        for (final card in items) {
+          final progress = progressMap[card.id]!;
+          if (DateTimeUtil.daysToNowWithoutTime(progress.modified) >= 1) {
+            if (progress.subLevel < maxSubLevelCount) {
+              // Not ready yet — advance sub-counter and persist
+              progress.subLevel++;
+              progress.modified = DateTimeUtil.now();
+              _progressRepository.merge(progress);
             } else {
-              addedItems.add(item);
+              addedItems.add((card, progress));
             }
           }
         }
       }
 
-      // Order items by `order` field
-      addedItems.sort((a, b) => a.order.compareTo(b.order));
+      // Stable sort by order within each level
+      addedItems.sort((a, b) => a.$2.order.compareTo(b.$2.order));
       result.addAll(addedItems);
     }
 

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/view/leitner_screen.dart';
+import 'package:leitner_cards/view/visual_leitner_screen.dart';
 
 import '../config/route_config.dart';
 import '../service/route_service.dart';
@@ -24,14 +26,19 @@ class LevelScreen extends StatefulWidget {
 
 class _LevelScreenState extends State<LevelScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   late int _count;
   late Map<int, int> _levelMap;
 
-  bool get _isEnglish => widget.groupCode == GroupCode.english;
-  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
-  List<Color> get _gradient => _isEnglish
-      ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
-      : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
+  bool get _isEnglish => widget.groupCode == GroupCode.faEn;
+  bool get _isVisual => widget.groupCode == GroupCode.visual;
+
+  // Accent colour adapts per deck type (also used for AppBar and FAB).
+  Color get _accentColor {
+    if (_isEnglish) return Colors.blue.shade600;
+    if (_isVisual) return Colors.green.shade700;
+    return Colors.orange.shade700;
+  }
 
   @override
   void initState() {
@@ -40,8 +47,13 @@ class _LevelScreenState extends State<LevelScreen> {
   }
 
   void _initialize() {
-    _count = _cardRepository.findAllByGroupCode(widget.groupCode).length;
-    _levelMap = _cardRepository.findAllLevelBasedByGroupCode(widget.groupCode);
+    final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+    _count = cards.length;
+    _levelMap = <int, int>{};
+    for (final card in cards) {
+      final level = _progressRepository.findOrCreate(card.id).level;
+      _levelMap[level] = (_levelMap[level] ?? 0) + 1;
+    }
   }
 
   Color _levelColor(int level) {
@@ -124,49 +136,23 @@ class _LevelScreenState extends State<LevelScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: _gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/flags/${_isEnglish ? 'en' : 'de'}.png',
-            width: 48,
-            height: 48,
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.groupCode.title,
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$_count card${_count == 1 ? '' : 's'} total',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLevelCard(int level, int count) {
     final color = _levelColor(level);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
-        await Get.find<RouteService>().pushReplacementNamed(
-          RouteConfig.leitner,
-          arguments: {"groupCode": widget.groupCode, "level": level},
-        );
+        // Visual deck navigates to VisualLeitnerScreen; language decks to LeitnerScreen.
+        if (_isVisual) {
+          await Get.find<RouteService>().pushReplacementNamed(
+            RouteConfig.visualLeitner,
+            arguments: {"level": level},
+          );
+        } else {
+          await Get.find<RouteService>().pushReplacementNamed(
+            RouteConfig.leitner,
+            arguments: {"groupCode": widget.groupCode, "level": level},
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -192,29 +178,25 @@ class _LevelScreenState extends State<LevelScreen> {
             _levelBadge(level),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     'Level $level',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withAlpha(30),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withAlpha(80)),
-                        ),
-                        child: Text(
-                          '$count item${count == 1 ? '' : 's'}',
-                          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(30),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: color.withAlpha(80)),
+                    ),
+                    child: Text(
+                      '$count item${count == 1 ? '' : 's'}',
+                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
@@ -233,7 +215,29 @@ class _LevelScreenState extends State<LevelScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.groupCode.title} Levels'),
+        // Title shows deck name + card count — no separate gradient header needed.
+        title: Row(
+          children: [
+            // Visual deck uses a camera icon; language decks use their flag.
+            _isVisual
+                ? const Icon(Icons.photo_library_outlined, color: Colors.white, size: 26)
+                : Image.asset(
+                    'assets/flags/${_isEnglish ? 'en' : 'de'}.png',
+                    width: 26,
+                    height: 26,
+                  ),
+            const SizedBox(width: 10),
+            Text(
+              widget.groupCode.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '· $_count card${_count == 1 ? '' : 's'}',
+              style: const TextStyle(fontSize: 13, color: Colors.white70),
+            ),
+          ],
+        ),
         backgroundColor: _accentColor,
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -258,17 +262,24 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.skip_next_outlined),
               tooltip: 'Play limited',
               onPressed: () async {
-                await Get.find<RouteService>().pushReplacementNamed(
-                  RouteConfig.leitner,
-                  arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLimitedLevel},
-                );
+                // Visual deck goes to VisualLeitnerScreen; language decks to LeitnerScreen.
+                if (_isVisual) {
+                  await Get.find<RouteService>().pushReplacementNamed(
+                    RouteConfig.visualLeitner,
+                    arguments: {"level": VisualLeitnerScreen.allLimitedLevel},
+                  );
+                } else {
+                  await Get.find<RouteService>().pushReplacementNamed(
+                    RouteConfig.leitner,
+                    arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLimitedLevel},
+                  );
+                }
               },
             ),
         ],
       ),
       body: Column(
         children: [
-          _buildHeader(),
           Expanded(
             child: levels.isEmpty
                 ? Center(
@@ -298,10 +309,18 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Play All'),
               onPressed: () async {
-                await Get.find<RouteService>().pushReplacementNamed(
-                  RouteConfig.leitner,
-                  arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLevel},
-                );
+                // Visual deck goes to VisualLeitnerScreen; language decks to LeitnerScreen.
+                if (_isVisual) {
+                  await Get.find<RouteService>().pushReplacementNamed(
+                    RouteConfig.visualLeitner,
+                    arguments: {"level": VisualLeitnerScreen.allLevel},
+                  );
+                } else {
+                  await Get.find<RouteService>().pushReplacementNamed(
+                    RouteConfig.leitner,
+                    arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLevel},
+                  );
+                }
               },
             ),
     );

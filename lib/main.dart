@@ -9,9 +9,9 @@ import 'config/app_theme.dart';
 import 'config/dependency_config.dart';
 import 'config/route_config.dart';
 import 'entity/card_entity.dart';
-import 'entity/visual_card_entity.dart';
+import 'entity/progress_entity.dart';
 import 'repository/card_repository.dart';
-import 'repository/visual_card_repository.dart';
+import 'repository/progress_repository.dart';
 import 'service/route_service.dart';
 import 'service/theme_service.dart';
 
@@ -27,9 +27,10 @@ Future<void> setup() async {
 
   await Hive.initFlutter();
   Hive.registerAdapter(CardEntityAdapter());
-  Hive.registerAdapter(VisualCardEntityAdapter());
+  Hive.registerAdapter(ProgressEntityAdapter());
+
   await Hive.openBox<CardEntity>(CardRepository.boxId);
-  await Hive.openBox<VisualCardEntity>(VisualCardRepository.boxId);
+  await Hive.openBox<ProgressEntity>(ProgressRepository.boxId);
 
   final directory = await path_provider.getApplicationDocumentsDirectory();
   debugPrint("Hive directory: ${directory.path}");

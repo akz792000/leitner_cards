@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../config/route_config.dart';
-import '../enums/group_code.dart';
 import '../service/route_service.dart';
 import '../service/theme_service.dart';
 
@@ -26,36 +25,8 @@ class AppDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionLabel('Navigation'),
+                  _sectionLabel('Decks & Tools'),
                   const SizedBox(height: 4),
-                  _navTile(
-                    context,
-                    icon: Icons.flag_outlined,
-                    iconColor: Colors.blue.shade600,
-                    title: 'English',
-                    subtitle: 'English ↔ Farsi deck',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.find<RouteService>().pushNamed(
-                        RouteConfig.level,
-                        arguments: {'groupCode': GroupCode.english},
-                      );
-                    },
-                  ),
-                  _navTile(
-                    context,
-                    icon: Icons.flag_outlined,
-                    iconColor: Colors.orange.shade700,
-                    title: 'Deutsch',
-                    subtitle: 'Deutsch ↔ English deck',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.find<RouteService>().pushNamed(
-                        RouteConfig.level,
-                        arguments: {'groupCode': GroupCode.deutsch},
-                      );
-                    },
-                  ),
                   _navTile(
                     context,
                     icon: Icons.bar_chart_outlined,

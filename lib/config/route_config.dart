@@ -40,7 +40,10 @@ class RouteConfig {
     try {
       switch (settings.name) {
         case visualLeitner:
-          return MaterialPageRoute(builder: (_) => const VisualLeitnerScreen());
+          return MaterialPageRoute(
+              builder: (_) => VisualLeitnerScreen(
+                level: _getRequired<int>(args, "level"),
+              ));
 
         case sync:
           return MaterialPageRoute(builder: (_) => const SyncScreen());

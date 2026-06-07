@@ -30,7 +30,7 @@ class _PersistScreenState extends State<PersistScreen> {
   final TextEditingController _deController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
-  bool get _isEnglish => widget.groupCode == GroupCode.english;
+  bool get _isEnglish => widget.groupCode == GroupCode.faEn;
   Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
   List<Color> get _gradient => _isEnglish
       ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
@@ -56,14 +56,11 @@ class _PersistScreenState extends State<PersistScreen> {
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           created: now,
           modified: now,
-          level: CardEntity.initLevel,
-          subLevel: CardEntity.initSubLevel,
-          order: 0,
+          groupCode: widget.groupCode.code,
           fa: _faController.text.trim(),
           en: _enController.text.trim(),
           de: _deController.text.trim(),
           desc: _descController.text.trim(),
-          groupCode: widget.groupCode,
         ));
         if (mounted) Navigator.pop(context);
       } catch (e) {

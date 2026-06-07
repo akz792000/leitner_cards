@@ -3,9 +3,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/visual_card_entity.dart';
-import 'package:leitner_cards/repository/visual_card_repository.dart';
-import 'package:leitner_cards/service/visual_card_service.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/progress_entity.dart';
+import 'package:leitner_cards/enums/group_code.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
+import 'package:leitner_cards/service/card_service.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 import '../config/route_config.dart';
@@ -15,6 +18,11 @@ import 'widget/animated_button.dart';
 import 'widget/animated_gradient_background.dart';
 
 /// Study screen for the visual (image-based) Leitner deck.
+///
+/// [level] controls which cards are loaded — same sentinel values as [LeitnerScreen]:
+/// - [allLevel] (-1): runs the full Leitner algorithm.
+/// - [allLimitedLevel] (-2): shows every visual card regardless of schedule.
+/// - Any positive int: shows only cards at that exact level.
 ///
 /// UX flow:
 ///   1. Full image shown — user tries to describe it mentally.
@@ -28,32 +36,37 @@ import 'widget/animated_gradient_background.dart';
 ///   - Pixel shift: entire view moves ±2px every 30s.
 ///   - Auto-dim: black overlay (85% opacity) after 2 minutes idle.
 class VisualLeitnerScreen extends StatefulWidget {
-  const VisualLeitnerScreen({super.key});
+  /// Sentinel: load today's cards via the Leitner algorithm.
+  static const int allLevel = -1;
+
+  /// Sentinel: load all visual cards (ignores the schedule).
+  static const int allLimitedLevel = -2;
+
+  final int level;
+
+  const VisualLeitnerScreen({super.key, required this.level});
 
   @override
   State<VisualLeitnerScreen> createState() => _VisualLeitnerScreenState();
 }
 
 class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
-  /// Base URL for card images hosted in the akz792000/Dictionary repository.
   static const String _imageBaseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main/images';
 
-  final VisualCardRepository _repository = Get.find<VisualCardRepository>();
-  final VisualCardService _service = Get.find<VisualCardService>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
+  final CardRepository _cardRepository = Get.find<CardRepository>();
+  final CardService _service = Get.find<CardService>();
   final PageController _pageController = PageController();
 
-  late List<VisualCardEntity> _cards;
-  late VisualCardEntity _cardEntity; // currently visible card
+  late List<CardEntity> _cards;
+  late Map<int, ProgressEntity> _progressMap;
+  late CardEntity _cardEntity;
+  late ProgressEntity _progressEntity;
   int _index = 0;
 
-  /// Tracks thumb direction per card id so the button stays highlighted after a vote.
   final Map<int, LevelDirection?> _levelChangedMap = {};
-
-  /// Guards against incrementing order more than once per session visit.
   final Set<int> _orderChangedSet = {};
-
-  /// Cards whose description is currently visible (tapped to reveal).
   final Set<int> _revealedSet = {};
 
   // ── Burn-in protection ────────────────────────────────────────────────────
@@ -64,9 +77,9 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   double _shiftY = 0;
   final _rng = Random();
 
-  static const _dimAfter = Duration(minutes: 2);      // time before auto-dim
-  static const _shiftInterval = Duration(seconds: 30); // pixel-shift frequency
-  static const _maxShift = 2.0;                        // max pixel offset (px)
+  static const _dimAfter = Duration(minutes: 2);
+  static const _shiftInterval = Duration(seconds: 30);
+  static const _maxShift = 2.0;
 
   /// Per-card language tab selection: 0 = English, 1 = Deutsch.
   final Map<int, int> _langTabMap = {};
@@ -77,9 +90,10 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _loadCards();
     if (_cards.isNotEmpty) {
       _cardEntity = _cards[0];
-      _modifyOrder(); // count the first card as visited
+      _progressEntity = _progressMap[_cardEntity.id]!;
+      _modifyOrder();
     } else {
-      _index = -1; // signals "no cards" state
+      _index = -1;
     }
     _startBurnInProtection();
   }
@@ -93,10 +107,30 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   }
 
   void _loadCards() {
-    _cards = _service.findAllBasedOnLeitner();
+    // Load cards based on the level sentinel (same logic as LeitnerScreen).
+    final List<(CardEntity, ProgressEntity)> pairs;
+    switch (widget.level) {
+      case VisualLeitnerScreen.allLevel:
+        pairs = _service.findAllBasedOnLeitner(GroupCode.visual);
+        break;
+      case VisualLeitnerScreen.allLimitedLevel:
+        final cards = _cardRepository.findAllByGroupCode(GroupCode.visual);
+        pairs = cards
+            .map((c) => (c, _progressRepository.findOrCreate(c.id)))
+            .toList();
+        break;
+      default:
+        // Specific level — filter by exact level
+        final cards = _cardRepository.findAllByGroupCode(GroupCode.visual);
+        pairs = cards
+            .map((c) => (c, _progressRepository.findOrCreate(c.id)))
+            .where((p) => p.$2.level == widget.level)
+            .toList();
+    }
+    _cards = pairs.map((p) => p.$1).toList();
+    _progressMap = {for (final p in pairs) p.$1.id: p.$2};
   }
 
-  /// Starts the pixel-shift timer and the idle-dim timer.
   void _startBurnInProtection() {
     _resetIdleTimer();
     _pixelShiftTimer = Timer.periodic(_shiftInterval, (_) {
@@ -108,7 +142,6 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     });
   }
 
-  /// Called on every user interaction — resets the dim countdown.
   void _resetIdleTimer() {
     _idleTimer?.cancel();
     if (_isDimmed) setState(() => _isDimmed = false);
@@ -117,12 +150,11 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     });
   }
 
-  /// Increments the card's [order] counter once per session visit (for sort stability).
   void _modifyOrder() async {
     if (!_orderChangedSet.contains(_cardEntity.id)) {
-      _cardEntity.order++;
+      _progressEntity.order++;
       _orderChangedSet.add(_cardEntity.id);
-      await _repository.merge(_cardEntity);
+      await _progressRepository.merge(_progressEntity);
     }
   }
 
@@ -130,11 +162,11 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     setState(() {
       _index = value;
       _cardEntity = _cards[value];
+      _progressEntity = _progressMap[_cardEntity.id]!;
     });
     _modifyOrder();
   }
 
-  /// Toggles the description visibility for the current card.
   void _toggleReveal() {
     setState(() {
       if (_revealedSet.contains(_cardEntity.id)) {
@@ -146,12 +178,11 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _resetIdleTimer();
   }
 
-  /// Persists the new level and advances to the next card.
   void _changePage(int level, LevelDirection direction) async {
-    _cardEntity.level = level;
-    _cardEntity.subLevel = VisualCardEntity.initSubLevel; // reset sub-counter on level change
-    _cardEntity.modified = DateTimeUtil.now();
-    await _repository.merge(_cardEntity);
+    _progressEntity.level = level;
+    _progressEntity.subLevel = ProgressEntity.initSubLevel;
+    _progressEntity.modified = DateTimeUtil.now();
+    await _progressRepository.merge(_progressEntity);
     setState(() => _levelChangedMap[_cardEntity.id] = direction);
     _resetIdleTimer();
 
@@ -240,7 +271,8 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     );
   }
 
-  Widget _buildImageCard(VisualCardEntity card, int pageIndex) {
+  Widget _buildImageCard(CardEntity card, int pageIndex) {
+    final progress = _progressMap[card.id] ?? _progressEntity;
     final revealed = _revealedSet.contains(card.id);
     final levelChanged = _levelChangedMap[card.id];
     final imageUrl = '$_imageBaseUrl/${card.image}';
@@ -430,7 +462,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                       activeColor: Colors.redAccent,
                       onPressed: (!revealed || levelChanged == LevelDirection.down)
                           ? null
-                          : () => _changePage(VisualCardEntity.initLevel, LevelDirection.down),
+                          : () => _changePage(ProgressEntity.initLevel, LevelDirection.down),
                     ),
                     AnimatedButton(
                       key: const ValueKey('like'),
@@ -440,7 +472,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                       activeColor: Colors.green,
                       onPressed: (!revealed || levelChanged == LevelDirection.up)
                           ? null
-                          : () => _changePage(_cardEntity.level + 1, LevelDirection.up),
+                          : () => _changePage(progress.level + 1, LevelDirection.up),
                     ),
                   ],
                 ),
@@ -459,7 +491,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     if (_cards.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Visual English'),
+          title: const Text('Visual'),
           backgroundColor: Colors.teal.shade600,
           foregroundColor: Colors.white,
           elevation: 0,

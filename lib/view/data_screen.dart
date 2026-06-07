@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/progress_repository.dart';
 
 import '../config/route_config.dart';
 import '../entity/card_entity.dart';
@@ -24,15 +25,21 @@ class DataScreen extends StatefulWidget {
 
 class _DataScreenState extends State<DataScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final SyncService _syncService = Get.find<SyncService>();
   late List<CardEntity> _cardEntities;
+  late Map<int, int> _levelMap; // cardId → level
 
-  bool get _isEnglish => widget.groupCode == GroupCode.english;
+  bool get _isEnglish => widget.groupCode == GroupCode.faEn;
   Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
 
   void _initialize() {
     setState(() {
       _cardEntities = _cardRepository.findAllByGroupCode(widget.groupCode);
+      _levelMap = {
+        for (final c in _cardEntities)
+          c.id: _progressRepository.findOrCreate(c.id).level
+      };
     });
   }
 
@@ -116,7 +123,8 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildCardRow(CardEntity card, int index) {
-    final color = _levelColor(card.level);
+    final level = _levelMap[card.id] ?? 0;
+    final color = _levelColor(level);
     final secondaryText = _isEnglish ? card.fa : card.de;
 
     return InkWell(
@@ -172,7 +180,7 @@ class _DataScreenState extends State<DataScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withAlpha(80)),
               ),
-              child: Text('L${card.level}', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+              child: Text('L$level', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
             ),
             IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red.shade400),

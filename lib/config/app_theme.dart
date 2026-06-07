@@ -8,12 +8,16 @@ class AppTheme {
   // Muted indigo-slate — professional, low eye strain, pairs with dark card backgrounds
   static const _seed = Color(0xFF3D5A80);
 
+  // Slightly taller than the default 56 — more breathing room for two-line titles.
+  static const double toolbarHeight = 64;
+
   static final ThemeData light = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
       seedColor: _seed,
       brightness: Brightness.light,
     ),
+    appBarTheme: const AppBarTheme(toolbarHeight: toolbarHeight),
   );
 
   static final ThemeData dark = ThemeData(
@@ -22,5 +26,6 @@ class AppTheme {
       seedColor: _seed,
       brightness: Brightness.dark,
     ),
+    appBarTheme: const AppBarTheme(toolbarHeight: toolbarHeight),
   );
 }
