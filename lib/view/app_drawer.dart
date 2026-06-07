@@ -6,6 +6,11 @@ import '../enums/group_code.dart';
 import '../service/route_service.dart';
 import '../service/theme_service.dart';
 
+/// Side navigation drawer shown from [HomeScreen].
+///
+/// Contains a gradient profile header, deck navigation tiles, settings, and
+/// an about dialog. The theme toggle tile is wrapped in [Obx] so it reflects
+/// the current [ThemeService] state reactively without rebuilding the whole drawer.
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 

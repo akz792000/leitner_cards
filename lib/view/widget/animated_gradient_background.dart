@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Slowly shifting gradient background used behind each flashcard.
+///
+/// The gradient direction animates in a 12-second loop, creating a subtle
+/// living backdrop. Colours are chosen to be AMOLED-friendly in dark mode
+/// (deep navy, near-black) and soft cool-grey in light mode — both low-strain
+/// palettes suited to extended study sessions.
 class AnimatedGradientBackground extends StatefulWidget {
   final Widget child;
   const AnimatedGradientBackground({super.key, required this.child});

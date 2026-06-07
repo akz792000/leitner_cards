@@ -1,5 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+/// A [ValueNotifier] for lists that emits a change event on every mutation.
+///
+/// Standard [ValueNotifier<List>] does not fire listeners when you mutate
+/// the list in-place. This wrapper always replaces the list reference so
+/// [ValueListenableBuilder] rebuilds correctly.
 class ListNotifierHelper<T> extends ValueNotifier<List<T>> {
   ListNotifierHelper(super.initialList);
 

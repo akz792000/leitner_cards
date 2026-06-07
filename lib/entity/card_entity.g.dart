@@ -1,4 +1,8 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+//
+// ⚠️  MANUALLY PATCHED: typeId uses HiveTypeIds.cardId by name instead of a
+// literal int.  Re-running build_runner will overwrite this patch — re-apply
+// manually if regeneration is ever needed.
 
 part of 'card_entity.dart';
 

@@ -6,6 +6,11 @@ import '../config/route_config.dart';
 import '../service/route_service.dart';
 import '../service/sync_service.dart';
 
+/// Startup synchronisation screen shown as the initial route ("/").
+///
+/// Runs [SyncService.syncOnStartup] while displaying a spinner and a live
+/// status message. On completion (success or offline skip) it replaces itself
+/// with [HomeScreen] so the back stack starts cleanly at home.
 class SyncScreen extends StatefulWidget {
   const SyncScreen({super.key});
 

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
+/// Draggable modal bottom sheet showing a card's optional description text.
+///
+/// Call [DescriptionSheet.show] from a button in [LeitnerScreen]; the static
+/// helper keeps each call site to one line while ensuring the sheet is always
+/// presented with consistent sizing and rounding.
 class DescriptionSheet extends StatelessWidget {
   final CardEntity card;
   final GroupCode groupCode;

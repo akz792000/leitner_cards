@@ -1,5 +1,10 @@
 import 'package:flutter/widgets.dart';
 
+/// Navigation wrapper that exposes a [navigatorKey] for imperative routing.
+///
+/// GetX's `Get.toNamed` can conflict with a custom [navigatorKey], so all
+/// screen transitions go through this service to stay consistent. The key is
+/// registered in [MaterialApp.navigatorKey] so it always targets the root navigator.
 class RouteService {
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

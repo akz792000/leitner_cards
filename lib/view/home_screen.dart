@@ -6,6 +6,11 @@ import '../config/route_config.dart';
 import '../service/route_service.dart';
 import 'app_drawer.dart';
 
+/// App home screen — deck selector and tool shortcuts.
+///
+/// Intentionally has no [AppBar]; the gradient header contains the burger-menu
+/// button. [Builder] is required so [Scaffold.of] can locate the correct
+/// [Scaffold] ancestor when opening the drawer.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 

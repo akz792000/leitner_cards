@@ -11,10 +11,11 @@ Read this before making any changes.
 
 **FlashMind** (package: `com.flashmind.app`) is a Flutter flashcard app implementing the Leitner spaced
 repetition system. Users study cards that move to higher levels when answered correctly and drop back
-when wrong. Two language decks:
+when wrong. Three decks:
 
 - **English ↔ Farsi** (`GroupCode.english`, `group_code: 0`)
 - **Deutsch ↔ English** (`GroupCode.deutsch`, `group_code: 1`)
+- **Visual** — image-based bilingual cards (EN + DE descriptions per image, no groupCode, `VisualCardEntity`)
 
 ---
 
@@ -247,5 +248,10 @@ Removed — iOS HIG discourages quit buttons. Do not add back.
 4. All new routes go in `route_config.dart` (constant + switch case).
 5. All new GetX services go in `dependency_config.dart`.
 6. File names: `snake_case.dart`. Class names for screens: `*Screen`. Widgets: descriptive names.
-
+7. **Keep comments up to date with every code change.**
+   - Classes: doc comment explaining purpose and key design decisions.
+   - Methods: comment if the *why* is not obvious from the name alone.
+   - Fields: inline comment when the meaning or constraint isn't self-evident.
+   - Do NOT comment obvious one-liners — only where a future reader would ask "why?".
+   - When modifying existing code, update or remove stale comments in the same change.
 

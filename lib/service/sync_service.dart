@@ -10,6 +10,13 @@ import '../repository/card_repository.dart';
 import '../repository/visual_card_repository.dart';
 import '../util/date_time_util.dart';
 
+/// Handles all card data persistence and startup synchronisation.
+///
+/// The app is fully offline; content (cards) is downloaded from a public
+/// GitHub repository (akz792000/Dictionary) and stored in Hive. Supabase is
+/// not used. [syncOnStartup] fetches en_fa.json, de_en.json, and vi_en.json on
+/// every launch — existing progress fields (level, subLevel, order, modified)
+/// are preserved; only changed content fields trigger a Hive write.
 class SyncService {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final VisualCardRepository _visualCardRepository = Get.find<VisualCardRepository>();

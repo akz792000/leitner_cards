@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// A small rounded icon button with a press-scale animation.
+///
+/// The scale-up on tap-down / scale-back on tap-up gives tactile feedback
+/// without needing an [InkWell] splash that would look odd inside the
+/// gradient card background.
 class IconButtonWidget extends StatefulWidget {
   final Icon icon;
   final VoidCallback? onPressed;

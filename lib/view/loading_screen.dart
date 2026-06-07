@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
+/// Generic full-screen loading indicator used during navigation transitions.
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
 

@@ -9,6 +9,10 @@ import '../service/route_service.dart';
 import '../service/sync_service.dart';
 import '../util/dialog_util.dart';
 
+/// Scrollable list of all cards in a deck with inline edit and delete actions.
+///
+/// Tapping a row navigates to [MergeScreen]; the delete-all action in the
+/// AppBar removes every card in the current [groupCode] deck after confirmation.
 class DataScreen extends StatefulWidget {
   final GroupCode groupCode;
 

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Data model for a selectable option tile (e.g. a Leitner level card).
+///
+/// [image] is the leading widget (flag, emoji circle, etc.).
+/// [onTap] is nullable so tiles can be rendered in a disabled state.
 class OptionModel {
   final int level;
   final Widget image;

@@ -8,6 +8,10 @@ import 'package:leitner_cards/util/date_time_util.dart';
 import '../entity/card_entity.dart';
 import '../util/list_util.dart';
 
+/// Hive persistence layer for [CardEntity].
+///
+/// All reads are synchronous (Hive in-memory box); writes are async.
+/// Use [SyncService] for writes from the UI so rollback is handled correctly.
 class CardRepository {
   static const String boxId = "card";
 
@@ -15,6 +19,7 @@ class CardRepository {
 
   ValueListenable<Box<CardEntity>> listenable() => _box.listenable();
 
+  /// Upserts by [card.id]: adds if id == 0, otherwise overwrites the existing key.
   Future<int> merge(CardEntity card) async {
     if (card.id == 0) {
       card.id = await _box.add(card);
@@ -42,10 +47,15 @@ class CardRepository {
   List<CardEntity> findAllByLevelAndGroupCode(int level, GroupCode groupCode) =>
       _box.values.where((c) => c.level == level && c.groupCode == groupCode).toList();
 
+  /// Returns cards that are due for review based on the Leitner schedule.
+  ///
+  /// Level 1 is always eligible. For level N ≥ 2 the card is eligible when
+  /// it was created at least 2^(N-1) days ago.
   List<CardEntity> findAllByDateDifference() => _box.values
       .where((c) => c.level == 1 || DateTimeUtil.daysToNow(c.created) >= pow(2, c.level - 1))
       .toList();
 
+  /// Returns a level → card-count map sorted descending by level (highest first).
   Map<int, int> findAllLevelBasedByGroupCode(GroupCode groupCode) {
     final elements = findAllByGroupCode(groupCode);
 

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Centralised UI feedback helpers (snack-bars and dialogs).
+///
+/// Using static methods keeps call sites terse and avoids duplicating
+/// dialog boilerplate across screens.
 class DialogUtil {
 
   static void error(BuildContext context, dynamic exception) {

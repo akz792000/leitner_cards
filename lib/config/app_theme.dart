@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Material 3 light and dark themes for FlashMind.
+///
+/// Both themes derive from the same muted steel-blue seed so the palette stays
+/// cohesive across brightness modes without extra colour tuning.
 class AppTheme {
   // Muted indigo-slate — professional, low eye strain, pairs with dark card backgrounds
   static const _seed = Color(0xFF3D5A80);

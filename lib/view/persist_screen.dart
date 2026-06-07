@@ -7,6 +7,11 @@ import '../enums/group_code.dart';
 import '../service/sync_service.dart';
 import '../util/dialog_util.dart';
 
+/// Add-card form for creating a new [CardEntity] from scratch.
+///
+/// The id is generated as seconds-epoch so it fits within Hive's 32-bit key
+/// constraint (`millisecondsSinceEpoch ~/ 1000`). Only the fields relevant to
+/// the selected deck are shown (Farsi field for English deck; Deutsch for Deutsch).
 class PersistScreen extends StatefulWidget {
   final GroupCode groupCode;
 

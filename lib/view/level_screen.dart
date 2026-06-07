@@ -7,6 +7,12 @@ import 'package:leitner_cards/view/leitner_screen.dart';
 import '../config/route_config.dart';
 import '../service/route_service.dart';
 
+/// Level picker for a single language deck.
+///
+/// Lists all Leitner levels that have at least one card, each with its own
+/// colour and emoji badge. The FAB launches "Play All" (full Leitner schedule)
+/// and the AppBar actions offer "Play Limited" (all cards, no schedule) and
+/// a link to [DataScreen].
 class LevelScreen extends StatefulWidget {
   final GroupCode groupCode;
 

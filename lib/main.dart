@@ -21,6 +21,7 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
+/// Initialises Hive, timezone data, and all GetX dependencies before the app starts.
 Future<void> setup() async {
   tz.initializeTimeZones();
 
@@ -36,6 +37,11 @@ Future<void> setup() async {
   await DependencyConfig.registerDependencies();
 }
 
+/// Root application widget.
+///
+/// Wraps [MaterialApp] in an [Obx] so the theme mode reacts to [ThemeService]
+/// changes without requiring a full widget rebuild. [Sizer] provides
+/// responsive sizing helpers used in some screens.
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 

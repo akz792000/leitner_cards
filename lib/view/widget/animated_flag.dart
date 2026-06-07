@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// A circular flag avatar with a looping float-and-scale animation.
+///
+/// Used in [LeitnerScreen] to show which language is currently displayed.
+/// The gentle bobbing draws the eye without distracting from the card text.
 class AnimatedFlag extends StatefulWidget {
   final String imagePath;
   const AnimatedFlag({super.key, required this.imagePath});

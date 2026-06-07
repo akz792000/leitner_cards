@@ -19,8 +19,24 @@ import 'widget/animated_button.dart';
 import 'widget/animated_flag.dart';
 import 'widget/description_sheet.dart';
 
+/// The main flashcard study view implementing the Leitner interaction loop.
+///
+/// [level] controls which cards are loaded:
+/// - [allLevel] (-1): runs the full Leitner algorithm via [CardService].
+/// - [allLimitedLevel] (-2): shows every card in the deck regardless of schedule.
+/// - Any positive int: shows only cards at that exact level.
+///
+/// Vertical swipe toggles between the two language sides of the card.
+/// Thumb-up promotes the card to the next level; thumb-down resets to level 0.
+///
+/// Burn-in protection for AMOLED screens:
+/// - Whole view shifts ±2 px every 30 s (pixel shifting).
+/// - After 2 min of inactivity a black overlay dims the screen; tap to wake.
 class LeitnerScreen extends StatefulWidget {
+  /// Sentinel: load today's cards via the Leitner algorithm.
   static const int allLevel = -1;
+
+  /// Sentinel: load all cards in the deck (ignores the schedule).
   static const int allLimitedLevel = -2;
 
   final GroupCode groupCode;
@@ -47,7 +63,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   int _level = 1;
   late LanguageCode _languageCode;
 
-  // Per-card transient UI state (not persisted)
+  // Tracks whether the like/dislike button has been tapped for each card id.
+  // Used to prevent double-voting and to colour the active button.
   final Map<int, LevelDirection?> _levelChangedMap = {};
   final Set<int> _orderChangedSet = {};
 
@@ -130,6 +147,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     }
   }
 
+  /// Increments [order] the first time a card is shown in this session.
+  /// The set guard prevents re-counting when the user swipes back to a card.
   void _modifyOrder() async {
     if (!_orderChangedSet.contains(_cardEntity.id)) {
       _cardEntity.order++;
@@ -152,6 +171,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     _modifyOrder();
   }
 
+  /// Persists the new level/subLevel, updates local state, then advances the
+  /// [PageView] to the next card (if one exists).
   void _changePage(int level, LevelDirection direction) async {
     _cardEntity.level = level;
     _cardEntity.subLevel = CardEntity.initSubLevel;

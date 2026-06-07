@@ -14,6 +14,19 @@ import '../service/route_service.dart';
 import 'widget/animated_button.dart';
 import 'widget/animated_gradient_background.dart';
 
+/// Study screen for the visual (image-based) Leitner deck.
+///
+/// UX flow:
+///   1. Full image shown — user tries to describe it mentally.
+///   2. Tap image → reveals bilingual descriptions (EN + DE toggle).
+///   3. Tap image again → collapses back to full image.
+///   4. Thumb up (👍) → card advances one Leitner level.
+///      Thumb down (👎) → card resets to level 0.
+///   5. Thumb buttons are disabled until the card is revealed.
+///
+/// Burn-in protection (AMOLED):
+///   - Pixel shift: entire view moves ±2px every 30s.
+///   - Auto-dim: black overlay (85% opacity) after 2 minutes idle.
 class VisualLeitnerScreen extends StatefulWidget {
   const VisualLeitnerScreen({super.key});
 
@@ -22,6 +35,7 @@ class VisualLeitnerScreen extends StatefulWidget {
 }
 
 class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
+  /// Base URL for card images hosted in the akz792000/Dictionary repository.
   static const String _imageBaseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main/images';
 
@@ -30,14 +44,19 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   final PageController _pageController = PageController();
 
   late List<VisualCardEntity> _cards;
-  late VisualCardEntity _cardEntity;
+  late VisualCardEntity _cardEntity; // currently visible card
   int _index = 0;
 
+  /// Tracks thumb direction per card id so the button stays highlighted after a vote.
   final Map<int, LevelDirection?> _levelChangedMap = {};
+
+  /// Guards against incrementing order more than once per session visit.
   final Set<int> _orderChangedSet = {};
+
+  /// Cards whose description is currently visible (tapped to reveal).
   final Set<int> _revealedSet = {};
 
-  // Burn-in protection
+  // ── Burn-in protection ────────────────────────────────────────────────────
   Timer? _idleTimer;
   Timer? _pixelShiftTimer;
   bool _isDimmed = false;
@@ -45,9 +64,12 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   double _shiftY = 0;
   final _rng = Random();
 
-  static const _dimAfter = Duration(minutes: 2);
-  static const _shiftInterval = Duration(seconds: 30);
-  static const _maxShift = 2.0;
+  static const _dimAfter = Duration(minutes: 2);      // time before auto-dim
+  static const _shiftInterval = Duration(seconds: 30); // pixel-shift frequency
+  static const _maxShift = 2.0;                        // max pixel offset (px)
+
+  /// Per-card language tab selection: 0 = English, 1 = Deutsch.
+  final Map<int, int> _langTabMap = {};
 
   @override
   void initState() {
@@ -55,9 +77,9 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _loadCards();
     if (_cards.isNotEmpty) {
       _cardEntity = _cards[0];
-      _modifyOrder();
+      _modifyOrder(); // count the first card as visited
     } else {
-      _index = -1;
+      _index = -1; // signals "no cards" state
     }
     _startBurnInProtection();
   }
@@ -70,13 +92,11 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     super.dispose();
   }
 
-  // Which language tab is selected (0 = EN, 1 = DE)
-  final Map<int, int> _langTabMap = {};
-
   void _loadCards() {
     _cards = _service.findAllBasedOnLeitner();
   }
 
+  /// Starts the pixel-shift timer and the idle-dim timer.
   void _startBurnInProtection() {
     _resetIdleTimer();
     _pixelShiftTimer = Timer.periodic(_shiftInterval, (_) {
@@ -88,6 +108,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     });
   }
 
+  /// Called on every user interaction — resets the dim countdown.
   void _resetIdleTimer() {
     _idleTimer?.cancel();
     if (_isDimmed) setState(() => _isDimmed = false);
@@ -96,6 +117,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     });
   }
 
+  /// Increments the card's [order] counter once per session visit (for sort stability).
   void _modifyOrder() async {
     if (!_orderChangedSet.contains(_cardEntity.id)) {
       _cardEntity.order++;
@@ -112,6 +134,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _modifyOrder();
   }
 
+  /// Toggles the description visibility for the current card.
   void _toggleReveal() {
     setState(() {
       if (_revealedSet.contains(_cardEntity.id)) {
@@ -123,9 +146,10 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _resetIdleTimer();
   }
 
+  /// Persists the new level and advances to the next card.
   void _changePage(int level, LevelDirection direction) async {
     _cardEntity.level = level;
-    _cardEntity.subLevel = VisualCardEntity.initSubLevel;
+    _cardEntity.subLevel = VisualCardEntity.initSubLevel; // reset sub-counter on level change
     _cardEntity.modified = DateTimeUtil.now();
     await _repository.merge(_cardEntity);
     setState(() => _levelChangedMap[_cardEntity.id] = direction);

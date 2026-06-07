@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Fallback screen shown when route generation fails or an unknown route is requested.
+///
+/// [errorMessage] is populated by [RouteConfig.generateRoute] when required
+/// route arguments are missing or have the wrong type.
 class ErrorScreen extends StatelessWidget {
   final String? errorMessage;
 

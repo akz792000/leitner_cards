@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Shared gradient and colour helpers used across the app.
 class ColorUtil {
   /// Predefined gradients
   static const LinearGradient whiteToGrey = LinearGradient(

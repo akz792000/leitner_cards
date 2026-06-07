@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 
+/// Reactive GetX service that persists the user's theme preference to Hive.
+///
+/// Must be registered first in [DependencyConfig] because [MyApp] reads the
+/// theme mode synchronously on its first build. [init] opens the settings box
+/// and restores the saved value before the widget tree is rendered.
 class ThemeService extends GetxService {
   static const String _boxName = 'settings';
   static const String _themeKey = 'themeMode';
@@ -21,6 +26,7 @@ class ThemeService extends GetxService {
     Hive.box(_boxName).put(_themeKey, _toString(mode));
   }
 
+  /// Cycles system → light → dark → system.
   void toggle() {
     switch (_mode.value) {
       case ThemeMode.system:

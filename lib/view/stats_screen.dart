@@ -4,6 +4,11 @@ import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
+/// Learning-progress statistics screen, one tab per [GroupCode] deck.
+///
+/// Stats are computed synchronously from the Hive box on each build — no
+/// separate state is needed since the data is already in-memory. The private
+/// [_StatsData] value object isolates computation from rendering.
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 

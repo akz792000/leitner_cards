@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// A floating circular button with a continuous breathing animation.
+///
+/// When [isActive] is true the gradient switches to [activeColor], giving
+/// immediate visual feedback that the thumb gesture has been registered.
+/// The animation keeps running so the button stays lively even after the
+/// state change.
 class AnimatedButton extends StatefulWidget {
   final Widget icon;
   final VoidCallback? onPressed;

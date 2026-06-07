@@ -8,6 +8,13 @@ import 'package:timezone/timezone.dart' as tz;
 import '../service/sync_service.dart';
 import '../util/dialog_util.dart';
 
+/// Edit form for an existing [CardEntity].
+///
+/// All text fields are pre-populated from the card passed via route arguments.
+/// Saving always resets [level] and [subLevel] to their initial values so the
+/// edited card re-enters the Leitner queue from the beginning. Read-only
+/// metadata (dates, order, level) is shown in a summary chip panel rather than
+/// editable fields to prevent accidental corruption.
 class MergeScreen extends StatefulWidget {
   final CardEntity cardEntity;
 

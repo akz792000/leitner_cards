@@ -10,6 +10,12 @@ import '../repository/card_repository.dart';
 import '../repository/visual_card_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
+/// Manual re-download screen for card decks.
+///
+/// Each deck row has an "Override" toggle. When off, only cards with changed
+/// content are updated and local progress (level/subLevel/order) is preserved.
+/// When on, every card in that deck is reset to level 0 — useful after a
+/// major content update in the GitHub source JSON.
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
 

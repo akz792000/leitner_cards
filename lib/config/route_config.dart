@@ -14,6 +14,12 @@ import '../view/persist_screen.dart';
 import '../view/stats_screen.dart';
 import '../view/sync_screen.dart';
 
+/// Named route constants and the [generateRoute] factory for the app.
+///
+/// All route names are declared as string constants here. [generateRoute]
+/// extracts typed arguments from [RouteSettings.arguments] and throws an
+/// [ArgumentError] (rendered by [ErrorScreen]) when required params are absent
+/// or mistyped, keeping each screen's constructor free of null checks.
 class RouteConfig {
   static const String sync = "/";
   static const String visualLeitner = "/visual-leitner";
