@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/entity/progress_entity.dart';
@@ -204,8 +205,30 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     }
   }
 
-  void _onVerticalDragEnd(DragEndDetails details) {
+  /// Returns the text currently shown on the card (matches [_getTextChild] logic).
+  String get _currentText {
     switch (widget.groupCode) {
+      case GroupCode.faEn:
+        return _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
+      case GroupCode.enDe:
+      case GroupCode.visual:
+        return _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
+    }
+  }
+
+  /// Copies the currently visible card text to the clipboard and shows a snackbar.
+  void _copyCurrentText(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: _currentText));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) {    switch (widget.groupCode) {
       case GroupCode.faEn:
         _languageCode = _languageCode == LanguageCode.en ? LanguageCode.fa : LanguageCode.en;
         break;
@@ -364,6 +387,14 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
             arguments: {"groupCode": widget.groupCode},
           ),
         ),
+        actions: [
+          // Copies the currently visible card text to the clipboard.
+          IconButton(
+            icon: const Icon(Icons.copy_outlined),
+            tooltip: 'Copy',
+            onPressed: () => _copyCurrentText(context),
+          ),
+        ],
       ),
       body: Listener(
         onPointerDown: (_) => _resetIdleTimer(),

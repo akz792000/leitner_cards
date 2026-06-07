@@ -11,13 +11,19 @@ class AppTheme {
   // Slightly taller than the default 56 — more breathing room for two-line titles.
   static const double toolbarHeight = 64;
 
+  static const _appBarTheme = AppBarTheme(
+    toolbarHeight: toolbarHeight,
+    // 12px right padding so action icons don't sit flush against the screen edge.
+    actionsPadding: EdgeInsets.only(right: 12),
+  );
+
   static final ThemeData light = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
       seedColor: _seed,
       brightness: Brightness.light,
     ),
-    appBarTheme: const AppBarTheme(toolbarHeight: toolbarHeight),
+    appBarTheme: _appBarTheme,
   );
 
   static final ThemeData dark = ThemeData(
@@ -26,6 +32,6 @@ class AppTheme {
       seedColor: _seed,
       brightness: Brightness.dark,
     ),
-    appBarTheme: const AppBarTheme(toolbarHeight: toolbarHeight),
+    appBarTheme: _appBarTheme,
   );
 }
