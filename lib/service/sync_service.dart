@@ -4,21 +4,25 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
 import '../entity/card_entity.dart';
+import '../entity/progress_entity.dart';
 import '../enums/group_code.dart';
 import '../repository/card_repository.dart';
+import '../repository/progress_repository.dart';
 import '../util/date_time_util.dart';
 
 /// Handles all card data persistence and startup synchronisation.
 ///
 /// Cards (content) are downloaded from a public GitHub repository
-/// (akz792000/Dictionary) and stored in Hive. Progress is NOT touched
-/// by sync — only card content is updated.
+/// (akz792000/Dictionary) and stored in Hive. When a card's content changes
+/// (during sync or manual edit), its progress is reset to level 0 so the
+/// card re-enters the Leitner queue from the beginning.
 ///
 /// [syncOnStartup] fetches fa_en.json, en_de.json, and visual.json on
-/// every launch — existing progress is preserved; only changed content
-/// fields trigger a Hive write.
+/// every launch — unchanged cards are skipped; changed content fields
+/// trigger a Hive write AND a progress reset.
 class SyncService {
   final CardRepository _cardRepository = Get.find<CardRepository>();
+  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
 
   static const String _baseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main';
@@ -92,6 +96,12 @@ class SyncService {
 
     if (contentChanged) {
       await _cardRepository.merge(entity);
+      // Content changed → reset progress so the card re-enters the queue from level 0.
+      final progress = _progressRepository.findOrCreate(id);
+      progress.level = ProgressEntity.initLevel;
+      progress.subLevel = ProgressEntity.initSubLevel;
+      progress.modified = DateTimeUtil.now();
+      await _progressRepository.merge(progress);
     }
   }
 }
