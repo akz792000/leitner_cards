@@ -31,14 +31,14 @@ class _DataScreenState extends State<DataScreen> {
   late Map<int, int> _levelMap; // cardId → level
 
   bool get _isEnglish => widget.groupCode == GroupCode.faEn;
+
   Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
 
   void _initialize() {
     setState(() {
       _cardEntities = _cardRepository.findAllByGroupCode(widget.groupCode);
       _levelMap = {
-        for (final c in _cardEntities)
-          c.id: _progressRepository.findOrCreate(c.id).level
+        for (final c in _cardEntities) c.id: _progressRepository.findOrCreate(c.id).level
       };
     });
   }
@@ -89,7 +89,8 @@ class _DataScreenState extends State<DataScreen> {
 
   void _onRemoveAll() {
     if (_cardEntities.isEmpty) {
-      DialogUtil.ok(context, title: "Nothing to delete", description: "There are no cards in this deck.");
+      DialogUtil.ok(context,
+          title: "Nothing to delete", description: "There are no cards in this deck.");
       return;
     }
     DialogUtil.okCancel(
@@ -116,7 +117,8 @@ class _DataScreenState extends State<DataScreen> {
           const SizedBox(height: 16),
           Text('No cards yet', style: TextStyle(fontSize: 18, color: Colors.grey.shade500)),
           const SizedBox(height: 8),
-          Text('Tap + to add your first card', style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+          Text('Tap + to add your first card',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
         ],
       ),
     );
@@ -129,8 +131,7 @@ class _DataScreenState extends State<DataScreen> {
 
     return InkWell(
       onTap: () => Get.find<RouteService>()
-          .pushNamed(RouteConfig.merge, arguments: {"cardEntity": card})
-          .then((_) => _initialize()),
+          .pushNamed(RouteConfig.merge, arguments: {"cardEntity": card}).then((_) => _initialize()),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         decoration: BoxDecoration(
@@ -164,7 +165,8 @@ class _DataScreenState extends State<DataScreen> {
                       const SizedBox(height: 3),
                       Text(
                         secondaryText,
-                        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                            fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         textDirection: _isEnglish ? TextDirection.rtl : TextDirection.ltr,
                       ),
                     ],
@@ -180,7 +182,8 @@ class _DataScreenState extends State<DataScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withAlpha(80)),
               ),
-              child: Text('L$level', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+              child: Text('L$level',
+                  style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
             ),
             IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
@@ -253,9 +256,8 @@ class _DataScreenState extends State<DataScreen> {
         heroTag: 'Add',
         backgroundColor: _accentColor,
         foregroundColor: Colors.white,
-        onPressed: () => Get.find<RouteService>()
-            .pushNamed(RouteConfig.persist, arguments: {"groupCode": widget.groupCode})
-            .then((_) => _initialize()),
+        onPressed: () => Get.find<RouteService>().pushNamed(RouteConfig.persist,
+            arguments: {"groupCode": widget.groupCode}).then((_) => _initialize()),
         child: const Icon(Icons.add),
       ),
     );

@@ -180,7 +180,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Learn English by describing images',
+                    'Describe images',
                     style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ],
