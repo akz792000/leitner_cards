@@ -3,6 +3,7 @@ import 'package:leitner_cards/enums/group_code.dart';
 
 import '../view/visual_leitner_screen.dart';
 import '../view/data_screen.dart';
+import '../view/download_screen.dart';
 import '../view/error_screen.dart';
 import '../view/home_screen.dart';
 import '../view/leitner_screen.dart';
@@ -27,6 +28,7 @@ class RouteConfig {
   static const String leitner = "/leitner";
   static const String persist = "/persist";
   static const String merge = "/merge";
+  static const String download = "/download";
   static const String stats = "/stats";
   static const String loading = "/loading";
 
@@ -74,6 +76,9 @@ class RouteConfig {
               builder: (_) => MergeScreen(
                     cardEntity: _getRequired(args, "cardEntity"),
                   ));
+
+        case download:
+          return MaterialPageRoute(builder: (_) => const DownloadScreen());
 
         case stats:
           return MaterialPageRoute(builder: (_) => const StatsScreen());

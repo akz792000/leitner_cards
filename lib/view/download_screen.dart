@@ -9,26 +9,13 @@ import '../repository/card_repository.dart';
 import '../repository/progress_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
-/// Modal bottom sheet for manually downloading card decks from GitHub.
+/// Full-screen view for manually downloading card decks from GitHub.
 ///
-/// Call [DownloadScreen.show] to display it. Each deck row has an "Override"
-/// toggle: off preserves local progress; on resets every card in that deck to
-/// level 0 — useful after a major content update.
+/// Each deck row has an "Override" toggle: off preserves local progress;
+/// on resets every card in that deck to level 0 — useful after a major
+/// content update in the GitHub source JSON.
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
-
-  /// Displays the download sheet as a draggable modal bottom sheet.
-  static void show(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const DownloadScreen(),
-    );
-  }
 
   @override
   State<DownloadScreen> createState() => _DownloadScreenState();
@@ -125,23 +112,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
         await _download(item);
       }
       if (mounted) {
-        Navigator.pop(context);
-        Get.snackbar(
-          'Download complete',
-          'All decks have been updated.',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Download complete'),
+              backgroundColor: Colors.green),
         );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        Get.snackbar(
-          'Download failed',
-          e.toString(),
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -153,172 +134,148 @@ class _DownloadScreenState extends State<DownloadScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.5,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (context, scrollController) {
-        return Column(
-          children: [
-            // Drag handle
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header
-            Container(
-              width: double.infinity,
-              color: cs.surfaceContainerHighest,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.cloud_download_outlined,
-                        color: Colors.blue.shade600, size: 28),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Download Cards'),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            color: cs.surfaceContainerHighest,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Download from GitHub',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Enable "Override" to reset card progress and replace with latest content.',
+                  child: Icon(Icons.cloud_download_outlined,
+                      color: Colors.blue.shade600, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Download from GitHub',
                           style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
+                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Enable "Override" to reset card progress and replace with latest content.',
+                        style:
+                            TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    'DECKS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                      color: cs.onSurfaceVariant,
-                    ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  'DECKS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    color: cs.onSurfaceVariant,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // Scrollable deck list
-            Expanded(
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  ..._items.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final item = entry.value;
-                    final isEnglish = item['icon'] == 'en';
-                    final isVisual = item['icon'] == 'vi';
-                    final accentColor = isEnglish
-                        ? Colors.blue.shade600
-                        : isVisual
-                            ? Colors.teal.shade600
-                            : Colors.orange.shade700;
+          ),
+          // Deck cards
+          ..._items.asMap().entries.map((entry) {
+            final i = entry.key;
+            final item = entry.value;
+            final isEnglish = item['icon'] == 'en';
+            final isVisual = item['icon'] == 'vi';
+            final accentColor = isEnglish
+                ? Colors.blue.shade600
+                : isVisual
+                    ? Colors.teal.shade600
+                    : Colors.orange.shade700;
 
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: cs.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 1))
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        leading: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: accentColor.withAlpha(20),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: isVisual
-                              ? Icon(Icons.image_outlined,
-                                  color: accentColor, size: 32)
-                              : Image.asset('assets/flags/${item['icon']}.png',
-                                  width: 32, height: 32),
-                        ),
-                        title: Text(item['name'],
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          item['toggle']
-                              ? 'Override ON — resets progress'
-                              : 'Override OFF — keeps local progress',
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                        trailing: Switch(
-                          value: item['toggle'],
-                          activeColor: accentColor,
-                          onChanged: (value) =>
-                              setState(() => _items[i]['toggle'] = value),
-                        ),
-                      ),
-                    );
-                  }),
-                  // Download button inside scroll so it's reachable on small screens
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.blue.shade600,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: _loading ? null : _downloadAll,
-                        icon: _loading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.download),
-                        label: Text(
-                            _loading ? 'Downloading…' : 'Download All Decks',
-                            style: const TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                  ),
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 1))
                 ],
               ),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: accentColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: isVisual
+                      ? Icon(Icons.image_outlined, color: accentColor, size: 32)
+                      : Image.asset('assets/flags/${item['icon']}.png',
+                          width: 32, height: 32),
+                ),
+                title: Text(item['name'],
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(
+                  item['toggle']
+                      ? 'Override ON — resets progress'
+                      : 'Override OFF — keeps local progress',
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                ),
+                trailing: Switch(
+                  value: item['toggle'],
+                  activeColor: accentColor,
+                  onChanged: (value) =>
+                      setState(() => _items[i]['toggle'] = value),
+                ),
+              ),
+            );
+          }),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _loading ? null : _downloadAll,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.download),
+                label: Text(_loading ? 'Downloading…' : 'Download All Decks',
+                    style: const TextStyle(fontSize: 16)),
+              ),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 }
