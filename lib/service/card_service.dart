@@ -39,7 +39,7 @@ class CardService {
       groupedByLevel[level]!.add(card);
     }
 
-    final sortedKeys = ListUtil.sortAsc(groupedByLevel.keys.toList());
+    final sortedKeys = ListUtil.sortDesc(groupedByLevel.keys.toList());
     final List<(CardEntity, ProgressEntity)> result = [];
 
     for (final key in sortedKeys) {
