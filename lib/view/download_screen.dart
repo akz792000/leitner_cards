@@ -95,7 +95,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
   Future<void> _download(Map<String, dynamic> item) async {
     final response = await http.get(Uri.parse(item['url'] as String));
     if (response.statusCode != 200) {
-      throw Exception('Failed to download ${item['name']}: HTTP ${response.statusCode}');
+      throw Exception(
+          'Failed to download ${item['name']}: HTTP ${response.statusCode}');
     }
     final List<dynamic> rows = json.decode(response.body);
     final GroupCode groupCode = item['groupCode'] as GroupCode;
@@ -113,7 +114,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Download complete'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Download complete'),
+              backgroundColor: Colors.green),
         );
         Navigator.pop(context);
       }
@@ -152,7 +155,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.cloud_download_outlined, color: Colors.blue.shade600, size: 28),
+                  child: Icon(Icons.cloud_download_outlined,
+                      color: Colors.blue.shade600, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -160,11 +164,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Download from GitHub',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 3),
                       Text(
                         'Enable "Override" to reset card progress and replace with latest content.',
-                        style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                        style:
+                            TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -206,10 +212,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
               decoration: BoxDecoration(
                 color: cs.surface,
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
+                boxShadow: const [
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 1))
+                ],
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -218,17 +230,22 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   ),
                   child: isVisual
                       ? Icon(Icons.image_outlined, color: accentColor, size: 32)
-                      : Image.asset('assets/flags/${item['icon']}.png', width: 32, height: 32),
+                      : Image.asset('assets/flags/${item['icon']}.png',
+                          width: 32, height: 32),
                 ),
-                title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(item['name'],
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  item['toggle'] ? 'Override ON — resets progress' : 'Override OFF — keeps local progress',
+                  item['toggle']
+                      ? 'Override ON — resets progress'
+                      : 'Override OFF — keeps local progress',
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
                 trailing: Switch(
                   value: item['toggle'],
                   activeColor: accentColor,
-                  onChanged: (value) => setState(() => _items[i]['toggle'] = value),
+                  onChanged: (value) =>
+                      setState(() => _items[i]['toggle'] = value),
                 ),
               ),
             );
@@ -242,11 +259,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.blue.shade600,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _loading ? null : _downloadAll,
                 icon: _loading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.download),
                 label: Text(_loading ? 'Downloading…' : 'Download All Decks',
                     style: const TextStyle(fontSize: 16)),

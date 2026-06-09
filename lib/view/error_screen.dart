@@ -44,7 +44,7 @@ class ErrorScreen extends StatelessWidget {
                 label: const Text("Go Back"),
                 style: ElevatedButton.styleFrom(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 onPressed: () => Navigator.pop(context),
               ),

@@ -32,13 +32,15 @@ class _DataScreenState extends State<DataScreen> {
 
   bool get _isEnglish => widget.groupCode == GroupCode.faEn;
 
-  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
+  Color get _accentColor =>
+      _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
 
   void _initialize() {
     setState(() {
       _cardEntities = _cardRepository.findAllByGroupCode(widget.groupCode);
       _levelMap = {
-        for (final c in _cardEntities) c.id: _progressRepository.findOrCreate(c.id).level
+        for (final c in _cardEntities)
+          c.id: _progressRepository.findOrCreate(c.id).level
       };
     });
   }
@@ -90,7 +92,8 @@ class _DataScreenState extends State<DataScreen> {
   void _onRemoveAll() {
     if (_cardEntities.isEmpty) {
       DialogUtil.ok(context,
-          title: "Nothing to delete", description: "There are no cards in this deck.");
+          title: "Nothing to delete",
+          description: "There are no cards in this deck.");
       return;
     }
     DialogUtil.okCancel(
@@ -115,7 +118,8 @@ class _DataScreenState extends State<DataScreen> {
         children: [
           Icon(Icons.style_outlined, size: 72, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text('No cards yet', style: TextStyle(fontSize: 18, color: Colors.grey.shade500)),
+          Text('No cards yet',
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade500)),
           const SizedBox(height: 8),
           Text('Tap + to add your first card',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
@@ -130,14 +134,17 @@ class _DataScreenState extends State<DataScreen> {
     final secondaryText = _isEnglish ? card.fa : card.de;
 
     return InkWell(
-      onTap: () => Get.find<RouteService>()
-          .pushNamed(RouteConfig.merge, arguments: {"cardEntity": card}).then((_) => _initialize()),
+      onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.merge,
+          arguments: {"cardEntity": card}).then((_) => _initialize()),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
+          boxShadow: const [
+            BoxShadow(
+                color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))
+          ],
         ),
         child: Row(
           children: [
@@ -160,14 +167,18 @@ class _DataScreenState extends State<DataScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(card.en,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
                     if (secondaryText.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Text(
                         secondaryText,
                         style: TextStyle(
-                            fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                        textDirection: _isEnglish ? TextDirection.rtl : TextDirection.ltr,
+                            fontSize: 13,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
+                        textDirection:
+                            _isEnglish ? TextDirection.rtl : TextDirection.ltr,
                       ),
                     ],
                   ],
@@ -183,7 +194,8 @@ class _DataScreenState extends State<DataScreen> {
                 border: Border.all(color: color.withAlpha(80)),
               ),
               child: Text('L$level',
-                  style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      fontSize: 11, color: color, fontWeight: FontWeight.bold)),
             ),
             IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
@@ -226,7 +238,8 @@ class _DataScreenState extends State<DataScreen> {
               children: [
                 Container(
                   color: _accentColor.withAlpha(20),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Row(
                     children: [
                       Icon(Icons.style_outlined, size: 16, color: _accentColor),
@@ -247,7 +260,8 @@ class _DataScreenState extends State<DataScreen> {
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     itemCount: _cardEntities.length,
-                    itemBuilder: (context, index) => _buildCardRow(_cardEntities[index], index),
+                    itemBuilder: (context, index) =>
+                        _buildCardRow(_cardEntities[index], index),
                   ),
                 ),
               ],
@@ -257,7 +271,9 @@ class _DataScreenState extends State<DataScreen> {
         backgroundColor: _accentColor,
         foregroundColor: Colors.white,
         onPressed: () => Get.find<RouteService>().pushNamed(RouteConfig.persist,
-            arguments: {"groupCode": widget.groupCode}).then((_) => _initialize()),
+            arguments: {
+              "groupCode": widget.groupCode
+            }).then((_) => _initialize()),
         child: const Icon(Icons.add),
       ),
     );

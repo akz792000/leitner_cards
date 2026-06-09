@@ -68,7 +68,8 @@ class SyncService {
     }
   }
 
-  Future<void> _persistCard(Map<String, dynamic> element, String defaultGroupCode) async {
+  Future<void> _persistCard(
+      Map<String, dynamic> element, String defaultGroupCode) async {
     final id = element['id'] as int? ?? 0;
     final existing = _cardRepository.findById(id);
 

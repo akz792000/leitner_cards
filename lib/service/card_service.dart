@@ -22,7 +22,8 @@ class CardService {
   /// Leitner algorithm (level 0 first, then by subLevel gating).
   ///
   /// Returns a list of (CardEntity, ProgressEntity) pairs.
-  List<(CardEntity, ProgressEntity)> findAllBasedOnLeitner(GroupCode groupCode) {
+  List<(CardEntity, ProgressEntity)> findAllBasedOnLeitner(
+      GroupCode groupCode) {
     final cards = _cardRepository.findAllByGroupCode(groupCode);
 
     // Build a map of cardId → ProgressEntity (create default if missing)

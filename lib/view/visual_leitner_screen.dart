@@ -170,7 +170,9 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
 
   /// Copies the currently visible card text to the clipboard and shows a snackbar.
   void _copyCurrentText(BuildContext context) {
-    final text = (_langTabMap[_cardEntity.id] ?? 0) == 0 ? _cardEntity.en : _cardEntity.de;
+    final text = (_langTabMap[_cardEntity.id] ?? 0) == 0
+        ? _cardEntity.en
+        : _cardEntity.de;
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -252,7 +254,8 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.touch_app_outlined, color: Colors.white70, size: 18),
+                  Icon(Icons.touch_app_outlined,
+                      color: Colors.white70, size: 18),
                   SizedBox(width: 6),
                   Text('Tap to reveal description',
                       style: TextStyle(color: Colors.white70, fontSize: 13)),
@@ -323,7 +326,10 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                         color: Colors.black,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                          BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 12,
+                              offset: Offset(0, 4))
                         ],
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -340,7 +346,10 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                           color: Colors.black,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                            BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 12,
+                                offset: Offset(0, 4))
                           ],
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -350,150 +359,163 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                   ),
 
                 // ── Language toggle + Description (after reveal) ──────────
-            if (revealed) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _langTabMap[card.id] = 0),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: (_langTabMap[card.id] ?? 0) == 0
-                                ? Colors.blue.shade600
-                                : Colors.transparent,
-                            borderRadius: const BorderRadius.horizontal(
-                                left: Radius.circular(8)),
-                            border: Border.all(
-                                color: Colors.blue.shade600.withValues(alpha: 0.6)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('🇺🇸',
-                                  style: TextStyle(
-                                      fontSize: (_langTabMap[card.id] ?? 0) == 0
-                                          ? 18
-                                          : 14)),
-                              const SizedBox(width: 6),
-                              Text('English',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: (_langTabMap[card.id] ?? 0) == 0
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: (_langTabMap[card.id] ?? 0) == 0
-                                          ? Colors.white
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _langTabMap[card.id] = 1),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: (_langTabMap[card.id] ?? 0) == 1
-                                ? Colors.orange.shade700
-                                : Colors.transparent,
-                            borderRadius: const BorderRadius.horizontal(
-                                right: Radius.circular(8)),
-                            border: Border.all(
-                                color:
-                                    Colors.orange.shade700.withValues(alpha: 0.6)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('🇩🇪',
-                                  style: TextStyle(
-                                      fontSize: (_langTabMap[card.id] ?? 0) == 1
-                                          ? 18
-                                          : 14)),
-                              const SizedBox(width: 6),
-                              Text('Deutsch',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: (_langTabMap[card.id] ?? 0) == 1
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: (_langTabMap[card.id] ?? 0) == 1
-                                          ? Colors.white
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant)),
-                            ],
+                if (revealed) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _langTabMap[card.id] = 0),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: (_langTabMap[card.id] ?? 0) == 0
+                                    ? Colors.blue.shade600
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.circular(8)),
+                                border: Border.all(
+                                    color: Colors.blue.shade600
+                                        .withValues(alpha: 0.6)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('🇺🇸',
+                                      style: TextStyle(
+                                          fontSize:
+                                              (_langTabMap[card.id] ?? 0) == 0
+                                                  ? 18
+                                                  : 14)),
+                                  const SizedBox(width: 6),
+                                  Text('English',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight:
+                                              (_langTabMap[card.id] ?? 0) == 0
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                          color:
+                                              (_langTabMap[card.id] ?? 0) == 0
+                                                  ? Colors.white
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _langTabMap[card.id] = 1),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: (_langTabMap[card.id] ?? 0) == 1
+                                    ? Colors.orange.shade700
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.horizontal(
+                                    right: Radius.circular(8)),
+                                border: Border.all(
+                                    color: Colors.orange.shade700
+                                        .withValues(alpha: 0.6)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('🇩🇪',
+                                      style: TextStyle(
+                                          fontSize:
+                                              (_langTabMap[card.id] ?? 0) == 1
+                                                  ? 18
+                                                  : 14)),
+                                  const SizedBox(width: 6),
+                                  Text('Deutsch',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight:
+                                              (_langTabMap[card.id] ?? 0) == 1
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                          color:
+                                              (_langTabMap[card.id] ?? 0) == 1
+                                                  ? Colors.white
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: SingleChildScrollView(
-                    key: ValueKey(_langTabMap[card.id] ?? 0),
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                    child: Text(
-                      (_langTabMap[card.id] ?? 0) == 0 ? card.en : card.de,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        height: 1.6,
+                  ),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: SingleChildScrollView(
+                        key: ValueKey(_langTabMap[card.id] ?? 0),
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                        child: Text(
+                          (_langTabMap[card.id] ?? 0) == 0 ? card.en : card.de,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            height: 1.6,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ] else
-              const SizedBox.shrink(),
+                ] else
+                  const SizedBox.shrink(),
 
-            // ── Bottom bar ─────────────────────────────────────────────
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    AnimatedButton(
-                      key: const ValueKey('dislike'),
-                      icon: const Icon(Icons.thumb_down_outlined,
-                          size: 30, color: Colors.white),
-                      isActive: levelChanged == LevelDirection.down,
-                      activeColor: Colors.redAccent,
-                      onPressed: (!revealed || levelChanged == LevelDirection.down)
-                          ? null
-                          : () => _changePage(ProgressEntity.initLevel, LevelDirection.down),
+                // ── Bottom bar ─────────────────────────────────────────────
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        AnimatedButton(
+                          key: const ValueKey('dislike'),
+                          icon: const Icon(Icons.thumb_down_outlined,
+                              size: 30, color: Colors.white),
+                          isActive: levelChanged == LevelDirection.down,
+                          activeColor: Colors.redAccent,
+                          onPressed:
+                              (!revealed || levelChanged == LevelDirection.down)
+                                  ? null
+                                  : () => _changePage(ProgressEntity.initLevel,
+                                      LevelDirection.down),
+                        ),
+                        AnimatedButton(
+                          key: const ValueKey('like'),
+                          icon: const Icon(Icons.thumb_up_alt_outlined,
+                              size: 30, color: Colors.white),
+                          isActive: levelChanged == LevelDirection.up,
+                          activeColor: Colors.green,
+                          onPressed:
+                              (!revealed || levelChanged == LevelDirection.up)
+                                  ? null
+                                  : () => _changePage(
+                                      progress.level + 1, LevelDirection.up),
+                        ),
+                      ],
                     ),
-                    AnimatedButton(
-                      key: const ValueKey('like'),
-                      icon: const Icon(Icons.thumb_up_alt_outlined,
-                          size: 30, color: Colors.white),
-                      isActive: levelChanged == LevelDirection.up,
-                      activeColor: Colors.green,
-                      onPressed: (!revealed || levelChanged == LevelDirection.up)
-                          ? null
-                          : () => _changePage(progress.level + 1, LevelDirection.up),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        );
+              ],
+            );
           },
         ),
       ),
@@ -536,7 +558,8 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
         elevation: 0,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
-          onTap: () => Get.find<RouteService>().pushReplacementNamed(RouteConfig.home),
+          onTap: () =>
+              Get.find<RouteService>().pushReplacementNamed(RouteConfig.home),
         ),
         actions: [
           if (_revealedSet.contains(_cardEntity.id))

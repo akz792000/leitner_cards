@@ -45,7 +45,8 @@ class _MergeScreenState extends State<MergeScreen> {
   late final GroupCode _groupCode;
 
   bool get _isEnglish => _groupCode == GroupCode.faEn;
-  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
+  Color get _accentColor =>
+      _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
   List<Color> get _gradient => _isEnglish
       ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
       : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
@@ -63,9 +64,12 @@ class _MergeScreenState extends State<MergeScreen> {
     _descController = TextEditingController(text: card.desc);
     _orderController = TextEditingController(text: progress.order.toString());
     _levelController = TextEditingController(text: progress.level.toString());
-    _subLevelController = TextEditingController(text: progress.subLevel.toString());
-    _createdController = TextEditingController(text: DateTimeUtil.adjustDateTime(card.created));
-    _modifiedController = TextEditingController(text: DateTimeUtil.adjustDateTime(progress.modified));
+    _subLevelController =
+        TextEditingController(text: progress.subLevel.toString());
+    _createdController =
+        TextEditingController(text: DateTimeUtil.adjustDateTime(card.created));
+    _modifiedController = TextEditingController(
+        text: DateTimeUtil.adjustDateTime(progress.modified));
     _groupCode = GroupCode.fromCode(card.groupCode);
   }
 
@@ -136,7 +140,9 @@ class _MergeScreenState extends State<MergeScreen> {
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         maxLines: maxLines,
-        style: readOnly ? TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant) : null,
+        style: readOnly
+            ? TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)
+            : null,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
@@ -147,7 +153,9 @@ class _MergeScreenState extends State<MergeScreen> {
             borderSide: BorderSide(color: _accentColor, width: 2),
           ),
           filled: readOnly,
-          fillColor: readOnly ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+          fillColor: readOnly
+              ? Theme.of(context).colorScheme.surfaceContainerHighest
+              : null,
         ),
       ),
     );
@@ -168,7 +176,9 @@ class _MergeScreenState extends State<MergeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               children: [
-                Icon(Icons.info_outline, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(Icons.info_outline,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   'CARD METADATA',
@@ -188,11 +198,15 @@ class _MergeScreenState extends State<MergeScreen> {
               spacing: 12,
               runSpacing: 8,
               children: [
-                _metaChip('Level', _levelController.text, Icons.layers_outlined),
-                _metaChip('Sub-level', _subLevelController.text, Icons.subdirectory_arrow_right),
+                _metaChip(
+                    'Level', _levelController.text, Icons.layers_outlined),
+                _metaChip('Sub-level', _subLevelController.text,
+                    Icons.subdirectory_arrow_right),
                 _metaChip('Order', _orderController.text, Icons.sort),
-                _metaChip('Created', _createdController.text, Icons.calendar_today_outlined),
-                _metaChip('Modified', _modifiedController.text, Icons.edit_calendar_outlined),
+                _metaChip('Created', _createdController.text,
+                    Icons.calendar_today_outlined),
+                _metaChip('Modified', _modifiedController.text,
+                    Icons.edit_calendar_outlined),
               ],
             ),
           ),
@@ -212,13 +226,18 @@ class _MergeScreenState extends State<MergeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          Icon(icon,
+              size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 5),
           Text(
             '$label: ',
-            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -239,24 +258,32 @@ class _MergeScreenState extends State<MergeScreen> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(
+                  colors: _gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
             ),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Row(
               children: [
-                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png', width: 40, height: 40),
+                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png',
+                    width: 40, height: 40),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _groupCode.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'ID: ${_idController.text}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
                 ),
@@ -307,11 +334,13 @@ class _MergeScreenState extends State<MergeScreen> {
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
                           backgroundColor: _accentColor,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _onMerge,
                         icon: const Icon(Icons.save_outlined),
-                        label: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                        label: const Text('Save Changes',
+                            style: TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],
@@ -324,4 +353,3 @@ class _MergeScreenState extends State<MergeScreen> {
     );
   }
 }
-

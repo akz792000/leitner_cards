@@ -114,7 +114,8 @@ class _LevelScreenState extends State<LevelScreen> {
             border: Border.all(color: color, width: 2),
           ),
           child: Center(
-            child: Text(_levelEmoji(level), style: const TextStyle(fontSize: 22)),
+            child:
+                Text(_levelEmoji(level), style: const TextStyle(fontSize: 22)),
           ),
         ),
         Positioned(
@@ -127,7 +128,10 @@ class _LevelScreenState extends State<LevelScreen> {
             child: Center(
               child: Text(
                 '$level',
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -159,7 +163,10 @@ class _LevelScreenState extends State<LevelScreen> {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(
+                color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+          ],
         ),
         child: Row(
           children: [
@@ -183,11 +190,13 @@ class _LevelScreenState extends State<LevelScreen> {
                 children: [
                   Text(
                     'Level $level',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: color.withAlpha(30),
                       borderRadius: BorderRadius.circular(20),
@@ -195,7 +204,10 @@ class _LevelScreenState extends State<LevelScreen> {
                     ),
                     child: Text(
                       '$count item${count == 1 ? '' : 's'}',
-                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -211,7 +223,8 @@ class _LevelScreenState extends State<LevelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final levels = _levelMap.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    final levels = _levelMap.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
 
     return Scaffold(
       appBar: AppBar(
@@ -220,7 +233,8 @@ class _LevelScreenState extends State<LevelScreen> {
           children: [
             // Visual deck uses a camera icon; language decks use their flag.
             _isVisual
-                ? const Icon(Icons.photo_library_outlined, color: Colors.white, size: 26)
+                ? const Icon(Icons.photo_library_outlined,
+                    color: Colors.white, size: 26)
                 : Image.asset(
                     'assets/flags/${_isEnglish ? 'en' : 'de'}.png',
                     width: 26,
@@ -229,7 +243,10 @@ class _LevelScreenState extends State<LevelScreen> {
             const SizedBox(width: 10),
             Text(
               widget.groupCode.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
             const SizedBox(width: 8),
             Text(
@@ -271,7 +288,10 @@ class _LevelScreenState extends State<LevelScreen> {
                 } else {
                   await Get.find<RouteService>().pushReplacementNamed(
                     RouteConfig.leitner,
-                    arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLimitedLevel},
+                    arguments: {
+                      "groupCode": widget.groupCode,
+                      "level": LeitnerScreen.allLimitedLevel
+                    },
                   );
                 }
               },
@@ -286,16 +306,20 @@ class _LevelScreenState extends State<LevelScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.layers_outlined, size: 64, color: Colors.grey.shade300),
+                        Icon(Icons.layers_outlined,
+                            size: 64, color: Colors.grey.shade300),
                         const SizedBox(height: 12),
-                        Text('No cards yet', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+                        Text('No cards yet',
+                            style: TextStyle(
+                                color: Colors.grey.shade500, fontSize: 16)),
                       ],
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     itemCount: levels.length,
-                    itemBuilder: (context, index) => _buildLevelCard(levels[index].key, levels[index].value),
+                    itemBuilder: (context, index) =>
+                        _buildLevelCard(levels[index].key, levels[index].value),
                   ),
           ),
         ],
@@ -318,7 +342,10 @@ class _LevelScreenState extends State<LevelScreen> {
                 } else {
                   await Get.find<RouteService>().pushReplacementNamed(
                     RouteConfig.leitner,
-                    arguments: {"groupCode": widget.groupCode, "level": LeitnerScreen.allLevel},
+                    arguments: {
+                      "groupCode": widget.groupCode,
+                      "level": LeitnerScreen.allLevel
+                    },
                   );
                 }
               },

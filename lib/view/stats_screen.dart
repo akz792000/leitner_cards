@@ -20,15 +20,12 @@ class StatsScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Statistics'),
           bottom: TabBar(
-            tabs: GroupCode.values
-                .map((g) => Tab(text: g.title))
-                .toList(),
+            tabs: GroupCode.values.map((g) => Tab(text: g.title)).toList(),
           ),
         ),
         body: TabBarView(
-          children: GroupCode.values
-              .map((g) => _StatsTab(groupCode: g))
-              .toList(),
+          children:
+              GroupCode.values.map((g) => _StatsTab(groupCode: g)).toList(),
         ),
       ),
     );
@@ -47,12 +44,14 @@ class _StatsTab extends StatelessWidget {
 
     if (cards.isEmpty) return _StatsData.empty();
 
-    final progressList = cards.map((c) => progressRepo.findOrCreate(c.id)).toList();
+    final progressList =
+        cards.map((c) => progressRepo.findOrCreate(c.id)).toList();
 
     final total = cards.length;
     final started = progressList.where((p) => p.level > 0).length;
     final totalReviews = progressList.fold<int>(0, (sum, p) => sum + p.order);
-    final maxLevel = progressList.map((p) => p.level).reduce((a, b) => a > b ? a : b);
+    final maxLevel =
+        progressList.map((p) => p.level).reduce((a, b) => a > b ? a : b);
 
     // Level distribution (sorted ascending)
     final levelMap = <int, int>{};
@@ -94,11 +93,14 @@ class _StatsTab extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inbox_outlined, size: 56, color: Theme.of(context).colorScheme.outlineVariant),
+            Icon(Icons.inbox_outlined,
+                size: 56, color: Theme.of(context).colorScheme.outlineVariant),
             const SizedBox(height: 12),
             Text(
               'No cards yet for ${groupCode.title}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 15),
             ),
           ],
         ),
@@ -146,7 +148,8 @@ class _StatsTab extends StatelessWidget {
           // Overall progress
           _buildSectionLabel('Overall Progress'),
           const SizedBox(height: 12),
-          _buildProgressCard(context, progressPercent, data.started, data.total),
+          _buildProgressCard(
+              context, progressPercent, data.started, data.total),
 
           const SizedBox(height: 24),
 
@@ -191,9 +194,11 @@ class _StatsTab extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+            BoxShadow(
+                color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -207,7 +212,9 @@ class _StatsTab extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -240,7 +247,8 @@ class _StatsTab extends StatelessWidget {
             children: [
               Text(
                 '$started of $total cards started',
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
               ),
               Text(
                 '${(percent * 100).toStringAsFixed(0)}%',
@@ -258,14 +266,18 @@ class _StatsTab extends StatelessWidget {
             child: LinearProgressIndicator(
               value: percent,
               minHeight: 10,
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(_progressColor(percent)),
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(_progressColor(percent)),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             _progressLabel(percent),
-            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -353,7 +365,9 @@ class _StatsTab extends StatelessWidget {
                           Container(
                             height: 20,
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
@@ -377,7 +391,8 @@ class _StatsTab extends StatelessWidget {
                   width: 28,
                   child: Text(
                     '$count',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -417,7 +432,8 @@ class _StatsTab extends StatelessWidget {
             icon: Icons.today_outlined,
             color: Colors.teal,
             label: 'Reviewed today',
-            value: '${data.reviewedToday} card${data.reviewedToday == 1 ? '' : 's'}',
+            value:
+                '${data.reviewedToday} card${data.reviewedToday == 1 ? '' : 's'}',
           ),
         ],
       ),
@@ -443,7 +459,10 @@ class _StatsTab extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ),
         Text(
           value,

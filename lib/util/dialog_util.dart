@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 /// Using static methods keeps call sites terse and avoids duplicating
 /// dialog boilerplate across screens.
 class DialogUtil {
-
   static void error(BuildContext context, dynamic exception) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -18,11 +17,11 @@ class DialogUtil {
   }
 
   static Future<void> okCancel(
-      BuildContext context, {
-        required String title,
-        required String description,
-        VoidCallback? onOk,
-      }) async {
+    BuildContext context, {
+    required String title,
+    required String description,
+    VoidCallback? onOk,
+  }) async {
     return showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -46,11 +45,11 @@ class DialogUtil {
   }
 
   static Future<void> ok(
-      BuildContext context, {
-        required String title,
-        required String description,
-        VoidCallback? onOk,
-      }) async {
+    BuildContext context, {
+    required String title,
+    required String description,
+    VoidCallback? onOk,
+  }) async {
     return showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -70,10 +69,10 @@ class DialogUtil {
   }
 
   static Future<void> hint(
-      BuildContext context, {
-        required String description,
-        double horizontalPadding = 100,
-      }) async {
+    BuildContext context, {
+    required String description,
+    double horizontalPadding = 100,
+  }) async {
     return showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(

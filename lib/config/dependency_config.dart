@@ -17,7 +17,8 @@ class DependencyConfig {
     await Get.putAsync<ThemeService>(() => ThemeService.init());
     await Get.putAsync<RouteService>(() => Future.value(RouteService()));
     await Get.putAsync<CardRepository>(() => Future.value(CardRepository()));
-    await Get.putAsync<ProgressRepository>(() => Future.value(ProgressRepository()));
+    await Get.putAsync<ProgressRepository>(
+        () => Future.value(ProgressRepository()));
     await Get.putAsync<CardService>(() => Future.value(CardService()));
     await Get.putAsync<SyncService>(() => Future.value(SyncService()));
   }

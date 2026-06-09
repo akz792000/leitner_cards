@@ -243,7 +243,7 @@ Removed — iOS HIG discourages quit buttons. Do not add back.
 ## Workflow Conventions
 
 1. **Never commit or push without explicit user instruction.**
-2. Run `flutter analyze lib/` after every change — zero errors before committing.
+2. **Before every commit:** run `dart format lib/` first, then `flutter analyze lib/` — zero errors before committing.
 3. Dark mode must work on all screens — use design tokens, never hardcode colours.
 4. All new routes go in `route_config.dart` (constant + switch case).
 5. All new GetX services go in `dependency_config.dart`.

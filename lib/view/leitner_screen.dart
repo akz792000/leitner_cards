@@ -59,7 +59,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final CardService _cardService = Get.find<CardService>();
-  final PageController _pageController = PageController(initialPage: 0, keepPage: true);
+  final PageController _pageController =
+      PageController(initialPage: 0, keepPage: true);
 
   late List<(CardEntity, ProgressEntity)> _pairs;
   late CardEntity _cardEntity;
@@ -209,10 +210,14 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   String get _currentText {
     switch (widget.groupCode) {
       case GroupCode.faEn:
-        return _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
+        return _languageCode == LanguageCode.fa
+            ? _cardEntity.fa
+            : _cardEntity.en;
       case GroupCode.enDe:
       case GroupCode.visual:
-        return _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
+        return _languageCode == LanguageCode.en
+            ? _cardEntity.en
+            : _cardEntity.de;
     }
   }
 
@@ -228,13 +233,18 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     );
   }
 
-  void _onVerticalDragEnd(DragEndDetails details) {    switch (widget.groupCode) {
+  void _onVerticalDragEnd(DragEndDetails details) {
+    switch (widget.groupCode) {
       case GroupCode.faEn:
-        _languageCode = _languageCode == LanguageCode.en ? LanguageCode.fa : LanguageCode.en;
+        _languageCode = _languageCode == LanguageCode.en
+            ? LanguageCode.fa
+            : LanguageCode.en;
         break;
       case GroupCode.enDe:
       case GroupCode.visual:
-        _languageCode = _languageCode == LanguageCode.de ? LanguageCode.en : LanguageCode.de;
+        _languageCode = _languageCode == LanguageCode.de
+            ? LanguageCode.en
+            : LanguageCode.de;
         break;
     }
     _changeValue(_index, _languageCode);
@@ -245,11 +255,13 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
 
     switch (widget.groupCode) {
       case GroupCode.faEn:
-        message = _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
+        message =
+            _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
         break;
       case GroupCode.enDe:
       case GroupCode.visual:
-        message = _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
+        message =
+            _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
         break;
     }
 
@@ -277,7 +289,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     final result = [
       // Dislike
       AnimatedButton(
-        icon: const Icon(Icons.thumb_down_outlined, size: 30, color: Colors.white),
+        icon: const Icon(Icons.thumb_down_outlined,
+            size: 30, color: Colors.white),
         isActive: levelChanged == LevelDirection.down,
         activeColor: Colors.redAccent,
         onPressed: levelChanged == LevelDirection.down
@@ -290,12 +303,14 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         const Icon(Icons.light_mode_outlined, size: 30),
         onPressed: _cardEntity.desc.isEmpty
             ? null
-            : () => DescriptionSheet.show(context, card: _cardEntity, groupCode: widget.groupCode),
+            : () => DescriptionSheet.show(context,
+                card: _cardEntity, groupCode: widget.groupCode),
         key: const ValueKey("desc"),
       ),
       // Like
       AnimatedButton(
-        icon: const Icon(Icons.thumb_up_alt_outlined, size: 30, color: Colors.white),
+        icon: const Icon(Icons.thumb_up_alt_outlined,
+            size: 30, color: Colors.white),
         isActive: levelChanged == LevelDirection.up,
         activeColor: Colors.green,
         onPressed: levelChanged == LevelDirection.up
@@ -337,42 +352,44 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   Widget _buildCardContent() {
     return Builder(
       builder: (context) => AnimatedGradientBackground(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 16, 0, 2),
-            child: Text('Level: $_level', style: const TextStyle(fontSize: 30)),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 4, 0, 2),
-            child: AnimatedFlag(imagePath: 'assets/flags/${_languageCode.name}.png'),
-          ),
-          Expanded(
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: KeyedSubtree(
-                  key: ValueKey(_languageCode),
-                  child: _getTextChild(context: context),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 0, 2),
+              child:
+                  Text('Level: $_level', style: const TextStyle(fontSize: 30)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 4, 0, 2),
+              child: AnimatedFlag(
+                  imagePath: 'assets/flags/${_languageCode.name}.png'),
+            ),
+            Expanded(
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: KeyedSubtree(
+                    key: ValueKey(_languageCode),
+                    child: _getTextChild(context: context),
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _bottomBar(),
+            Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: _bottomBar(),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -382,7 +399,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         centerTitle: true,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
-          onTap: () async => await Get.find<RouteService>().pushReplacementNamed(
+          onTap: () async =>
+              await Get.find<RouteService>().pushReplacementNamed(
             RouteConfig.level,
             arguments: {"groupCode": widget.groupCode},
           ),
@@ -409,7 +427,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
                   controller: _pageController,
                   onPageChanged: _onPageChanged,
                   itemCount: _pairs.length,
-                  itemBuilder: (context, index) => _buildCardPage(_pairs[index].$1, index),
+                  itemBuilder: (context, index) =>
+                      _buildCardPage(_pairs[index].$1, index),
                 ),
               ),
             ),

@@ -15,8 +15,8 @@ class AnimatedGradientBackground extends StatefulWidget {
       _AnimatedGradientBackgroundState();
 }
 
-class _AnimatedGradientBackgroundState
-    extends State<AnimatedGradientBackground> with SingleTickerProviderStateMixin {
+class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Alignment> _beginAnimation;
   late Animation<Alignment> _endAnimation;
@@ -26,8 +26,8 @@ class _AnimatedGradientBackgroundState
     super.initState();
 
     _controller =
-    AnimationController(vsync: this, duration: const Duration(seconds: 12))
-      ..repeat(reverse: true);
+        AnimationController(vsync: this, duration: const Duration(seconds: 12))
+          ..repeat(reverse: true);
 
     _beginAnimation = Tween<Alignment>(
       begin: Alignment.topLeft,

@@ -114,7 +114,10 @@ class AppDrawer extends StatelessWidget {
             children: [
               Text(
                 'Ali Karimizandi',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 2),
               Text(
@@ -173,10 +176,14 @@ class AppDrawer extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14)),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -190,11 +197,14 @@ class AppDrawer extends StatelessWidget {
   Widget _buildFooter(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+      padding: EdgeInsets.fromLTRB(
+          20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Text(
         'Learning Leitner v2.0',
-        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -216,7 +226,8 @@ class AppDrawer extends StatelessWidget {
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.school_outlined, size: 40, color: Colors.blue),
+                child: const Icon(Icons.school_outlined,
+                    size: 40, color: Colors.blue),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -224,13 +235,15 @@ class AppDrawer extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              Text('Version 2.0.0', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              Text('Version 2.0.0',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
               const SizedBox(height: 16),
               Text(
                 'A spaced-repetition flashcard app based on the Leitner system, '
                 'helping you learn English and Deutsch vocabulary efficiently.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey.shade700, height: 1.5),
               ),
               const SizedBox(height: 20),
               const Divider(),
@@ -238,14 +251,19 @@ class AppDrawer extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircleAvatar(radius: 18, backgroundImage: AssetImage('assets/image.png')),
+                  const CircleAvatar(
+                      radius: 18,
+                      backgroundImage: AssetImage('assets/image.png')),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Ali Karimizandi',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      Text('Developer', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text('Developer',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500)),
                     ],
                   ),
                 ],
@@ -265,4 +283,3 @@ class AppDrawer extends StatelessWidget {
     );
   }
 }
-

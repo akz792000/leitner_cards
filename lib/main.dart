@@ -65,14 +65,14 @@ class _MyAppState extends State<MyApp> {
     return Sizer(
       builder: (context, orientation, deviceType) {
         return Obx(() => MaterialApp(
-          title: 'FlashMind',
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: themeService.mode,
-          debugShowCheckedModeBanner: false,
-          navigatorKey: Get.find<RouteService>().navigatorKey,
-          onGenerateRoute: _routeConfig.generateRoute,
-        ));
+              title: 'FlashMind',
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: themeService.mode,
+              debugShowCheckedModeBanner: false,
+              navigatorKey: Get.find<RouteService>().navigatorKey,
+              onGenerateRoute: _routeConfig.generateRoute,
+            ));
       },
     );
   }

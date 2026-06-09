@@ -22,8 +22,8 @@ class _AnimatedFlagState extends State<AnimatedFlag>
   void initState() {
     super.initState();
     _controller =
-    AnimationController(vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat(reverse: true);
 
     _floatAnimation = Tween<Offset>(
       begin: const Offset(0, 0),

@@ -34,8 +34,8 @@ class _AnimatedButtonState extends State<AnimatedButton>
   void initState() {
     super.initState();
     _controller =
-    AnimationController(vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat(reverse: true);
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.12)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));

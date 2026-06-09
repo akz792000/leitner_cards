@@ -31,7 +31,8 @@ class _PersistScreenState extends State<PersistScreen> {
   final TextEditingController _descController = TextEditingController();
 
   bool get _isEnglish => widget.groupCode == GroupCode.faEn;
-  Color get _accentColor => _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
+  Color get _accentColor =>
+      _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
   List<Color> get _gradient => _isEnglish
       ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
       : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
@@ -114,20 +115,28 @@ class _PersistScreenState extends State<PersistScreen> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(
+                  colors: _gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
             ),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Row(
               children: [
-                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png', width: 40, height: 40),
+                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png',
+                    width: 40, height: 40),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(widget.groupCode.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    const Text('New flashcard', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const Text('New flashcard',
+                        style: TextStyle(color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ],
@@ -177,11 +186,13 @@ class _PersistScreenState extends State<PersistScreen> {
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
                           backgroundColor: _accentColor,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _onPersist,
                         icon: const Icon(Icons.add_card),
-                        label: const Text('Add Card', style: TextStyle(fontSize: 16)),
+                        label: const Text('Add Card',
+                            style: TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],

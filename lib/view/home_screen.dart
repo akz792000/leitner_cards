@@ -21,46 +21,46 @@ class HomeScreen extends StatelessWidget {
       drawer: const AppDrawer(),
       body: Builder(
         builder: (context) => Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel('Choose a Language'),
-                  const SizedBox(height: 12),
-                  _buildLanguageCard(
-                    context,
-                    flag: 'assets/flags/en.png',
-                    title: 'English',
-                    subtitle: 'Learn English with Farsi',
-                    gradientColors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                    onTap: () => Get.find<RouteService>().pushNamed(
-                      RouteConfig.level,
-                      arguments: {'groupCode': GroupCode.faEn},
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel('Choose a Language'),
+                    const SizedBox(height: 12),
+                    _buildLanguageCard(
+                      context,
+                      flag: 'assets/flags/en.png',
+                      title: 'English',
+                      subtitle: 'Learn English with Farsi',
+                      gradientColors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+                      onTap: () => Get.find<RouteService>().pushNamed(
+                        RouteConfig.level,
+                        arguments: {'groupCode': GroupCode.faEn},
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildLanguageCard(
-                    context,
-                    flag: 'assets/flags/de.png',
-                    title: 'Deutsch',
-                    subtitle: 'Lerne Deutsch auf Englisch',
-                    gradientColors: [Color(0xFFE65100), Color(0xFFFF8A65)],
-                    onTap: () => Get.find<RouteService>().pushNamed(
-                       RouteConfig.level,
-                       arguments: {'groupCode': GroupCode.enDe},
-                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildVisualCard(context),
-                ],
+                    const SizedBox(height: 16),
+                    _buildLanguageCard(
+                      context,
+                      flag: 'assets/flags/de.png',
+                      title: 'Deutsch',
+                      subtitle: 'Lerne Deutsch auf Englisch',
+                      gradientColors: [Color(0xFFE65100), Color(0xFFFF8A65)],
+                      onTap: () => Get.find<RouteService>().pushNamed(
+                        RouteConfig.level,
+                        arguments: {'groupCode': GroupCode.enDe},
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildVisualCard(context),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -82,37 +82,37 @@ class HomeScreen extends StatelessWidget {
       child: SizedBox(
         height: AppTheme.toolbarHeight,
         child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            tooltip: 'Menu',
-          ),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(51),
-              borderRadius: BorderRadius.circular(12),
+          children: [
+            IconButton(
+              icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              tooltip: 'Menu',
             ),
-            child: const Icon(Icons.school, color: Colors.white, size: 26),
-          ),
-          const SizedBox(width: 14),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Ready to learn today?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(51),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-        ],
+              child: const Icon(Icons.school, color: Colors.white, size: 26),
+            ),
+            const SizedBox(width: 14),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Ready to learn today?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -163,7 +163,8 @@ class HomeScreen extends StatelessWidget {
                 color: Colors.white.withAlpha(51),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.image_outlined, color: Colors.white, size: 30),
+              child: const Icon(Icons.image_outlined,
+                  color: Colors.white, size: 30),
             ),
             const SizedBox(width: 16),
             const Expanded(
@@ -192,7 +193,8 @@ class HomeScreen extends StatelessWidget {
                 color: Colors.white.withAlpha(51),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+              child: const Icon(Icons.arrow_forward,
+                  color: Colors.white, size: 18),
             ),
           ],
         ),
@@ -258,7 +260,8 @@ class HomeScreen extends StatelessWidget {
                 color: Colors.white.withAlpha(51),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+              child: const Icon(Icons.arrow_forward,
+                  color: Colors.white, size: 18),
             ),
           ],
         ),
@@ -266,4 +269,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-

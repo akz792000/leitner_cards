@@ -8,7 +8,8 @@ import 'package:intl/intl.dart' as intl;
 class DateTimeUtil {
   static tz.TZDateTime now() => tz.TZDateTime.now(tz.local);
 
-  static format(String pattern, tz.TZDateTime dateTime) => intl.DateFormat(pattern).format(dateTime);
+  static format(String pattern, tz.TZDateTime dateTime) =>
+      intl.DateFormat(pattern).format(dateTime);
 
   /// Adds the local UTC offset to [dateTime] before formatting.
   ///

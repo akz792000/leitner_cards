@@ -17,7 +17,8 @@ class ThemeService extends GetxService {
 
   static Future<ThemeService> init() async {
     await Hive.openBox(_boxName);
-    final stored = Hive.box(_boxName).get(_themeKey, defaultValue: 'system') as String;
+    final stored =
+        Hive.box(_boxName).get(_themeKey, defaultValue: 'system') as String;
     return ThemeService().._mode.value = _fromString(stored);
   }
 

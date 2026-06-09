@@ -42,8 +42,8 @@ class RouteConfig {
         case visualLeitner:
           return MaterialPageRoute(
               builder: (_) => VisualLeitnerScreen(
-                level: _getRequired<int>(args, "level"),
-              ));
+                    level: _getRequired<int>(args, "level"),
+                  ));
 
         case sync:
           return MaterialPageRoute(builder: (_) => const SyncScreen());
@@ -54,33 +54,33 @@ class RouteConfig {
         case level:
           return MaterialPageRoute(
               builder: (_) => LevelScreen(
-                groupCode: _getRequired<GroupCode>(args, "groupCode"),
-              ));
+                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                  ));
 
         case data:
           return MaterialPageRoute(
               builder: (_) => DataScreen(
-                groupCode: _getRequired<GroupCode>(args, "groupCode"),
-              ));
+                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                  ));
 
         case leitner:
           return MaterialPageRoute(
               builder: (_) => LeitnerScreen(
-                groupCode: _getRequired<GroupCode>(args, "groupCode"),
-                level: _getRequired<int>(args, "level"),
-              ));
+                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                    level: _getRequired<int>(args, "level"),
+                  ));
 
         case persist:
           return MaterialPageRoute(
               builder: (_) => PersistScreen(
-                groupCode: _getRequired<GroupCode>(args, "groupCode"),
-              ));
+                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                  ));
 
         case merge:
           return MaterialPageRoute(
               builder: (_) => MergeScreen(
-                cardEntity: _getRequired(args, "cardEntity"),
-              ));
+                    cardEntity: _getRequired(args, "cardEntity"),
+                  ));
 
         case download:
           return MaterialPageRoute(builder: (_) => const DownloadScreen());
@@ -97,8 +97,8 @@ class RouteConfig {
     } catch (e) {
       return MaterialPageRoute(
           builder: (_) => ErrorScreen(
-            errorMessage: e.toString(),
-          ));
+                errorMessage: e.toString(),
+              ));
     }
   }
 

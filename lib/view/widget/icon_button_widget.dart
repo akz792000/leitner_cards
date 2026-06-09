@@ -10,10 +10,10 @@ class IconButtonWidget extends StatefulWidget {
   final VoidCallback? onPressed;
 
   const IconButtonWidget(
-      this.icon, {
-        super.key,
-        required this.onPressed,
-      });
+    this.icon, {
+    super.key,
+    required this.onPressed,
+  });
 
   @override
   State<IconButtonWidget> createState() => _IconButtonWidgetState();
@@ -27,8 +27,8 @@ class _IconButtonWidgetState extends State<IconButtonWidget>
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 200));
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
