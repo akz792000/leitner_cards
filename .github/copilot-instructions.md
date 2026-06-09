@@ -514,7 +514,28 @@ See `docs/android-device-debugging-guide.md` for full steps.
 
 ---
 
-## 19 · Docs
+## 20 · Deploying to Phone
+
+**Quickest method** (phone already connected via ADB):
+```bash
+flutter run --release
+```
+Builds + installs in one command. No manual file transfer.
+
+**Using the deploy script:**
+```bash
+./deploy.sh                # build release + install (phone already connected)
+./deploy.sh --clean        # flutter clean first, then build + install
+./deploy.sh --connect      # prompts for wireless ADB address first, then builds + installs
+```
+
+**Wireless ADB connect steps** (when not already connected):
+1. On phone: Settings → Developer options → Wireless debugging → ON
+2. `adb pair <IP:PAIRING_PORT>` — port from "Pair device with pairing code" dialog
+3. `adb connect <IP:MAIN_PORT>` — port from main "Wireless debugging" screen
+4. Then run `./deploy.sh` or `flutter run --release`
+
+See `docs/android-device-debugging-guide.md` for full steps.
 
 - `docs/android-device-debugging-guide.md` — wireless ADB + ClassNotFoundException fix
 - `docs/known-issues-and-fixes.md` — Gradle SSL, JVM symlink, Android Studio issues
