@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../config/route_config.dart';
 import '../service/route_service.dart';
 import '../service/theme_service.dart';
+import 'download_screen.dart';
 
 /// Side navigation drawer shown from [HomeScreen].
 ///
@@ -46,7 +47,7 @@ class AppDrawer extends StatelessWidget {
                     subtitle: 'Download from cloud',
                     onTap: () {
                       Navigator.pop(context);
-                      Get.find<RouteService>().pushNamed(RouteConfig.download);
+                      DownloadScreen.show(context);
                     },
                   ),
                   const SizedBox(height: 16),

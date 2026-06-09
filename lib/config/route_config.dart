@@ -3,7 +3,6 @@ import 'package:leitner_cards/enums/group_code.dart';
 
 import '../view/visual_leitner_screen.dart';
 import '../view/data_screen.dart';
-import '../view/download_screen.dart';
 import '../view/error_screen.dart';
 import '../view/home_screen.dart';
 import '../view/leitner_screen.dart';
@@ -12,7 +11,6 @@ import '../view/loading_screen.dart';
 import '../view/merge_screen.dart';
 import '../view/persist_screen.dart';
 import '../view/stats_screen.dart';
-import '../view/sync_screen.dart';
 
 /// Named route constants and the [generateRoute] factory for the app.
 ///
@@ -21,16 +19,14 @@ import '../view/sync_screen.dart';
 /// [ArgumentError] (rendered by [ErrorScreen]) when required params are absent
 /// or mistyped, keeping each screen's constructor free of null checks.
 class RouteConfig {
-  static const String sync = "/";
+  static const String home = "/";
   static const String visualLeitner = "/visual-leitner";
-  static const String home = "/home";
   static const String error = "/error";
   static const String level = "/level";
   static const String data = "/data";
   static const String leitner = "/leitner";
   static const String persist = "/persist";
   static const String merge = "/merge";
-  static const String download = "/download";
   static const String stats = "/stats";
   static const String loading = "/loading";
 
@@ -39,17 +35,14 @@ class RouteConfig {
 
     try {
       switch (settings.name) {
+        case home:
+          return MaterialPageRoute(builder: (_) => const HomeScreen());
+
         case visualLeitner:
           return MaterialPageRoute(
               builder: (_) => VisualLeitnerScreen(
                     level: _getRequired<int>(args, "level"),
                   ));
-
-        case sync:
-          return MaterialPageRoute(builder: (_) => const SyncScreen());
-
-        case home:
-          return MaterialPageRoute(builder: (_) => const HomeScreen());
 
         case level:
           return MaterialPageRoute(
@@ -81,9 +74,6 @@ class RouteConfig {
               builder: (_) => MergeScreen(
                     cardEntity: _getRequired(args, "cardEntity"),
                   ));
-
-        case download:
-          return MaterialPageRoute(builder: (_) => const DownloadScreen());
 
         case stats:
           return MaterialPageRoute(builder: (_) => const StatsScreen());
