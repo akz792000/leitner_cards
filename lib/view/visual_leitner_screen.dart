@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/entity/progress_entity.dart';
@@ -165,6 +166,19 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
       _progressEntity = _progressMap[_cardEntity.id]!;
     });
     _modifyOrder();
+  }
+
+  /// Copies the currently visible card text to the clipboard and shows a snackbar.
+  void _copyCurrentText(BuildContext context) {
+    final text = (_langTabMap[_cardEntity.id] ?? 0) == 0 ? _cardEntity.en : _cardEntity.de;
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _toggleReveal() {
@@ -524,6 +538,14 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
           child: const Icon(Icons.arrow_back_ios),
           onTap: () => Get.find<RouteService>().pushReplacementNamed(RouteConfig.home),
         ),
+        actions: [
+          if (_revealedSet.contains(_cardEntity.id))
+            IconButton(
+              icon: const Icon(Icons.copy_outlined),
+              tooltip: 'Copy',
+              onPressed: () => _copyCurrentText(context),
+            ),
+        ],
       ),
       body: Listener(
         onPointerDown: (_) => _resetIdleTimer(),
