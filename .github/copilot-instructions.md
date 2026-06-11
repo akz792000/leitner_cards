@@ -41,6 +41,7 @@ This is the single source of truth for all AI sessions working on this project. 
 | Responsive sizing | `sizer: ^3.0.5` |
 | Timezone | `timezone: ^0.10.1` + `intl: ^0.20.2` |
 | Spinner | `flutter_spinkit: ^5.1.0` |
+| TTS | `flutter_tts: ^4.2.5` |
 | App icon | `flutter_launcher_icons: ^0.14.3` (dev) |
 | Linter | `flutter_lints: ^6.0.0` (dev) |
 
@@ -84,7 +85,8 @@ lib/
 │   ├── card_service.dart               # Leitner algorithm
 │   ├── route_service.dart              # pushNamed / pushReplacementNamed wrappers
 │   ├── sync_service.dart               # saveCard / removeCard — all-or-nothing Hive writes
-│   └── theme_service.dart             # Reactive GetX service, persists to Hive 'settings'
+│   ├── theme_service.dart             # Reactive GetX service, persists to Hive 'settings'
+│   └── tts_service.dart               # Text-to-speech; reactive isSpeaking, wordStart, wordEnd
 ├── util/
 │   ├── date_time_util.dart             # now(), daysToNowWithoutTime()
 │   ├── dialog_util.dart               # error(), ok(), okCancel(), hint()
@@ -143,6 +145,7 @@ Registration order in `DependencyConfig.registerDependencies()` is **critical**:
 4. ProgressRepository()     ← opens 'progress' Hive box
 5. CardService()            ← depends on both repositories
 6. SyncService()            ← depends on CardRepository
+7. TtsService()             ← no dependencies; registers flutter_tts handlers
 ```
 
 Usage everywhere: `Get.find<ServiceName>().method()`.
@@ -249,6 +252,14 @@ All-or-nothing Hive writes. Never write directly to Hive from views.
 - `toggle()` → cycles `system → light → dark → system`
 - `setMode(ThemeMode)` → persists to Hive
 - `icon` / `label` getters for UI
+
+### TtsService
+- `speak(text, LanguageCode)` → `Future<bool>` — returns `false` if language engine not installed
+- `stop()` — stops playback immediately
+- Reactive: `isSpeaking`, `wordStart`, `wordEnd` — drive word highlight in `LeitnerScreen`
+- Locale map: `en → en-US`, `fa → fa-IR`, `de → de-DE`
+- Speech rate: `0.45` (slightly slower for language learning)
+- Requires Google TTS engine for Farsi and word-boundary progress events
 
 ### RouteService
 - Holds `GlobalKey<NavigatorState> navigatorKey`
@@ -359,9 +370,12 @@ Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3
   - Pixel shifting: `Timer.periodic(30s)` shifts ±2px via `Transform.translate`
   - Auto-dim: after 2 min idle → `Colors.black` overlay alpha 0.85. Tap to wake.
   - `Listener(onPointerDown:)` resets idle timer
+- AppBar: title left-aligned; actions: 🔊 speak button + copy button
+- 🔊 Speak button reads current card text via `TtsService`; icon toggles stop/speak while active
+- Word highlight: `Text.rich` with background colour span driven by `TtsService.wordStart/wordEnd` — no bold/size change to avoid layout shift
+- TTS stops on page swipe, language flip, and screen dispose
 - Thumb buttons: `AnimatedButton(isActive, activeColor)` — green (up) / redAccent (down)
 - Description button → `DescriptionSheet.show()`
-- Copy button → `Clipboard.setData()`
 
 ### VisualLeitnerScreen
 - Image URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main/images/{image}`

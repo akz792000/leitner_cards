@@ -270,11 +270,6 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         break;
     }
 
-    final baseStyle = TextStyle(
-      color: Theme.of(context).colorScheme.onSurface,
-      fontSize: 28.0,
-    );
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: SingleChildScrollView(
@@ -282,40 +277,36 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
           final speaking = _ttsService.isSpeaking.value;
           final start = _ttsService.wordStart.value;
           final end = _ttsService.wordEnd.value;
+          final highlighted = speaking && end > start && end <= message.length;
 
-          // When not speaking or positions are out of range, render plain text.
-          if (!speaking || end <= start || end > message.length) {
-            return Text(
-              message,
-              textDirection: _languageCode.direction,
-              textAlign: _languageCode.direction == TextDirection.rtl
-                  ? TextAlign.right
-                  : TextAlign.center,
-              style: baseStyle,
-            );
-          }
-
-          // Highlight the current word using RichText spans.
-          return RichText(
+          // Always Text.rich so the widget type never changes — no layout shift.
+          return Text.rich(
+            TextSpan(
+              children: highlighted
+                  ? [
+                      TextSpan(text: message.substring(0, start)),
+                      TextSpan(
+                        text: message.substring(start, end),
+                        style: TextStyle(
+                          background: Paint()
+                            ..color = Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.35),
+                        ),
+                      ),
+                      TextSpan(text: message.substring(end)),
+                    ]
+                  : [TextSpan(text: message)],
+            ),
             textDirection: _languageCode.direction,
             textAlign: _languageCode.direction == TextDirection.rtl
                 ? TextAlign.right
                 : TextAlign.center,
-            text: TextSpan(style: baseStyle, children: [
-              TextSpan(text: message.substring(0, start)),
-              TextSpan(
-                text: message.substring(start, end),
-                style: TextStyle(
-                  background: Paint()
-                    ..color = Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.35),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextSpan(text: message.substring(end)),
-            ]),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 28.0,
+            ),
           );
         }),
       ),
