@@ -44,4 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-\n# Hive backup from deploy.sh --backup\nhive_backup.ab
+
+# Hive backup from deploy.sh --backup
+hive_backup.ab
