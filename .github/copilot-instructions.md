@@ -77,8 +77,6 @@ lib/
 │   ├── group_code.dart                 # faEn / enDe / visual
 │   ├── language_code.dart              # en / fa / de (+ direction getter)
 │   └── level_direction.dart            # up / down
-├── models/
-│   └── option_model.dart               # {image: Widget, onTap: VoidCallback?}
 ├── repository/
 │   ├── card_repository.dart            # Hive CRUD for 'card' box
 │   └── progress_repository.dart       # Hive CRUD for 'progress' box
@@ -88,10 +86,8 @@ lib/
 │   ├── sync_service.dart               # saveCard / removeCard — all-or-nothing Hive writes
 │   └── theme_service.dart             # Reactive GetX service, persists to Hive 'settings'
 ├── util/
-│   ├── color_util.dart
 │   ├── date_time_util.dart             # now(), daysToNowWithoutTime()
 │   ├── dialog_util.dart               # error(), ok(), okCancel(), hint()
-│   ├── list_notifier_helper.dart
 │   └── list_util.dart                 # sortAsc() / sortDesc()
 └── view/
     ├── app_drawer.dart                 # Side nav drawer (gradient header, tiles, theme toggle)
@@ -105,7 +101,6 @@ lib/
     ├── merge_screen.dart              # Edit card form
     ├── persist_screen.dart            # Add card form
     ├── stats_screen.dart              # Per-deck stats with TabBar
-    ├── sync_screen.dart               # ⚠️ Orphaned (no-op) — startup sync removed
     └── widget/
         ├── animated_button.dart       # AnimatedButton(isActive, activeColor)
         ├── animated_flag.dart         # AnimatedFlag — floating country flag
@@ -509,7 +504,6 @@ See `docs/android-device-debugging-guide.md` for full steps.
 | Hive adapters | `card_entity.g.dart` and `progress_entity.g.dart` are manually maintained. **Do NOT run build_runner.** |
 | Max Hive key | `0xFFFFFFFF`. Use seconds epoch for IDs: `DateTime.now().millisecondsSinceEpoch ~/ 1000` |
 | iOS exit button | Removed — iOS HIG discourages quit buttons. Do not add back. |
-| `sync_screen.dart` | Orphaned file (no-op stub). Not used in any route. Keep for history. |
 | Hive box `'settings'` | Opened by `ThemeService.init()` — not by Hive setup in `main.dart`. |
 
 ---

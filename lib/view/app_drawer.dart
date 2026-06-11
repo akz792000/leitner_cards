@@ -25,7 +25,7 @@ class AppDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionLabel('Decks & Tools'),
+                  _sectionLabel('Tools'),
                   const SizedBox(height: 4),
                   _navTile(
                     context,
@@ -36,17 +36,6 @@ class AppDrawer extends StatelessWidget {
                     onTap: () {
                       Navigator.pop(context);
                       Get.find<RouteService>().pushNamed(RouteConfig.stats);
-                    },
-                  ),
-                  _navTile(
-                    context,
-                    icon: Icons.cloud_sync_outlined,
-                    iconColor: Colors.teal,
-                    title: 'Sync Cards',
-                    subtitle: 'Download from cloud',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.find<RouteService>().pushNamed(RouteConfig.download);
                     },
                   ),
                   const SizedBox(height: 16),

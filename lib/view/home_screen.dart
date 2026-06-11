@@ -56,6 +56,10 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildVisualCard(context),
+                    const SizedBox(height: 28),
+                    _buildSectionLabel('Tools'),
+                    const SizedBox(height: 12),
+                    _buildSyncCard(context),
                   ],
                 ),
               ),
@@ -182,6 +186,75 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(height: 4),
                   Text(
                     'Describe images',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(51),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward,
+                  color: Colors.white, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSyncCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.find<RouteService>().pushNamed(RouteConfig.download),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00695C), Color(0xFF26C6DA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00695C).withAlpha(100),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(51),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.cloud_sync_outlined,
+                  color: Colors.white, size: 30),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sync Cards',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Download latest from cloud',
                     style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ],
