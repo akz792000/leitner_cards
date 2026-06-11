@@ -15,6 +15,8 @@ import 'package:leitner_cards/util/date_time_util.dart';
 import '../config/route_config.dart';
 import '../enums/level_direction.dart';
 import '../service/route_service.dart';
+import '../service/tts_service.dart';
+import '../enums/language_code.dart';
 import 'widget/animated_button.dart';
 import 'widget/animated_gradient_background.dart';
 
@@ -58,6 +60,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final CardService _service = Get.find<CardService>();
+  final TtsService _ttsService = Get.find<TtsService>();
   final PageController _pageController = PageController();
 
   late List<CardEntity> _cards;
@@ -104,6 +107,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     _idleTimer?.cancel();
     _pixelShiftTimer?.cancel();
     _pageController.dispose();
+    _ttsService.stop();
     super.dispose();
   }
 
@@ -160,6 +164,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
   }
 
   void _onPageChanged(int value) {
+    _ttsService.stop();
     setState(() {
       _index = value;
       _cardEntity = _cards[value];
@@ -498,6 +503,30 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                                 : () => _changePage(ProgressEntity.initLevel,
                                     LevelDirection.down),
                           ),
+                          // Speak the currently visible language text
+                          Obx(() {
+                            final lang = (_langTabMap[card.id] ?? 0) == 0
+                                ? LanguageCode.en
+                                : LanguageCode.de;
+                            final text =
+                                lang == LanguageCode.en ? card.en : card.de;
+                            return IconButton(
+                              icon: Icon(
+                                _ttsService.isSpeaking.value
+                                    ? Icons.stop_circle_outlined
+                                    : Icons.volume_up_outlined,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              onPressed: () {
+                                if (_ttsService.isSpeaking.value) {
+                                  _ttsService.stop();
+                                } else {
+                                  _ttsService.speak(text, lang);
+                                }
+                              },
+                            );
+                          }),
                           AnimatedButton(
                             key: const ValueKey('like'),
                             icon: const Icon(Icons.thumb_up_alt_outlined,

@@ -39,6 +39,7 @@ dependencies:
   get: ^4.6.5
   path_provider: any
   http: ^1.2.2
+  flutter_tts: ^4.2.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

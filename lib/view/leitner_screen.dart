@@ -16,6 +16,7 @@ import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
 import '../service/route_service.dart';
+import '../service/tts_service.dart';
 import '../util/date_time_util.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
@@ -59,6 +60,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final CardService _cardService = Get.find<CardService>();
+  final TtsService _ttsService = Get.find<TtsService>();
   final PageController _pageController =
       PageController(initialPage: 0, keepPage: true);
 
@@ -106,6 +108,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     _idleTimer?.cancel();
     _pixelShiftTimer?.cancel();
     _pageController.dispose();
+    _ttsService.stop();
     super.dispose();
   }
 
@@ -180,6 +183,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   }
 
   void _onPageChanged(int value) {
+    _ttsService.stop();
     _index = value;
     _changeValue(_index, _getInitialLanguageCode());
     _modifyOrder();
@@ -234,6 +238,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
+    _ttsService.stop();
     switch (widget.groupCode) {
       case GroupCode.faEn:
         _languageCode = _languageCode == LanguageCode.en
@@ -265,20 +270,54 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         break;
     }
 
+    final baseStyle = TextStyle(
+      color: Theme.of(context).colorScheme.onSurface,
+      fontSize: 28.0,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: SingleChildScrollView(
-        child: Text(
-          message,
-          textDirection: _languageCode.direction,
-          textAlign: _languageCode.direction == TextDirection.rtl
-              ? TextAlign.right
-              : TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 28.0,
-          ),
-        ),
+        child: Obx(() {
+          final speaking = _ttsService.isSpeaking.value;
+          final start = _ttsService.wordStart.value;
+          final end = _ttsService.wordEnd.value;
+
+          // When not speaking or positions are out of range, render plain text.
+          if (!speaking || end <= start || end > message.length) {
+            return Text(
+              message,
+              textDirection: _languageCode.direction,
+              textAlign: _languageCode.direction == TextDirection.rtl
+                  ? TextAlign.right
+                  : TextAlign.center,
+              style: baseStyle,
+            );
+          }
+
+          // Highlight the current word using RichText spans.
+          return RichText(
+            textDirection: _languageCode.direction,
+            textAlign: _languageCode.direction == TextDirection.rtl
+                ? TextAlign.right
+                : TextAlign.center,
+            text: TextSpan(style: baseStyle, children: [
+              TextSpan(text: message.substring(0, start)),
+              TextSpan(
+                text: message.substring(start, end),
+                style: TextStyle(
+                  background: Paint()
+                    ..color = Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.35),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextSpan(text: message.substring(end)),
+            ]),
+          );
+        }),
       ),
     );
   }
@@ -320,8 +359,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       ),
     ];
 
-    // Remove buttons that shouldn't show
+    // Remove buttons that shouldn't show (skip widgets with no key)
     result.removeWhere((element) {
+      if (element.key == null) return false;
       final keyValue = (element.key as ValueKey).value;
       return (keyValue == 'desc' && _cardEntity.desc.isEmpty) ||
           (keyValue == 'like' && widget.level != LeitnerScreen.allLevel);
@@ -396,7 +436,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Item ${_index + 1} of ${_pairs.length}'),
-        centerTitle: true,
+        centerTitle: false,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
           onTap: () async =>
@@ -406,7 +446,30 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
           ),
         ),
         actions: [
-          // Copies the currently visible card text to the clipboard.
+          Obx(() => IconButton(
+                icon: Icon(_ttsService.isSpeaking.value
+                    ? Icons.stop_circle_outlined
+                    : Icons.volume_up_outlined),
+                tooltip: 'Speak',
+                onPressed: () async {
+                  if (_ttsService.isSpeaking.value) {
+                    _ttsService.stop();
+                  } else {
+                    final ok =
+                        await _ttsService.speak(_currentText, _languageCode);
+                    if (!ok && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'TTS not available for this language. Install it via Settings → General management → Text-to-speech.'),
+                          duration: Duration(seconds: 4),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  }
+                },
+              )),
           IconButton(
             icon: const Icon(Icons.copy_outlined),
             tooltip: 'Copy',
@@ -452,17 +515,3 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     );
   }
 }
-
-/// The main flashcard study view implementing the Leitner interaction loop.
-///
-/// [level] controls which cards are loaded:
-/// - [allLevel] (-1): runs the full Leitner algorithm via [CardService].
-/// - [allLimitedLevel] (-2): shows every card in the deck regardless of schedule.
-/// - Any positive int: shows only cards at that exact level.
-///
-/// Vertical swipe toggles between the two language sides of the card.
-/// Thumb-up promotes the card to the next level; thumb-down resets to level 0.
-///
-/// Burn-in protection for AMOLED screens:
-/// - Whole view shifts ±2 px every 30 s (pixel shifting).
-/// - After 2 min of inactivity a black overlay dims the screen; tap to wake.
