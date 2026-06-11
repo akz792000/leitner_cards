@@ -341,7 +341,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                     child: GestureDetector(
                       onTap: _toggleReveal,
                       child: Container(
-                        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        margin: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.black,
                           borderRadius: BorderRadius.circular(16),
@@ -478,42 +478,41 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
                 ] else
                   const SizedBox.shrink(),
 
-                // ── Bottom bar ─────────────────────────────────────────────
-                SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        AnimatedButton(
-                          key: const ValueKey('dislike'),
-                          icon: const Icon(Icons.thumb_down_outlined,
-                              size: 30, color: Colors.white),
-                          isActive: levelChanged == LevelDirection.down,
-                          activeColor: Colors.redAccent,
-                          onPressed:
-                              (!revealed || levelChanged == LevelDirection.down)
-                                  ? null
-                                  : () => _changePage(ProgressEntity.initLevel,
-                                      LevelDirection.down),
-                        ),
-                        AnimatedButton(
-                          key: const ValueKey('like'),
-                          icon: const Icon(Icons.thumb_up_alt_outlined,
-                              size: 30, color: Colors.white),
-                          isActive: levelChanged == LevelDirection.up,
-                          activeColor: Colors.green,
-                          onPressed:
-                              (!revealed || levelChanged == LevelDirection.up)
-                                  ? null
-                                  : () => _changePage(
-                                      progress.level + 1, LevelDirection.up),
-                        ),
-                      ],
+                // ── Bottom bar (only shown after reveal) ──────────────────
+                if (revealed)
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          AnimatedButton(
+                            key: const ValueKey('dislike'),
+                            icon: const Icon(Icons.thumb_down_outlined,
+                                size: 30, color: Colors.white),
+                            isActive: levelChanged == LevelDirection.down,
+                            activeColor: Colors.redAccent,
+                            onPressed: levelChanged == LevelDirection.down
+                                ? null
+                                : () => _changePage(ProgressEntity.initLevel,
+                                    LevelDirection.down),
+                          ),
+                          AnimatedButton(
+                            key: const ValueKey('like'),
+                            icon: const Icon(Icons.thumb_up_alt_outlined,
+                                size: 30, color: Colors.white),
+                            isActive: levelChanged == LevelDirection.up,
+                            activeColor: Colors.green,
+                            onPressed: levelChanged == LevelDirection.up
+                                ? null
+                                : () => _changePage(
+                                    progress.level + 1, LevelDirection.up),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             );
           },

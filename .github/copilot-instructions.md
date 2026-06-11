@@ -521,6 +521,7 @@ Builds + installs in one command. No manual file transfer.
 ./deploy.sh                # build release + install (phone already connected)
 ./deploy.sh --clean        # flutter clean first, then build + install
 ./deploy.sh --connect      # prompts for wireless ADB address first, then builds + installs
+./deploy.sh --backup       # back up Hive data before install, restore after (prevents data loss)
 ```
 
 **Wireless ADB connect steps** (when not already connected):
