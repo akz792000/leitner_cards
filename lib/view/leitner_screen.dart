@@ -472,9 +472,13 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         onPointerDown: (_) => _resetIdleTimer(),
         child: Stack(
           children: [
-            // Pixel-shifted content
-            Transform.translate(
-              offset: Offset(_shiftX, _shiftY),
+            // Pixel-shifted content — eases smoothly to new position over 3s
+            TweenAnimationBuilder<Offset>(
+              tween: Tween(end: Offset(_shiftX, _shiftY)),
+              duration: const Duration(seconds: 3),
+              curve: Curves.easeInOut,
+              builder: (context, offset, child) =>
+                  Transform.translate(offset: offset, child: child),
               child: GestureDetector(
                 onVerticalDragEnd: _onVerticalDragEnd,
                 child: PageView.builder(
