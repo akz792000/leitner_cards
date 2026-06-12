@@ -2,7 +2,8 @@
 /// Stored as a string in Hive for readability and forward compatibility.
 enum GroupCode {
   faEn('FA_EN'), // Farsi ↔ English
-  enDe('EN_DE'), // English ↔ Deutsch
+  enDe('EN_DE'), // English ↔ Deutsch (sentences)
+  enDeVerbs('EN_DE_VERBS'), // English ↔ Deutsch (verbs)
   visual('VISUAL'); // Image-based bilingual cards (EN + DE)
 
   final String code;
@@ -18,6 +19,8 @@ enum GroupCode {
         return 'English';
       case enDe:
         return 'Deutsch';
+      case enDeVerbs:
+        return 'Verbs';
       case visual:
         return 'Visual';
     }

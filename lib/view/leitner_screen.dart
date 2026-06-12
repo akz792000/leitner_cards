@@ -238,6 +238,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       case GroupCode.faEn:
         return LanguageCode.fa;
       case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
       case GroupCode.visual:
         return LanguageCode.en;
     }
@@ -338,6 +339,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
             ? _cardEntity.fa
             : _cardEntity.en;
       case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
       case GroupCode.visual:
         return _languageCode == LanguageCode.en
             ? _cardEntity.en
@@ -366,6 +368,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
             : LanguageCode.en;
         break;
       case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
       case GroupCode.visual:
         _languageCode = _languageCode == LanguageCode.de
             ? LanguageCode.en
@@ -385,6 +388,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
             _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
         break;
       case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
       case GroupCode.visual:
         message =
             _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;

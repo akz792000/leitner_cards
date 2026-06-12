@@ -44,6 +44,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
       "groupCode": GroupCode.enDe,
     },
     {
+      "name": "Deutsch / Verbs",
+      "icon": "de",
+      "toggle": false,
+      "url": "$_baseUrl/en_de_verbs.json",
+      "groupCode": GroupCode.enDeVerbs,
+    },
+    {
       "name": "Visual",
       "icon": "vi",
       "toggle": false,

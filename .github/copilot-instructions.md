@@ -8,13 +8,16 @@ This is the single source of truth for all AI sessions working on this project. 
 
 ## 1 · Project Overview
 
-**FlashMind** (`com.flashmind.app`) is a Flutter flashcard app implementing the Leitner spaced-repetition system. Cards move up levels when answered correctly and drop to level 0 when wrong. Three decks:
+**FlashMind** (`com.flashmind.app`) is a Flutter flashcard app implementing the Leitner spaced-repetition system. Cards move up levels when answered correctly and drop to level 0 when wrong. Four decks:
 
 | Deck | GroupCode enum | Stored string | Fields used |
 |---|---|---|---|
 | Farsi ↔ English | `GroupCode.faEn` | `"FA_EN"` | `en`, `fa`, `desc` |
-| English ↔ Deutsch | `GroupCode.enDe` | `"EN_DE"` | `en`, `de`, `desc` |
+| English ↔ Deutsch (sentences) | `GroupCode.enDe` | `"EN_DE"` | `en`, `de`, `desc` |
+| English ↔ Deutsch (verbs) | `GroupCode.enDeVerbs` | `"EN_DE_VERBS"` | `en`, `de`, `desc` |
 | Visual | `GroupCode.visual` | `"VISUAL"` | `en`, `de`, `image`, `desc` |
+
+**Deutsch sub-deck selection:** Tapping the Deutsch card on `HomeScreen` shows a modal bottom sheet with "Sentences" (`GroupCode.enDe`) and "Verbs" (`GroupCode.enDeVerbs`) options. Both route to `LevelScreen`. Download source for Verbs: `en_de_verbs.json` (same GitHub repo).
 
 ---
 
