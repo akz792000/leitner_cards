@@ -191,7 +191,7 @@ class _LevelScreenState extends State<LevelScreen> {
                   Text(
                     'Level $level',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
+                        fontWeight: FontWeight.bold, fontSize: 20),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -205,7 +205,7 @@ class _LevelScreenState extends State<LevelScreen> {
                     child: Text(
                       '$count item${count == 1 ? '' : 's'}',
                       style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: color,
                           fontWeight: FontWeight.w600),
                     ),
@@ -244,14 +244,14 @@ class _LevelScreenState extends State<LevelScreen> {
             Text(
               widget.groupCode.title,
               style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white),
             ),
             const SizedBox(width: 8),
             Text(
               '· $_count card${_count == 1 ? '' : 's'}',
-              style: const TextStyle(fontSize: 13, color: Colors.white70),
+              style: const TextStyle(fontSize: 15, color: Colors.white70),
             ),
           ],
         ),

@@ -580,7 +580,7 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${_index + 1} of ${_cards.length}'),
-        centerTitle: true,
+        centerTitle: false,
         backgroundColor: Colors.teal.shade600,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -590,6 +590,39 @@ class _VisualLeitnerScreenState extends State<VisualLeitnerScreen> {
               Get.find<RouteService>().pushReplacementNamed(RouteConfig.home),
         ),
         actions: [
+          Obx(() {
+            final revealed = _revealedSet.contains(_cardEntity.id);
+            final lang = (_langTabMap[_cardEntity.id] ?? 0) == 0
+                ? LanguageCode.en
+                : LanguageCode.de;
+            final text =
+                lang == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
+            return IconButton(
+              icon: Icon(_ttsService.isSpeaking.value
+                  ? Icons.stop_circle_outlined
+                  : Icons.volume_up_outlined),
+              tooltip: 'Speak',
+              onPressed: revealed
+                  ? () async {
+                      if (_ttsService.isSpeaking.value) {
+                        _ttsService.stop();
+                      } else {
+                        final ok = await _ttsService.speak(text, lang);
+                        if (!ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'TTS not available for this language. Install it via Settings → Accessibility → Text-to-speech.'),
+                              duration: Duration(seconds: 4),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  : null,
+            );
+          }),
           if (_revealedSet.contains(_cardEntity.id))
             IconButton(
               icon: const Icon(Icons.copy_outlined),
