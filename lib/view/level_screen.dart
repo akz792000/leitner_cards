@@ -4,7 +4,6 @@ import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/view/leitner_screen.dart';
-import 'package:leitner_cards/view/visual_leitner_screen.dart';
 
 import '../config/route_config.dart';
 import '../service/route_service.dart';
@@ -145,18 +144,10 @@ class _LevelScreenState extends State<LevelScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
-        // Visual deck navigates to VisualLeitnerScreen; language decks to LeitnerScreen.
-        if (_isVisual) {
-          await Get.find<RouteService>().pushReplacementNamed(
-            RouteConfig.visualLeitner,
-            arguments: {"level": level},
-          );
-        } else {
-          await Get.find<RouteService>().pushReplacementNamed(
-            RouteConfig.leitner,
-            arguments: {"groupCode": widget.groupCode, "level": level},
-          );
-        }
+        await Get.find<RouteService>().pushReplacementNamed(
+          RouteConfig.leitner,
+          arguments: {"groupCode": widget.groupCode, "level": level},
+        );
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -279,21 +270,13 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.skip_next_outlined),
               tooltip: 'Play limited',
               onPressed: () async {
-                // Visual deck goes to VisualLeitnerScreen; language decks to LeitnerScreen.
-                if (_isVisual) {
-                  await Get.find<RouteService>().pushReplacementNamed(
-                    RouteConfig.visualLeitner,
-                    arguments: {"level": VisualLeitnerScreen.allLimitedLevel},
-                  );
-                } else {
-                  await Get.find<RouteService>().pushReplacementNamed(
-                    RouteConfig.leitner,
-                    arguments: {
-                      "groupCode": widget.groupCode,
-                      "level": LeitnerScreen.allLimitedLevel
-                    },
-                  );
-                }
+                await Get.find<RouteService>().pushReplacementNamed(
+                  RouteConfig.leitner,
+                  arguments: {
+                    "groupCode": widget.groupCode,
+                    "level": LeitnerScreen.allLimitedLevel
+                  },
+                );
               },
             ),
         ],
@@ -333,21 +316,13 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Play All'),
               onPressed: () async {
-                // Visual deck goes to VisualLeitnerScreen; language decks to LeitnerScreen.
-                if (_isVisual) {
-                  await Get.find<RouteService>().pushReplacementNamed(
-                    RouteConfig.visualLeitner,
-                    arguments: {"level": VisualLeitnerScreen.allLevel},
-                  );
-                } else {
-                  await Get.find<RouteService>().pushReplacementNamed(
-                    RouteConfig.leitner,
-                    arguments: {
-                      "groupCode": widget.groupCode,
-                      "level": LeitnerScreen.allLevel
-                    },
-                  );
-                }
+                await Get.find<RouteService>().pushReplacementNamed(
+                  RouteConfig.leitner,
+                  arguments: {
+                    "groupCode": widget.groupCode,
+                    "level": LeitnerScreen.allLevel
+                  },
+                );
               },
             ),
     );

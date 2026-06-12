@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
-import '../view/visual_leitner_screen.dart';
 import '../view/data_screen.dart';
 import '../view/download_screen.dart';
 import '../view/error_screen.dart';
@@ -21,7 +20,6 @@ import '../view/stats_screen.dart';
 /// or mistyped, keeping each screen's constructor free of null checks.
 class RouteConfig {
   static const String home = "/";
-  static const String visualLeitner = "/visual-leitner";
   static const String error = "/error";
   static const String level = "/level";
   static const String data = "/data";
@@ -39,12 +37,6 @@ class RouteConfig {
       switch (settings.name) {
         case home:
           return MaterialPageRoute(builder: (_) => const HomeScreen());
-
-        case visualLeitner:
-          return MaterialPageRoute(
-              builder: (_) => VisualLeitnerScreen(
-                    level: _getRequired<int>(args, "level"),
-                  ));
 
         case level:
           return MaterialPageRoute(
