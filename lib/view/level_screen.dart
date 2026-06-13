@@ -144,7 +144,7 @@ class _LevelScreenState extends State<LevelScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
-        await Get.find<RouteService>().pushReplacementNamed(
+        await Get.find<RouteService>().pushNamed(
           RouteConfig.leitner,
           arguments: {"groupCode": widget.groupCode, "level": level},
         );
@@ -270,7 +270,7 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.skip_next_outlined),
               tooltip: 'Play limited',
               onPressed: () async {
-                await Get.find<RouteService>().pushReplacementNamed(
+                await Get.find<RouteService>().pushNamed(
                   RouteConfig.leitner,
                   arguments: {
                     "groupCode": widget.groupCode,
@@ -316,7 +316,7 @@ class _LevelScreenState extends State<LevelScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Play All'),
               onPressed: () async {
-                await Get.find<RouteService>().pushReplacementNamed(
+                await Get.find<RouteService>().pushNamed(
                   RouteConfig.leitner,
                   arguments: {
                     "groupCode": widget.groupCode,

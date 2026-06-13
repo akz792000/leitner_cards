@@ -12,11 +12,9 @@ import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/view/widget/icon_button_widget.dart';
 
-import '../config/route_config.dart';
 import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
-import '../service/route_service.dart';
 import '../service/tts_service.dart';
 import '../util/date_time_util.dart';
 import 'widget/animated_gradient_background.dart';
@@ -899,11 +897,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         centerTitle: false,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
-          onTap: () async =>
-              await Get.find<RouteService>().pushReplacementNamed(
-            RouteConfig.level,
-            arguments: {"groupCode": widget.groupCode},
-          ),
+          onTap: () => Navigator.of(context).pop(),
         ),
         actions: [
           Obx(() {
