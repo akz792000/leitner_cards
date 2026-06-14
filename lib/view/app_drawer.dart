@@ -41,6 +41,17 @@ class AppDrawer extends StatelessWidget {
                   const SizedBox(height: 16),
                   _sectionLabel('Settings'),
                   const SizedBox(height: 4),
+                  _navTile(
+                    context,
+                    icon: Icons.settings_outlined,
+                    iconColor: Colors.deepPurple,
+                    title: 'Settings',
+                    subtitle: 'Voice, display & study options',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(RouteConfig.settings);
+                    },
+                  ),
                   Obx(() {
                     final themeService = Get.find<ThemeService>();
                     return _navTile(

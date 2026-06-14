@@ -10,6 +10,7 @@ import '../view/level_screen.dart';
 import '../view/loading_screen.dart';
 import '../view/merge_screen.dart';
 import '../view/persist_screen.dart';
+import '../view/settings_screen.dart';
 import '../view/stats_screen.dart';
 
 /// Named route constants and the [generateRoute] factory for the app.
@@ -29,12 +30,13 @@ class RouteConfig {
   static const String download = "/download";
   static const String stats = "/stats";
   static const String loading = "/loading";
+  static const String settings = "/settings";
 
-  Route generateRoute(RouteSettings settings) {
-    final args = _getArgMap(settings);
+  Route generateRoute(RouteSettings routeSettings) {
+    final args = _getArgMap(routeSettings);
 
     try {
-      switch (settings.name) {
+      switch (routeSettings.name) {
         case home:
           return MaterialPageRoute(builder: (_) => const HomeScreen());
 
@@ -75,6 +77,9 @@ class RouteConfig {
         case stats:
           return MaterialPageRoute(builder: (_) => const StatsScreen());
 
+        case settings:
+          return MaterialPageRoute(builder: (_) => const SettingsScreen());
+
         case loading:
           return MaterialPageRoute(builder: (_) => const LoadingScreen());
 
@@ -89,12 +94,12 @@ class RouteConfig {
     }
   }
 
-  Map<String, dynamic>? _getArgMap(RouteSettings settings) {
-    if (settings.arguments == null) return null;
-    if (settings.arguments is! Map) {
+  Map<String, dynamic>? _getArgMap(RouteSettings routeSettings) {
+    if (routeSettings.arguments == null) return null;
+    if (routeSettings.arguments is! Map) {
       throw ArgumentError("Route arguments must be a Map<String, dynamic>.");
     }
-    return settings.arguments as Map<String, dynamic>;
+    return routeSettings.arguments as Map<String, dynamic>;
   }
 
   T _getRequired<T>(Map<String, dynamic>? args, String key) {

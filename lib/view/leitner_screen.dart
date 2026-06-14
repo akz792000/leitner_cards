@@ -15,9 +15,11 @@ import 'package:leitner_cards/view/widget/icon_button_widget.dart';
 import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
+import '../service/settings_service.dart';
 import '../service/tts_service.dart';
 import '../service/stt_service.dart';
 import '../util/date_time_util.dart';
+import '../enums/card_order.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
 import 'widget/animated_flag.dart';
@@ -115,6 +117,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   final CardService _cardService = Get.find<CardService>();
   final TtsService _ttsService = Get.find<TtsService>();
   final SttService _sttService = Get.find<SttService>();
+  final SettingsService _settingsService = Get.find<SettingsService>();
   final PageController _pageController =
       PageController(initialPage: 0, keepPage: true);
   final Map<int, ScrollController> _textScrollControllers = {};
@@ -154,7 +157,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       false; // toggled each pulse cycle to keep animation running
   final _rng = Random();
 
-  static const _dimAfter = Duration(minutes: 2);
+  /// Dynamic dim delay driven by [SettingsService.dimDelayMin].
+  Duration get _dimAfter =>
+      Duration(minutes: _settingsService.dimDelayMin.value);
   static const _shiftInterval = Duration(seconds: 30);
   static const _maxShift = 2.0;
 
@@ -222,6 +227,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   void _resetIdleTimer() {
     _idleTimer?.cancel();
     if (_isDimmed) setState(() => _isDimmed = false);
+    // Only schedule dim timer when AMOLED dim protection is enabled.
+    if (!_settingsService.amoledDim.value) return;
     _idleTimer = Timer(_dimAfter, () {
       if (mounted) setState(() => _isDimmed = true);
     });
@@ -265,6 +272,18 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
             .toList();
         break;
     }
+    // Apply card order from settings.
+    switch (_settingsService.cardOrder.value) {
+      case CardOrder.highFirst:
+        _pairs.sort((a, b) => b.$2.level.compareTo(a.$2.level));
+        break;
+      case CardOrder.lowFirst:
+        _pairs.sort((a, b) => a.$2.level.compareTo(b.$2.level));
+        break;
+      case CardOrder.random:
+        _pairs.shuffle();
+        break;
+    }
   }
 
   /// Returns true when [card] has an image that should drive the reveal-first UX.
@@ -298,6 +317,16 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       _languageCode = languageCode;
       _level = _progressEntity.level;
     });
+    // Auto-speak the card when the page changes, if enabled.
+    if (_settingsService.autoSpeak.value &&
+        _settingsService.speakEnabled.value) {
+      final lang = _isImageCard(_cardEntity)
+          ? ((_langTabMap[_cardEntity.id] ?? 0) == 0
+              ? LanguageCode.en
+              : LanguageCode.de)
+          : languageCode;
+      _ttsService.speak(_currentText, lang);
+    }
   }
 
   void _onPageChanged(int value) {
@@ -445,7 +474,10 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     final expected = _sttExpected;
     final lang = _sttLanguage;
 
-    final recognised = await _sttService.listen(lang);
+    final recognised = await _sttService.listen(
+      lang,
+      pauseMs: _settingsService.sttPauseMs.value,
+    );
 
     if (!mounted) return;
 
@@ -461,7 +493,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       return;
     }
 
-    if (sttMatches(recognised, expected)) {
+    if (sttMatches(recognised, expected,
+        threshold: _settingsService.sttThreshold.value)) {
       // Only Play All grades the card (thumbs-up + level change).
       // Play Limited and per-level play just advance to the next card.
       final isGradedMode = widget.level == LeitnerScreen.allLevel;
@@ -470,13 +503,15 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       } else {
         _changePage(_progressEntity.level, null);
       }
-      // Auto-restart listening for the next card once the page animation settles.
+      // Auto-restart listening for the next card — only if autoListen is on.
       if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted &&
-          _sttService.isAvailable &&
-          !_sttService.isListening.value) {
-        if (context.mounted) _onMicPressed(context);
+      if (_settingsService.autoListen.value) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (mounted &&
+            _sttService.isAvailable &&
+            !_sttService.isListening.value) {
+          if (context.mounted) _onMicPressed(context);
+        }
       }
     } else {
       if (!context.mounted) return;
@@ -627,7 +662,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     result.removeWhere((element) {
       if (element.key == null) return false;
       final keyValue = (element.key as ValueKey).value;
-      return (keyValue == 'desc' && _cardEntity.desc.isEmpty) ||
+      return (keyValue == 'desc' &&
+              (_cardEntity.desc.isEmpty ||
+                  !_settingsService.descEnabled.value)) ||
           (keyValue == 'like' && widget.level != LeitnerScreen.allLevel);
     });
 
@@ -1037,10 +1074,13 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          '${_index + 1} / ${_pairs.length}',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        ),
+        title: Obx(() => _settingsService.counterVisible.value
+            ? Text(
+                '${_index + 1} / ${_pairs.length}',
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              )
+            : const SizedBox.shrink()),
         titleSpacing: 4,
         centerTitle: false,
         leading: InkWell(
@@ -1049,6 +1089,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         ),
         actions: [
           Obx(() {
+            if (!_settingsService.speakEnabled.value) {
+              return const SizedBox.shrink();
+            }
             final isImage = _isImageCard(_cardEntity);
             final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             return IconButton(
@@ -1082,7 +1125,10 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
                   : null,
             );
           }),
-          Builder(builder: (context) {
+          Obx(() {
+            if (!_settingsService.copyEnabled.value) {
+              return const SizedBox.shrink();
+            }
             final isImage = _isImageCard(_cardEntity);
             final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             return IconButton(
@@ -1093,6 +1139,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
           }),
           // Mic button — pulses red while listening, idle when not.
           Obx(() {
+            if (!_settingsService.micEnabled.value) {
+              return const SizedBox.shrink();
+            }
             final isImage = _isImageCard(_cardEntity);
             final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             final listening = _sttService.isListening.value;

@@ -48,11 +48,12 @@ class SttService extends GetxService {
   }
 
   /// Starts listening in the locale matching [language] and returns the
-  /// Starts listening in the locale matching [language] and returns the
   /// recognised text when the user stops speaking, or `null` on failure.
   /// Times out after [timeout] if no result arrives (e.g. on iOS Simulator).
+  /// [pauseMs] controls how long to wait after silence before stopping.
   Future<String?> listen(LanguageCode language,
-      {Duration timeout = const Duration(seconds: 30)}) async {
+      {int pauseMs = 2000,
+      Duration timeout = const Duration(seconds: 30)}) async {
     if (!_initialized || isListening.value) return null;
 
     String? result;
@@ -62,11 +63,10 @@ class SttService extends GetxService {
     try {
       // Use `confirmation` mode — universally supported across Android OEMs
       // (including Samsung). `dictation` mode crashes on some devices.
-      // 2s pause balances responsiveness and capturing complete sentences.
       await _stt.listen(
         listenOptions: SpeechListenOptions(
           listenMode: ListenMode.confirmation,
-          pauseFor: const Duration(seconds: 2),
+          pauseFor: Duration(milliseconds: pauseMs),
           localeId: _locale(language),
           cancelOnError: true,
         ),

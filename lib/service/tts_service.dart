@@ -2,6 +2,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:get/get.dart';
 
 import '../enums/language_code.dart';
+import '../service/settings_service.dart';
 
 /// Text-to-speech service wrapping [FlutterTts].
 ///
@@ -51,6 +52,7 @@ class TtsService extends GetxService {
   }
 
   /// Speaks [text] using the locale matching [language].
+  /// Applies the current [SettingsService.speechRate] before each utterance.
   /// Returns `false` if the language engine is not installed on the device,
   /// `true` when playback starts successfully.
   Future<bool> speak(String text, LanguageCode language) async {
@@ -59,6 +61,9 @@ class TtsService extends GetxService {
     final available = await _tts.isLanguageAvailable(locale);
     if (available != true) return false;
     await _tts.setLanguage(locale);
+    // Apply the user-configured speech rate on every speak call so changes
+    // in SettingsService take effect immediately without restarting the service.
+    await _tts.setSpeechRate(Get.find<SettingsService>().speechRate.value);
     await _tts.speak(text);
     return true;
   }
