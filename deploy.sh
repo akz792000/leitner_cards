@@ -119,7 +119,7 @@ if $CLEAN; then
 fi
 
 yellow "Building release APK..."
-flutter build apk --release
+flutter build apk --release --android-skip-build-dependency-validation
 
 # ── install via adb directly (avoids interactive device picker) ───────────────
 yellow "Installing on device $DEVICE_SERIAL..."
