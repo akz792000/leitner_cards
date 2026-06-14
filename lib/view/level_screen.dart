@@ -79,22 +79,22 @@ class _LevelScreenState extends State<LevelScreen> {
 
   String _levelEmoji(int level) {
     const emojis = [
-      '🥚', // 0  – not started
-      '🐣', // 1  – hatching
-      '🐥', // 2  – chick
-      '🌱', // 3  – seedling
-      '🌿', // 4  – growing
-      '🌳', // 5  – tree
-      '⚡', // 6  – energised
-      '🔥', // 7  – on fire
-      '💡', // 8  – bright idea
-      '🎯', // 9  – focused
-      '⭐', // 10 – star
-      '🌟', // 11 – glowing star
-      '💫', // 12 – shooting star
-      '🏆', // 13 – trophy
-      '👑', // 14 – crown
-      '💎', // 15 – diamond
+      '🐛', // 0  – caterpillar (tiny, helpless)
+      '🐌', // 1  – snail (slow starter)
+      '🐁', // 2  – mouse (small but alive)
+      '🐇', // 3  – rabbit (getting quicker)
+      '🦔', // 4  – hedgehog (has some defence)
+      '🦊', // 5  – fox (smart & cunning)
+      '🐺', // 6  – wolf (pack hunter)
+      '🐗', // 7  – boar (fierce & tough)
+      '🐆', // 8  – leopard (fast predator)
+      '🦁', // 9  – lion (king of savanna)
+      '🐯', // 10 – tiger (apex predator)
+      '🦅', // 11 – eagle (rules the sky)
+      '🦈', // 12 – shark (rules the sea)
+      '🦏', // 13 – rhino (unstoppable force)
+      '🐘', // 14 – elephant (wise & mighty)
+      '🐉', // 15 – dragon (beyond nature — legendary)
     ];
     return emojis[level.clamp(0, emojis.length - 1)];
   }
