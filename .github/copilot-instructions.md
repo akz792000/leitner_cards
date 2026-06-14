@@ -143,14 +143,15 @@ All navigation uses `Get.find<RouteService>().pushNamed()` or `pushReplacementNa
 Registration order in `DependencyConfig.registerDependencies()` is **critical**:
 
 ```
-1. ThemeService.init()      ← async; must be first — MyApp reads mode synchronously
-2. RouteService()           ← provides navigatorKey for MaterialApp
-3. CardRepository()         ← opens 'card' Hive box
-4. ProgressRepository()     ← opens 'progress' Hive box
-5. CardService()            ← depends on both repositories
-6. SyncService()            ← depends on CardRepository
-7. TtsService()             ← no dependencies; registers flutter_tts handlers
-8. SttService()             ← speech-to-text; skips init on macOS (TCC crash)
+1. ThemeService.init()      ← async; must be first — opens 'settings' Hive box
+2. SettingsService()        ← must follow ThemeService (reuses 'settings' box)
+3. RouteService()           ← provides navigatorKey for MaterialApp
+4. CardRepository()         ← opens 'card' Hive box
+5. ProgressRepository()     ← opens 'progress' Hive box
+6. CardService()            ← depends on both repositories
+7. SyncService()            ← depends on CardRepository
+8. TtsService()             ← no dependencies; registers flutter_tts handlers
+9. SttService()             ← speech-to-text; skips init on macOS (TCC crash)
 ```
 
 Usage everywhere: `Get.find<ServiceName>().method()`.
@@ -250,6 +251,19 @@ All-or-nothing Hive writes. Never write directly to Hive from views.
 | `removeCards(List<CardEntity>)` | Delete multiple cards from Hive |
 
 > ⚠️ Auto-download on startup was removed. Downloads happen only via `DownloadScreen` (triggered manually from `AppDrawer`).
+
+### SettingsService
+- Hive box: `'settings'` (same box as ThemeService — different keys)
+- 13 user settings persisted reactively via `ever()`:
+  - **STT:** `micEnabled`, `autoListen`, `sttPauseMs`, `sttThreshold`
+  - **TTS:** `speakEnabled`, `speechRate`, `autoSpeak`
+  - **Display:** `copyEnabled`, `descEnabled`, `counterVisible`, `amoledDim`, `dimDelayMin`
+  - **Study:** `cardOrder` (`CardOrder` enum — highFirst/lowFirst/random)
+- **Study-time tracking:** cumulative foreground seconds per deck
+  - Hive keys: `studyTime_FA_EN`, `studyTime_EN_DE`, `studyTime_EN_DE_VERBS`, `studyTime_VISUAL`
+  - `studyTimeSecs(GroupCode)` → current total seconds
+  - `addStudyTime(GroupCode, Duration)` → adds elapsed, persists immediately
+- `resetToDefaults()` — resets all 13 settings (does not reset study time)
 
 ### ThemeService
 - Hive box: `'settings'`, key: `'themeMode'`
@@ -403,6 +417,11 @@ Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3
   - Play Limited / per-level: correct → advance only, no level change; auto-restarts
   - Wrong → snackbar showing what was said vs expected
   - Uses `ListenMode.confirmation` (not dictation — crashes on Samsung)
+- **Study-time tracking:** implements `WidgetsBindingObserver`
+  - `_sessionStart` records when foreground begins; `_accumulatedSecs` holds paused total
+  - `didChangeAppLifecycleState`: pauses timer on `paused`, resumes on `resumed`
+  - `dispose()` flushes remaining time → `SettingsService.addStudyTime(groupCode, elapsed)`
+  - Idle/locked phone time is **excluded** — only active foreground seconds count
 
 ### VisualLeitnerScreen
 - Image URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main/images/{image}`
@@ -431,6 +450,9 @@ Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3
 
 ### StatsScreen
 - TabBar: one tab per `GroupCode` value
+- **Time Studied hero card** at top of each tab — cumulative foreground study time for that deck
+  - Formatted as `Xh Ym` / `Xm Ys` / `Xs` depending on magnitude
+  - Sourced from `SettingsService.studyTimeSecs(groupCode)` (persisted in Hive)
 - Metrics: total, started, totalReviews, maxLevel, levelMap, reviewedToday, lastModified
 
 ### AppDrawer
