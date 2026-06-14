@@ -140,6 +140,9 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
 
   // Tracks whether the like/dislike button has been tapped for each card id.
   final Map<int, LevelDirection?> _levelChangedMap = {};
+  // Snapshot of each card's level at the moment this session started —
+  // used to prevent re-grading the same card if the screen is recreated.
+  final Map<int, int> _initialLevels = {};
   final Set<int> _orderChangedSet = {};
 
   // Image-card state: which cards have been tapped to reveal, and per-card language tab.
@@ -283,6 +286,24 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       case CardOrder.random:
         _pairs.shuffle();
         break;
+    }
+    // Snapshot initial levels so we can detect re-grading if the screen is
+    // recreated after the user navigates away mid-session.
+    for (final pair in _pairs) {
+      _initialLevels[pair.$1.id] = pair.$2.level;
+    }
+    // Pre-populate _levelChangedMap for any card already graded this session.
+    // A card is considered graded if its persisted level differs from the
+    // snapshot — meaning _changePage was called in a previous screen instance.
+    for (final pair in _pairs) {
+      final cardId = pair.$1.id;
+      final currentLevel = pair.$2.level;
+      final initialLevel = _initialLevels[cardId]!;
+      if (currentLevel > initialLevel) {
+        _levelChangedMap[cardId] = LevelDirection.up;
+      } else if (currentLevel < initialLevel) {
+        _levelChangedMap[cardId] = LevelDirection.down;
+      }
     }
   }
 

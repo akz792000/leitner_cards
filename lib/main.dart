@@ -87,6 +87,9 @@ class _MyAppState extends State<MyApp> {
               themeMode: themeService.mode,
               debugShowCheckedModeBanner: false,
               navigatorKey: Get.find<RouteService>().navigatorKey,
+              navigatorObservers: [
+                Get.find<RouteService>().routeObserver,
+              ],
               onGenerateRoute: _routeConfig.generateRoute,
             ));
       },

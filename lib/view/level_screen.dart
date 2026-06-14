@@ -23,7 +23,7 @@ class LevelScreen extends StatefulWidget {
   State<LevelScreen> createState() => _LevelScreenState();
 }
 
-class _LevelScreenState extends State<LevelScreen> {
+class _LevelScreenState extends State<LevelScreen> with RouteAware {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   late int _count;
@@ -43,6 +43,28 @@ class _LevelScreenState extends State<LevelScreen> {
   void initState() {
     super.initState();
     _initialize();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route events so we refresh when navigating back from
+    // LeitnerScreen — level counts change after cards are graded.
+    Get.find<RouteService>()
+        .routeObserver
+        .subscribe(this, ModalRoute.of(context)!);
+  }
+
+  /// Called by [RouteObserver] when this screen comes back into view.
+  @override
+  void didPopNext() {
+    setState(_initialize);
+  }
+
+  @override
+  void dispose() {
+    Get.find<RouteService>().routeObserver.unsubscribe(this);
+    super.dispose();
   }
 
   void _initialize() {
