@@ -16,6 +16,7 @@ import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
 import '../service/tts_service.dart';
+import '../service/stt_service.dart';
 import '../util/date_time_util.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
@@ -113,6 +114,7 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
   final CardService _cardService = Get.find<CardService>();
   final TtsService _ttsService = Get.find<TtsService>();
+  final SttService _sttService = Get.find<SttService>();
   final PageController _pageController =
       PageController(initialPage: 0, keepPage: true);
   final Map<int, ScrollController> _textScrollControllers = {};
@@ -148,6 +150,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   bool _isDimmed = false;
   double _shiftX = 0;
   double _shiftY = 0;
+  bool _micPulseFlip =
+      false; // toggled each pulse cycle to keep animation running
   final _rng = Random();
 
   static const _dimAfter = Duration(minutes: 2);
@@ -305,14 +309,14 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
 
   /// Persists the new level/subLevel, updates local state, then advances the
   /// [PageView] to the next card (if one exists).
-  void _changePage(int level, LevelDirection direction) async {
+  void _changePage(int level, LevelDirection? direction) async {
     _progressEntity.level = level;
     _progressEntity.subLevel = ProgressEntity.initSubLevel;
     _progressEntity.modified = DateTimeUtil.now();
     await _progressRepository.merge(_progressEntity);
     setState(() {
       _level = _progressEntity.level;
-      _levelChangedMap[_cardEntity.id] = direction;
+      if (direction != null) _levelChangedMap[_cardEntity.id] = direction;
     });
 
     if (_index < _pairs.length - 1) {
@@ -321,7 +325,48 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
+    } else {
+      // Last card — show completion dialog instead of closing the screen.
+      if (!mounted) return;
+      _showSessionCompleteDialog(context);
     }
+  }
+
+  /// Shows a "session complete" dialog at the end of the card deck.
+  /// Offers to go back or stay on the last card.
+  void _showSessionCompleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('🎉', style: TextStyle(fontSize: 28)),
+            SizedBox(width: 8),
+            Text('Session Complete!'),
+          ],
+        ),
+        content: Text(
+          'You\'ve gone through all ${_pairs.length} card${_pairs.length == 1 ? '' : 's'} in this session.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Stay'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Returns the text currently shown on the card (matches [_getTextChild] / image-tab logic).
@@ -355,6 +400,105 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  /// Returns the language the user should speak for this deck.
+  /// faEn → always EN (learning English), enDe/enDeVerbs → always DE (learning German).
+  /// Visual → matches the currently selected lang tab.
+  LanguageCode get _sttLanguage {
+    switch (widget.groupCode) {
+      case GroupCode.faEn:
+        return LanguageCode.en;
+      case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
+        return LanguageCode.de;
+      case GroupCode.visual:
+        return (_langTabMap[_cardEntity.id] ?? 0) == 0
+            ? LanguageCode.en
+            : LanguageCode.de;
+    }
+  }
+
+  /// Returns the expected answer text matching [_sttLanguage].
+  String get _sttExpected {
+    switch (widget.groupCode) {
+      case GroupCode.faEn:
+        return _cardEntity.en;
+      case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
+        return _cardEntity.de;
+      case GroupCode.visual:
+        return (_langTabMap[_cardEntity.id] ?? 0) == 0
+            ? _cardEntity.en
+            : _cardEntity.de;
+    }
+  }
+
+  /// Shows the live listening overlay dialog, starts STT, then evaluates result.
+  Future<void> _onMicPressed(BuildContext context) async {
+    if (_sttService.isListening.value) {
+      await _sttService.stop();
+      return;
+    }
+    if (_ttsService.isSpeaking.value) await _ttsService.stop();
+
+    final expected = _sttExpected;
+    final lang = _sttLanguage;
+
+    final recognised = await _sttService.listen(lang);
+
+    if (!mounted) return;
+
+    if (recognised == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not hear anything. Try again.'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (sttMatches(recognised, expected)) {
+      // Only Play All grades the card (thumbs-up + level change).
+      // Play Limited and per-level play just advance to the next card.
+      final isGradedMode = widget.level == LeitnerScreen.allLevel;
+      if (isGradedMode) {
+        _changePage(_progressEntity.level + 1, LevelDirection.up);
+      } else {
+        _changePage(_progressEntity.level, null);
+      }
+      // Auto-restart listening for the next card once the page animation settles.
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted &&
+          _sttService.isAvailable &&
+          !_sttService.isListening.value) {
+        if (context.mounted) _onMicPressed(context);
+      }
+    } else {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You said:  "$recognised"',
+                  style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 4),
+              Text('Expected: "$expected"',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
@@ -893,7 +1037,11 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Item ${_index + 1} of ${_pairs.length}'),
+        title: Text(
+          '${_index + 1} / ${_pairs.length}',
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        titleSpacing: 4,
         centerTitle: false,
         leading: InkWell(
           child: const Icon(Icons.arrow_back_ios),
@@ -941,6 +1089,38 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
               icon: const Icon(Icons.copy_outlined),
               tooltip: 'Copy',
               onPressed: revealed ? () => _copyCurrentText(context) : null,
+            );
+          }),
+          // Mic button — pulses red while listening, idle when not.
+          Obx(() {
+            final isImage = _isImageCard(_cardEntity);
+            final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
+            final listening = _sttService.isListening.value;
+            final available = _sttService.isAvailable;
+            final enabled = revealed && available;
+            // _micPulse toggles between true/false on each animation end
+            // to create a continuous oscillation only while listening.
+            return TweenAnimationBuilder<double>(
+              key: ValueKey(listening),
+              tween: Tween(
+                begin: listening ? (_micPulseFlip ? 1.4 : 1.0) : 1.0,
+                end: listening ? (_micPulseFlip ? 1.0 : 1.4) : 1.0,
+              ),
+              duration: Duration(milliseconds: listening ? 550 : 200),
+              curve: Curves.easeInOut,
+              onEnd: listening
+                  ? () => setState(() => _micPulseFlip = !_micPulseFlip)
+                  : null,
+              builder: (_, scale, child) =>
+                  Transform.scale(scale: scale, child: child),
+              child: IconButton(
+                icon: Icon(
+                  listening ? Icons.mic : Icons.mic_none_outlined,
+                  color: listening ? Colors.redAccent : null,
+                ),
+                tooltip: listening ? 'Stop listening' : 'Speak to answer',
+                onPressed: enabled ? () => _onMicPressed(context) : null,
+              ),
             );
           }),
         ],

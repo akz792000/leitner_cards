@@ -7,6 +7,7 @@ import '../service/route_service.dart';
 import '../service/sync_service.dart';
 import '../service/theme_service.dart';
 import '../service/tts_service.dart';
+import '../service/stt_service.dart';
 
 /// Registers all GetX services and repositories in dependency order.
 ///
@@ -23,5 +24,6 @@ class DependencyConfig {
     await Get.putAsync<CardService>(() => Future.value(CardService()));
     await Get.putAsync<SyncService>(() => Future.value(SyncService()));
     await Get.putAsync<TtsService>(() => Future.value(TtsService()));
+    await Get.putAsync<SttService>(() => Future.value(SttService()));
   }
 }
