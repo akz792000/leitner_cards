@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 
 import '../enums/card_order.dart';
+import '../enums/group_code.dart';
 
 /// Persists all user-configurable settings to the Hive 'settings' box.
 /// The box is opened by [ThemeService.init()] before this service initialises.
@@ -29,6 +30,10 @@ class SettingsService extends GetxService {
   // Study keys
   static const _kCardOrder = 'cardOrder'; // int → CardOrder.code
 
+  // Study-time keys — cumulative seconds spent studying each deck.
+  // Key pattern: 'studyTime_<GroupCode.code>'
+  static String _studyTimeKey(GroupCode g) => 'studyTime_${g.code}';
+
   // Reactive fields — STT
   final RxBool micEnabled = true.obs;
   final RxBool autoListen = true.obs;
@@ -49,6 +54,21 @@ class SettingsService extends GetxService {
 
   // Reactive fields — Study
   final Rx<CardOrder> cardOrder = CardOrder.highFirst.obs;
+
+  // Reactive study-time counters (seconds) — one per deck, updated on session end.
+  final Map<GroupCode, RxInt> _studyTimeSecs = {
+    for (final g in GroupCode.values) g: 0.obs,
+  };
+
+  /// Total seconds spent studying [groupCode].
+  int studyTimeSecs(GroupCode groupCode) => _studyTimeSecs[groupCode]!.value;
+
+  /// Adds [elapsed] to the cumulative study time for [groupCode] and persists.
+  void addStudyTime(GroupCode groupCode, Duration elapsed) {
+    if (elapsed.inSeconds < 1) return;
+    _studyTimeSecs[groupCode]!.value += elapsed.inSeconds;
+    _box.put(_studyTimeKey(groupCode), _studyTimeSecs[groupCode]!.value);
+  }
 
   @override
   void onInit() {
@@ -89,6 +109,10 @@ class SettingsService extends GetxService {
     dimDelayMin.value = _box.get(_kDimDelayMin, defaultValue: 2);
     cardOrder.value = CardOrder.fromCode(
         _box.get(_kCardOrder, defaultValue: CardOrder.highFirst.code));
+    // Restore cumulative study times
+    for (final g in GroupCode.values) {
+      _studyTimeSecs[g]!.value = _box.get(_studyTimeKey(g), defaultValue: 0);
+    }
   }
 
   /// Resets all settings to their default values.

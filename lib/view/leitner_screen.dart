@@ -108,7 +108,8 @@ class LeitnerScreen extends StatefulWidget {
   State<LeitnerScreen> createState() => _LeitnerScreenState();
 }
 
-class _LeitnerScreenState extends State<LeitnerScreen> {
+class _LeitnerScreenState extends State<LeitnerScreen>
+    with WidgetsBindingObserver {
   static const String _imageBaseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main/images';
 
@@ -160,6 +161,12 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
       false; // toggled each pulse cycle to keep animation running
   final _rng = Random();
 
+  // Study-time tracking — paused when app goes to background.
+  // _sessionStart is null while backgrounded; _accumulatedSecs holds time
+  // already elapsed before the last background event.
+  DateTime? _sessionStart;
+  int _accumulatedSecs = 0;
+
   /// Dynamic dim delay driven by [SettingsService.dimDelayMin].
   Duration get _dimAfter =>
       Duration(minutes: _settingsService.dimDelayMin.value);
@@ -169,6 +176,8 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
   @override
   void initState() {
     super.initState();
+    _sessionStart = DateTime.now(); // study-time: clock starts
+    WidgetsBinding.instance.addObserver(this);
     _languageCode = _getInitialLanguageCode();
     _loadCards();
     if (_pairs.isNotEmpty) {
@@ -183,8 +192,35 @@ class _LeitnerScreenState extends State<LeitnerScreen> {
     _ttsScrollWorker = ever(_ttsService.wordStart, _scrollToHighlightedWord);
   }
 
+  /// Moves elapsed foreground time into [_accumulatedSecs] and clears the
+  /// start timestamp. Called on background and before saving in dispose().
+  void _flushElapsed() {
+    if (_sessionStart != null) {
+      _accumulatedSecs += DateTime.now().difference(_sessionStart!).inSeconds;
+      _sessionStart = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App moved to background — pause the timer.
+      _flushElapsed();
+    } else if (state == AppLifecycleState.resumed) {
+      // App returned to foreground — resume the timer.
+      _sessionStart = DateTime.now();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Flush any remaining foreground time and persist.
+    _flushElapsed();
+    if (_accumulatedSecs > 0) {
+      _settingsService.addStudyTime(
+          widget.groupCode, Duration(seconds: _accumulatedSecs));
+    }
     _ttsScrollWorker?.dispose();
     for (final c in _textScrollControllers.values) {
       c.dispose();

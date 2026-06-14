@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
+import 'package:leitner_cards/service/settings_service.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 /// Learning-progress statistics screen, one tab per [GroupCode] deck.
@@ -108,12 +109,19 @@ class _StatsTab extends StatelessWidget {
     }
 
     final progressPercent = data.started / data.total;
+    final settingsService = Get.find<SettingsService>();
+    final totalSecs = settingsService.studyTimeSecs(groupCode);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Time studied — hero card at the top
+          _buildTimeStudiedCard(context, totalSecs),
+
+          const SizedBox(height: 24),
+
           // Summary cards
           Row(
             children: [
@@ -164,6 +172,97 @@ class _StatsTab extends StatelessWidget {
           _buildSectionLabel('Recent Activity'),
           const SizedBox(height: 12),
           _buildActivityCard(context, data),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  /// Hero card showing total study time formatted as Xh Ym Zs.
+  Widget _buildTimeStudiedCard(BuildContext context, int totalSecs) {
+    final scheme = Theme.of(context).colorScheme;
+    final hours = totalSecs ~/ 3600;
+    final mins = (totalSecs % 3600) ~/ 60;
+    final secs = totalSecs % 60;
+
+    // Build a human-friendly label:  "2h 14m"  or  "45m 30s"  or  "—"
+    String timeLabel;
+    String subLabel;
+    if (totalSecs == 0) {
+      timeLabel = '—';
+      subLabel = 'Start studying to track your time';
+    } else if (hours > 0) {
+      timeLabel = '${hours}h ${mins}m';
+      subLabel = '${totalSecs ~/ 60} minutes total';
+    } else if (mins > 0) {
+      timeLabel = '${mins}m ${secs}s';
+      subLabel = '$totalSecs seconds total';
+    } else {
+      timeLabel = '${secs}s';
+      subLabel = 'Keep going!';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scheme.primary.withValues(alpha: 0.85),
+            scheme.primary.withValues(alpha: 0.55),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child:
+                const Icon(Icons.timer_outlined, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TIME STUDIED',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  timeLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subLabel,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
