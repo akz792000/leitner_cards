@@ -78,7 +78,7 @@ lib/
 │   ├── progress_entity.dart            # Hive model typeId=2
 │   └── progress_entity.g.dart         # ⚠️ Manually maintained — do NOT run build_runner
 ├── enums/
-│   ├── group_code.dart                 # faEn / enDe / visual
+│   ├── group_code.dart                 # faEn / enDe / enDeVerbs / visual
 │   ├── language_code.dart              # en / fa / de (+ direction getter)
 │   └── level_direction.dart            # up / down
 ├── repository/
@@ -87,6 +87,7 @@ lib/
 ├── service/
 │   ├── card_service.dart               # Leitner algorithm
 │   ├── route_service.dart              # pushNamed / pushReplacementNamed wrappers
+│   ├── stt_service.dart               # Speech-to-text; reactive isListening, liveText; sttMatches()
 │   ├── sync_service.dart               # saveCard / removeCard — all-or-nothing Hive writes
 │   ├── theme_service.dart             # Reactive GetX service, persists to Hive 'settings'
 │   └── tts_service.dart               # Text-to-speech; reactive isSpeaking, wordStart, wordEnd
@@ -149,6 +150,7 @@ Registration order in `DependencyConfig.registerDependencies()` is **critical**:
 5. CardService()            ← depends on both repositories
 6. SyncService()            ← depends on CardRepository
 7. TtsService()             ← no dependencies; registers flutter_tts handlers
+8. SttService()             ← speech-to-text; skips init on macOS (TCC crash)
 ```
 
 Usage everywhere: `Get.find<ServiceName>().method()`.
@@ -164,7 +166,7 @@ Usage everywhere: `Get.find<ServiceName>().method()`.
 | `id` | 0 | `int` | Epoch seconds: `DateTime.now().millisecondsSinceEpoch ~/ 1000` |
 | `created` | 1 | `tz.TZDateTime` | Set on creation, never changed |
 | `modified` | 2 | `tz.TZDateTime` | Updated on content change |
-| `groupCode` | 3 | `String` | `"FA_EN"`, `"EN_DE"`, or `"VISUAL"` |
+| `groupCode` | 3 | `String` | `"FA_EN"`, `"EN_DE"`, `"EN_DE_VERBS"`, or `"VISUAL"` |
 | `image` | 4 | `String` | Filename (Visual deck) or `""` |
 | `en` | 5 | `String` | English text |
 | `fa` | 6 | `String` | Farsi text |
@@ -264,6 +266,17 @@ All-or-nothing Hive writes. Never write directly to Hive from views.
 - Speech rate: `0.45` (slightly slower for language learning)
 - Requires Google TTS engine for Farsi and word-boundary progress events
 
+### SttService
+- `listen(LanguageCode)` → `Future<String?>` — starts mic, returns recognised text or `null`
+- `stop()` — stops listening immediately
+- Reactive: `isListening` (`RxBool`), `liveText` (`RxString`) — drive pulsing mic button in AppBar
+- Uses `ListenMode.confirmation` (not dictation — crashes on Samsung and some OEMs)
+- `pauseFor: 2s` — auto-stops after 2s of silence; reacts fast to both short and long utterances
+- `cancelOnError: true` — cleans up on error
+- Skips `initialize()` entirely on macOS (TCC SIGABRT before Dart catch)
+- `sttMatches(recognised, expected, {threshold: 0.75})` — top-level fuzzy comparator:
+  normalises both strings, checks ≥75% of expected words appear in recognised text
+
 ### RouteService
 - Holds `GlobalKey<NavigatorState> navigatorKey`
 - `pushNamed(route, {arguments})` → `Future`
@@ -275,9 +288,9 @@ All-or-nothing Hive writes. Never write directly to Hive from views.
 
 ### GroupCode
 ```dart
-enum GroupCode { faEn('FA_EN'), enDe('EN_DE'), visual('VISUAL') }
+enum GroupCode { faEn('FA_EN'), enDe('EN_DE'), enDeVerbs('EN_DE_VERBS'), visual('VISUAL') }
 // .code → stored string
-// .title → 'English' | 'Deutsch' | 'Visual'
+// .title → 'English' | 'Deutsch' | 'Verbs' | 'Visual'
 // GroupCode.fromCode(String?) → defaults to faEn if unrecognised
 ```
 
@@ -364,21 +377,32 @@ Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3
 
 ### LevelScreen
 - Shows all levels that have cards, sorted; colour + emoji badge per level
-- "Play All", "Play Limited" (allLimitedLevel = -2), and per-level play buttons
+- "Play All" FAB (`allLevel = -1`): runs full Leitner algorithm; STT grades cards (thumbs-up)
+- "Play Limited" AppBar icon (`allLimitedLevel = -2`): all cards, ignores schedule; STT just advances
+- Per-level play (level number ≥ 0): only cards at that level; STT just advances, no grading
+- All navigation to `LeitnerScreen` uses `pushNamed` (not `pushReplacementNamed`) so back returns here
 - `LeitnerScreen.allLevel = -1`, `LeitnerScreen.allLimitedLevel = -2` constants
 
 ### LeitnerScreen
-- Study view for FA_EN / EN_DE decks
+- Study view for FA_EN / EN_DE / EN_DE_VERBS decks
+- AppBar title: `X / Y` counter (left-aligned, small font)
 - **AMOLED burn-in protection:**
   - Pixel shifting: `Timer.periodic(30s)` shifts ±2px via `Transform.translate`
   - Auto-dim: after 2 min idle → `Colors.black` overlay alpha 0.85. Tap to wake.
   - `Listener(onPointerDown:)` resets idle timer
-- AppBar: title left-aligned; actions: 🔊 speak button + copy button
+- AppBar actions: 🔊 speak + copy + 🎤 mic
 - 🔊 Speak button reads current card text via `TtsService`; icon toggles stop/speak while active
-- Word highlight: `Text.rich` with background colour span driven by `TtsService.wordStart/wordEnd` — no bold/size change to avoid layout shift
+- Word highlight: `Text.rich` with background colour span driven by `TtsService.wordStart/wordEnd`
 - TTS stops on page swipe, language flip, and screen dispose
 - Thumb buttons: `AnimatedButton(isActive, activeColor)` — green (up) / redAccent (down)
 - Description button → `DescriptionSheet.show()`
+- **Session complete dialog** shown at end of deck — "Stay" or "Done" (never auto-closes)
+- **STT mic button** (🎤): pulses red while listening; `SttService` auto-stops on silence (2s)
+  - Language always targets the learning language: FA_EN → EN, EN_DE/EN_DE_VERBS → DE
+  - Play All (`allLevel`): correct → thumbs-up + advance; auto-restarts for next card
+  - Play Limited / per-level: correct → advance only, no level change; auto-restarts
+  - Wrong → snackbar showing what was said vs expected
+  - Uses `ListenMode.confirmation` (not dictation — crashes on Samsung)
 
 ### VisualLeitnerScreen
 - Image URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main/images/{image}`
@@ -393,7 +417,7 @@ Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3
 
 ### DownloadScreen
 - Full-screen (not a modal). Navigate via `RouteConfig.download`.
-- Downloads `fa_en.json`, `en_de.json`, `visual.json` from GitHub
+- Downloads `fa_en.json`, `en_de.json`, `en_de_verbs.json`, `visual.json` from GitHub
 - Base URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main`
 - "Override" toggle per deck: ON resets progress to level 0 + subLevel 1 on download
 
@@ -475,8 +499,10 @@ IconButtonWidget({required IconData icon, required VoidCallback onTap, Color? co
 
 - `applicationId = "com.flashmind.app"`
 - Kotlin folder: `android/app/src/main/kotlin/com/flashmind/app/MainActivity.kt`
-- `INTERNET` permission in `AndroidManifest.xml` (for downloads + images)
+- Permissions in `AndroidManifest.xml`: `INTERNET` (downloads/images), `RECORD_AUDIO` + `BLUETOOTH` (STT)
 - Java/Kotlin targets: `VERSION_11`
+- Toolchain versions: Gradle `8.14`, AGP `8.11.1`, Kotlin `2.2.20`
+- `kotlin-android` plugin removed from `app/build.gradle.kts` — Flutter's built-in Kotlin handles it
 - **Zscaler SSL fix** in `android/gradle.properties`:
   ```properties
   org.gradle.jvmargs=... -Djavax.net.ssl.trustStoreType=KeychainStore
@@ -522,6 +548,12 @@ See `docs/android-device-debugging-guide.md` for full steps.
 | Max Hive key | `0xFFFFFFFF`. Use seconds epoch for IDs: `DateTime.now().millisecondsSinceEpoch ~/ 1000` |
 | iOS exit button | Removed — iOS HIG discourages quit buttons. Do not add back. |
 | Hive box `'settings'` | Opened by `ThemeService.init()` — not by Hive setup in `main.dart`. |
+| Hive schema corruption | `_openBoxSafe<T>()` in `main.dart` catches corrupt box errors, deletes and recreates fresh. User must re-download cards. |
+| STT on macOS | `speech_to_text.initialize()` causes OS-level TCC SIGABRT on macOS before Dart try-catch runs. Fix: skip STT init entirely when `defaultTargetPlatform == TargetPlatform.macOS`. |
+| STT on Samsung | `ListenMode.dictation` crashes on Samsung/some Android OEMs when speech is first detected. Always use `ListenMode.confirmation`. |
+| STT on iOS Simulator | Simulator doesn't support speech recognition. `listen()` throws `ListenFailedException`. Wrapped in try-catch; mic button is silently disabled. |
+| KGP build warnings | `flutter_tts` and `speech_to_text` apply `kotlin-android` in their own `build.gradle`. Patched in pub cache — see `docs/known-issues-and-fixes.md`. `deploy.sh` uses `--android-skip-build-dependency-validation` as fallback. |
+| `sync_screen.dart` | Orphaned file (no-op stub). Not used in any route. Keep for history. |
 
 ---
 
