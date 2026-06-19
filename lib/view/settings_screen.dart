@@ -69,6 +69,15 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (v) => s.sttThreshold.value =
                     (v * 20).round() / 20, // snap to 0.05
               )),
+          Obx(() => SwitchListTile(
+                secondary: const Icon(Icons.search_outlined),
+                title: const Text('Accept if contains'),
+                subtitle: const Text(
+                    'Pass if expected phrase appears anywhere in your answer'),
+                value: s.containsMode.value,
+                activeThumbColor: cs.primary,
+                onChanged: (v) => s.containsMode.value = v,
+              )),
 
           // ── 🔊 Speak (TTS) ───────────────────────────────────────────────
           _SectionHeader(label: '🔊  Speak (TTS)', colorScheme: cs),

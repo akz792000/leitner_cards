@@ -135,10 +135,18 @@ class SttService extends GetxService {
 
 /// Compares [recognised] against [expected] with fuzzy tolerance.
 ///
-/// Normalises both strings (lowercase, strip punctuation) then checks
-/// that at least [threshold] fraction of expected words appear in the
-/// recognised text. A threshold of 0.75 means 75% of words must match.
-bool sttMatches(String recognised, String expected, {double threshold = 0.75}) {
+/// Normalises both strings (lowercase, strip punctuation) then:
+/// 1. If [containsMode] is true and the expected phrase appears as a
+///    substring anywhere inside recognised, immediately accepts — extra
+///    words before/after are fine (e.g. "hi are you ali again" passes for "ali").
+/// 2. Falls through to the word-overlap threshold check: at least [threshold]
+///    fraction of expected words must appear in the recognised word set.
+bool sttMatches(
+  String recognised,
+  String expected, {
+  double threshold = 0.75,
+  bool containsMode = false,
+}) {
   String normalise(String s) => s
       .toLowerCase()
       .replaceAll(RegExp(r"[^\w\s]", unicode: true), '')
@@ -150,6 +158,9 @@ bool sttMatches(String recognised, String expected, {double threshold = 0.75}) {
 
   if (r.isEmpty || e.isEmpty) return false;
   if (r == e) return true;
+
+  // Fast path: accepted whenever the expected phrase is a substring of recognised.
+  if (containsMode && r.contains(e)) return true;
 
   final expectedWords = e.split(' ').where((w) => w.isNotEmpty).toList();
   if (expectedWords.isEmpty) return false;

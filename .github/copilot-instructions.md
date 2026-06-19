@@ -193,7 +193,7 @@ Getter: `GroupCode get group => GroupCode.fromCode(groupCode)`
 
 ### SettingsService — box `'settings'`
 13 reactive settings persisted via `ever()`:
-- **STT:** `micEnabled`, `autoListen`, `sttPauseMs` (ms), `sttThreshold` (0–1)
+- **STT:** `micEnabled`, `autoListen`, `sttPauseMs` (ms), `sttThreshold` (0–1), `containsMode`
 - **TTS:** `speakEnabled`, `speechRate`, `autoSpeak`
 - **Display:** `copyEnabled`, `descEnabled`, `counterVisible`, `amoledDim`, `dimDelayMin`
 - **Study:** `cardOrder` (`CardOrder` — highFirst/lowFirst/random)
@@ -213,7 +213,7 @@ Locales: `en→en-US`, `fa→fa-IR`, `de→de-DE`. Rate: `0.45`.
 `listen(LanguageCode) → Future<String?>` · `stop()`  
 Reactive: `isListening` (RxBool), `liveText` (RxString).  
 Always `ListenMode.confirmation` (dictation crashes Samsung). `pauseFor: 2s`. Skips init on macOS.  
-`sttMatches(recognised, expected, {threshold=0.75})` — fuzzy word-overlap check.
+`sttMatches(recognised, expected, {threshold=0.75, containsMode=false})` — if `containsMode=true`, first accepts via substring check (`recognised.contains(expected)`), then falls back to word-overlap threshold.
 
 ### RouteService
 `navigatorKey` · `pushNamed(route, {arguments})` · `pushReplacementNamed(route, {arguments})`
@@ -275,7 +275,11 @@ Level list with colour+emoji badges. `allLevel=-1` (FAB, Play All — Leitner sc
 ### LeitnerScreen `/leitner`
 Study screen for all decks. Counter `X/Y` in AppBar. AMOLED: pixel shift every 30s ±2px + auto-dim after `dimDelayMin` idle (black overlay 0.85). AppBar: 🔊 TTS + copy + 🎤 STT. Word highlight via `TtsService.wordStart/wordEnd`. Thumb buttons: `AnimatedButton` green/red. Session-complete dialog: Stay/Done.
 
-STT: language = learning lang (FA_EN→EN, EN_DE/VERBS→DE). Play All: correct→grade up + advance, wrong→snackbar. Play Limited/per-level: correct→advance only. Auto-restarts on correct.
+STT: language = learning lang (FA_EN→EN, EN_DE/VERBS→DE). **Mic button is a toggle** — press once to start continuous loop, press again to stop:
+- Loop: listen → evaluate → correct: grade (Play All) or just advance → listen next card; wrong: snackbar + advance without grading → listen next card; nothing heard: retry same card
+- `_continuousMode` flag drives the red pulsing animation (`_continuousMode || isListening`)
+- `_advancePage()` helper advances the PageView without persisting any level/subLevel changes (used for wrong answers in loop)
+- `containsMode`: `sttMatches` first checks if `normalised(recognised).contains(normalised(expected))` as a fast-accept path before the word-overlap threshold check
 
 Study-time: `WidgetsBindingObserver` — pauses on `AppLifecycleState.paused`, resumes on `resumed`, flushes to `SettingsService` on `dispose()`. Foreground only.
 

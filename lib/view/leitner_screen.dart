@@ -167,6 +167,9 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   DateTime? _sessionStart;
   int _accumulatedSecs = 0;
 
+  /// True while the continuous STT loop is running (mic toggled on).
+  bool _continuousMode = false;
+
   /// Dynamic dim delay driven by [SettingsService.dimDelayMin].
   Duration get _dimAfter =>
       Duration(minutes: _settingsService.dimDelayMin.value);
@@ -214,6 +217,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
 
   @override
   void dispose() {
+    _continuousMode = false;
     WidgetsBinding.instance.removeObserver(this);
     // Flush any remaining foreground time and persist.
     _flushElapsed();
@@ -229,6 +233,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     _pixelShiftTimer?.cancel();
     _pageController.dispose();
     _ttsService.stop();
+    _sttService.stop();
     super.dispose();
   }
 
@@ -520,77 +525,119 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     }
   }
 
-  /// Shows the live listening overlay dialog, starts STT, then evaluates result.
-  Future<void> _onMicPressed(BuildContext context) async {
-    if (_sttService.isListening.value) {
+  /// Advances to the next card without persisting any level/subLevel change.
+  /// Used by the continuous STT loop when an answer is wrong — card is skipped
+  /// but not graded so its Leitner state is untouched.
+  void _advancePage() {
+    if (_index < _pairs.length - 1) {
+      _pageController.animateToPage(
+        _index + 1,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      if (mounted) _showSessionCompleteDialog(context);
+    }
+  }
+
+  /// Toggles the continuous STT loop on/off.
+  ///
+  /// First press → starts the loop (keeps listening card-by-card until stopped).
+  /// Second press → stops the loop and any active listen immediately.
+  Future<void> _onMicPressed() async {
+    if (_continuousMode) {
+      setState(() => _continuousMode = false);
       await _sttService.stop();
       return;
     }
     if (_ttsService.isSpeaking.value) await _ttsService.stop();
-
-    final expected = _sttExpected;
-    final lang = _sttLanguage;
-
-    final recognised = await _sttService.listen(
-      lang,
-      pauseMs: _settingsService.sttPauseMs.value,
-    );
-
     if (!mounted) return;
+    setState(() => _continuousMode = true);
+    await _runContinuousLoop();
+  }
 
-    if (recognised == null) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not hear anything. Try again.'),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
+  /// Continuous STT loop — runs until [_continuousMode] is set to false or the
+  /// deck ends.
+  ///
+  /// Correct answer: grade (Play All) or skip (other modes) → advance → next card.
+  /// Wrong answer: show snackbar → advance without grading → next card.
+  /// Nothing heard: brief pause and retry for the same card.
+  Future<void> _runContinuousLoop() async {
+    while (_continuousMode && mounted) {
+      // Ensure TTS is silent before listening.
+      if (_ttsService.isSpeaking.value) await _ttsService.stop();
+
+      final expected = _sttExpected;
+      final lang = _sttLanguage;
+
+      final recognised = await _sttService.listen(
+        lang,
+        pauseMs: _settingsService.sttPauseMs.value,
       );
-      return;
-    }
 
-    if (sttMatches(recognised, expected,
-        threshold: _settingsService.sttThreshold.value)) {
-      // Only Play All grades the card (thumbs-up + level change).
-      // Play Limited and per-level play just advance to the next card.
-      final isGradedMode = widget.level == LeitnerScreen.allLevel;
-      if (isGradedMode) {
-        _changePage(_progressEntity.level + 1, LevelDirection.up);
-      } else {
-        _changePage(_progressEntity.level, null);
+      if (!mounted || !_continuousMode) break;
+
+      if (recognised == null || recognised.trim().isEmpty) {
+        // Nothing heard — short pause, then retry same card.
+        await Future.delayed(const Duration(milliseconds: 300));
+        continue;
       }
-      // Auto-restart listening for the next card — only if autoListen is on.
-      if (!mounted) return;
-      if (_settingsService.autoListen.value) {
-        await Future.delayed(const Duration(milliseconds: 600));
-        if (mounted &&
-            _sttService.isAvailable &&
-            !_sttService.isListening.value) {
-          if (context.mounted) _onMicPressed(context);
+
+      final matched = sttMatches(
+        recognised,
+        expected,
+        threshold: _settingsService.sttThreshold.value,
+        containsMode: _settingsService.containsMode.value,
+      );
+
+      final isLastCard = _index >= _pairs.length - 1;
+
+      if (matched) {
+        final isGradedMode = widget.level == LeitnerScreen.allLevel;
+        if (isGradedMode) {
+          _changePage(_progressEntity.level + 1, LevelDirection.up);
+        } else {
+          _changePage(_progressEntity.level, null);
         }
+        if (isLastCard) {
+          // _changePage already shows the session-complete dialog.
+          setState(() => _continuousMode = false);
+          break;
+        }
+        // Wait for the page-flip animation + _onPageChanged to update state.
+        await Future.delayed(const Duration(milliseconds: 700));
+      } else {
+        // Wrong — show brief snackbar, skip card without changing its level.
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('You said:  "$recognised"',
+                    style: const TextStyle(fontSize: 13)),
+                const SizedBox(height: 4),
+                Text('Expected: "$expected"',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+        _advancePage();
+        if (isLastCard) {
+          setState(() => _continuousMode = false);
+          break;
+        }
+        // Brief pause so the snackbar is readable before the next listen starts.
+        await Future.delayed(const Duration(milliseconds: 900));
       }
-    } else {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('You said:  "$recognised"',
-                  style: const TextStyle(fontSize: 13)),
-              const SizedBox(height: 4),
-              Text('Expected: "$expected"',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600)),
-            ],
-          ),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
+
+    if (mounted) setState(() => _continuousMode = false);
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
@@ -1194,7 +1241,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
               onPressed: revealed ? () => _copyCurrentText(context) : null,
             );
           }),
-          // Mic button — pulses red while listening, idle when not.
+          // Mic button — red/pulsing while continuous loop is active or actively listening.
           Obx(() {
             if (!_settingsService.micEnabled.value) {
               return const SizedBox.shrink();
@@ -1202,30 +1249,31 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             final isImage = _isImageCard(_cardEntity);
             final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             final listening = _sttService.isListening.value;
+            final active = _continuousMode || listening;
             final available = _sttService.isAvailable;
             final enabled = revealed && available;
             // _micPulse toggles between true/false on each animation end
-            // to create a continuous oscillation only while listening.
+            // to create a continuous oscillation only while active.
             return TweenAnimationBuilder<double>(
-              key: ValueKey(listening),
+              key: ValueKey(active),
               tween: Tween(
-                begin: listening ? (_micPulseFlip ? 1.4 : 1.0) : 1.0,
-                end: listening ? (_micPulseFlip ? 1.0 : 1.4) : 1.0,
+                begin: active ? (_micPulseFlip ? 1.4 : 1.0) : 1.0,
+                end: active ? (_micPulseFlip ? 1.0 : 1.4) : 1.0,
               ),
-              duration: Duration(milliseconds: listening ? 550 : 200),
+              duration: Duration(milliseconds: active ? 550 : 200),
               curve: Curves.easeInOut,
-              onEnd: listening
+              onEnd: active
                   ? () => setState(() => _micPulseFlip = !_micPulseFlip)
                   : null,
               builder: (_, scale, child) =>
                   Transform.scale(scale: scale, child: child),
               child: IconButton(
                 icon: Icon(
-                  listening ? Icons.mic : Icons.mic_none_outlined,
-                  color: listening ? Colors.redAccent : null,
+                  active ? Icons.mic : Icons.mic_none_outlined,
+                  color: active ? Colors.redAccent : null,
                 ),
-                tooltip: listening ? 'Stop listening' : 'Speak to answer',
-                onPressed: enabled ? () => _onMicPressed(context) : null,
+                tooltip: _continuousMode ? 'Stop listening' : 'Speak to answer',
+                onPressed: enabled ? () => _onMicPressed() : null,
               ),
             );
           }),

@@ -14,6 +14,7 @@ class SettingsService extends GetxService {
   static const _kAutoListen = 'autoListen';
   static const _kSttPauseMs = 'sttPauseMs'; // int, ms
   static const _kSttThreshold = 'sttThreshold'; // double 0.0–1.0
+  static const _kContainsMode = 'containsMode'; // bool
 
   // TTS keys
   static const _kSpeakEnabled = 'speakEnabled';
@@ -39,6 +40,10 @@ class SettingsService extends GetxService {
   final RxBool autoListen = true.obs;
   final RxInt sttPauseMs = 2000.obs;
   final RxDouble sttThreshold = 0.75.obs;
+
+  /// When true, STT accepts the answer if the expected phrase appears anywhere
+  /// inside what was said — extra words before/after are fine.
+  final RxBool containsMode = true.obs;
 
   // Reactive fields — TTS
   final RxBool speakEnabled = true.obs;
@@ -80,6 +85,7 @@ class SettingsService extends GetxService {
     ever(autoListen, (_) => _box.put(_kAutoListen, autoListen.value));
     ever(sttPauseMs, (_) => _box.put(_kSttPauseMs, sttPauseMs.value));
     ever(sttThreshold, (_) => _box.put(_kSttThreshold, sttThreshold.value));
+    ever(containsMode, (_) => _box.put(_kContainsMode, containsMode.value));
     ever(speakEnabled, (_) => _box.put(_kSpeakEnabled, speakEnabled.value));
     ever(speechRate, (_) => _box.put(_kSpeechRate, speechRate.value));
     ever(autoSpeak, (_) => _box.put(_kAutoSpeak, autoSpeak.value));
@@ -98,6 +104,7 @@ class SettingsService extends GetxService {
     sttPauseMs.value = _box.get(_kSttPauseMs, defaultValue: 2000);
     sttThreshold.value =
         (_box.get(_kSttThreshold, defaultValue: 0.75) as num).toDouble();
+    containsMode.value = _box.get(_kContainsMode, defaultValue: true);
     speakEnabled.value = _box.get(_kSpeakEnabled, defaultValue: true);
     speechRate.value =
         (_box.get(_kSpeechRate, defaultValue: 0.45) as num).toDouble();
@@ -121,6 +128,7 @@ class SettingsService extends GetxService {
     autoListen.value = true;
     sttPauseMs.value = 2000;
     sttThreshold.value = 0.75;
+    containsMode.value = true;
     speakEnabled.value = true;
     speechRate.value = 0.45;
     autoSpeak.value = false;
