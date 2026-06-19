@@ -1,64 +1,50 @@
-# Copilot Instructions — Leitner Cards (FlashMind)
+# Copilot Instructions — FlashMind
 
-This is the single source of truth for all AI sessions working on this project. Read fully before touching any code.
-
-> 🚨 **NEVER commit or push without the user explicitly saying "commit" or "push". Absolute hard rule — no exceptions, no auto-commits after finishing a task, no "let me commit this for you". Make code changes and STOP.**
+> 🚨 **NEVER commit or push unless the user explicitly says "commit" or "push". No exceptions.**
 
 ---
 
-## 1 · Project Overview
+## 1 · Project
 
-**FlashMind** (`com.flashmind.app`) is a Flutter flashcard app implementing the Leitner spaced-repetition system. Cards move up levels when answered correctly and drop to level 0 when wrong. Four decks:
+**FlashMind** (`com.flashmind.app`) — Flutter Leitner spaced-repetition flashcard app.  
+Cards advance on correct answers, drop to level 0 on wrong answers. Four decks:
 
-| Deck | GroupCode enum | Stored string | Fields used |
+| Deck | `GroupCode` | Stored string | Fields |
 |---|---|---|---|
-| Farsi ↔ English | `GroupCode.faEn` | `"FA_EN"` | `en`, `fa`, `desc` |
-| English ↔ Deutsch (sentences) | `GroupCode.enDe` | `"EN_DE"` | `en`, `de`, `desc` |
-| English ↔ Deutsch (verbs) | `GroupCode.enDeVerbs` | `"EN_DE_VERBS"` | `en`, `de`, `desc` |
-| Visual | `GroupCode.visual` | `"VISUAL"` | `en`, `de`, `image`, `desc` |
+| Farsi ↔ English | `faEn` | `"FA_EN"` | `en`, `fa`, `desc` |
+| English ↔ Deutsch (sentences) | `enDe` | `"EN_DE"` | `en`, `de`, `desc` |
+| English ↔ Deutsch (verbs) | `enDeVerbs` | `"EN_DE_VERBS"` | `en`, `de`, `desc` |
+| Visual | `visual` | `"VISUAL"` | `en`, `de`, `image`, `desc` |
 
-**Deutsch sub-deck selection:** Tapping the Deutsch card on `HomeScreen` shows a modal bottom sheet with "Sentences" (`GroupCode.enDe`) and "Verbs" (`GroupCode.enDeVerbs`) options. Both route to `LevelScreen`. Download source for Verbs: `en_de_verbs.json` (same GitHub repo).
+Deutsch sub-deck: HomeScreen shows a dialog to choose "Sentences" (`enDe`) or "Verbs" (`enDeVerbs`).
 
 ---
 
-## 2 · Git & Remotes
+## 2 · Git
 
-| Key | Value |
+| | |
 |---|---|
-| GitHub account | `akz792000` |
-| Remote | `git@github.personal.com:akz792000/leitner_cards.git` |
-| SSH alias | `github.personal.com` → `~/.ssh/id_rsa` |
-| Other account | `KarimizandiA` uses `github.com` → `~/.ssh/id_ed25519` |
+| Remote | `git@github.personal.com:akz792000/leitner_cards.git` (SSH alias → `~/.ssh/id_rsa`) |
+| Other account | `KarimizandiA` → `github.com` → `~/.ssh/id_ed25519` |
 | Branch | `main` |
 
 ---
 
 ## 3 · Tech Stack
 
-| Layer | Technology |
+| Layer | Package |
 |---|---|
-| UI | Flutter 3.x / Dart SDK `>=3.3.0 <4.0.0` |
-| State / DI | GetX (`get: ^4.6.5`) |
-| Local storage | Hive (`hive: ^2.2.3`, `hive_flutter: ^1.1.0`) |
-| HTTP | `http: ^1.2.2` |
-| Responsive sizing | `sizer: ^3.0.5` |
-| Timezone | `timezone: ^0.10.1` + `intl: ^0.20.2` |
-| Spinner | `flutter_spinkit: ^5.1.0` |
-| TTS | `flutter_tts: ^4.2.5` |
-| App icon | `flutter_launcher_icons: ^0.14.3` (dev) |
-| Linter | `flutter_lints: ^6.0.0` (dev) |
+| UI | Flutter 3.x / Dart `>=3.3.0 <4.0.0` |
+| State / DI | GetX `^4.6.5` |
+| Storage | Hive `^2.2.3` + `hive_flutter ^1.1.0` |
+| HTTP | `http ^1.2.2` |
+| Timezone | `timezone ^0.10.1` + `intl ^0.20.2` |
+| TTS | `flutter_tts ^4.2.5` |
+| STT | `speech_to_text` (via `SttService`) |
+| Spinner | `flutter_spinkit ^5.1.0` |
+| Sizing | `sizer ^3.0.5` |
 
-**Assets:**
-```
-assets/
-├── icon.png         # App icon (used by flutter_launcher_icons)
-├── image.png        # Profile avatar in AppDrawer header
-├── database.png     # (unused)
-└── flags/
-    ├── en.png
-    ├── de.png
-    └── fa.png
-```
+Assets: `assets/icon.png`, `assets/image.png` (drawer avatar), `assets/flags/{en,de,fa}.png`.
 
 ---
 
@@ -66,542 +52,318 @@ assets/
 
 ```
 lib/
-├── main.dart                            # setup() + MyApp
+├── main.dart                  # setup() + MyApp
 ├── config/
-│   ├── app_theme.dart                   # Light + dark ThemeData
-│   ├── dependency_config.dart           # GetX DI registration order
-│   └── route_config.dart               # Route constants + generateRoute()
+│   ├── app_theme.dart         # Light + dark ThemeData, toolbarHeight=64
+│   ├── dependency_config.dart # GetX DI registration (order is critical)
+│   └── route_config.dart      # Route constants + generateRoute()
 ├── entity/
-│   ├── card_entity.dart                 # Hive model typeId=1
-│   ├── card_entity.g.dart              # ⚠️ Manually maintained — do NOT run build_runner
-│   ├── hive_type_ids.dart              # cardId=1, progressId=2
-│   ├── progress_entity.dart            # Hive model typeId=2
-│   └── progress_entity.g.dart         # ⚠️ Manually maintained — do NOT run build_runner
+│   ├── card_entity.dart / .g.dart       # Hive typeId=1  ⚠️ never run build_runner
+│   ├── progress_entity.dart / .g.dart   # Hive typeId=2  ⚠️ never run build_runner
+│   └── hive_type_ids.dart               # cardId=1, progressId=2
 ├── enums/
-│   ├── group_code.dart                 # faEn / enDe / enDeVerbs / visual
-│   ├── language_code.dart              # en / fa / de (+ direction getter)
-│   └── level_direction.dart            # up / down
+│   ├── card_order.dart        # highFirst / lowFirst / random
+│   ├── group_code.dart        # faEn / enDe / enDeVerbs / visual
+│   ├── language_code.dart     # en / fa / de  (+.direction)
+│   └── level_direction.dart   # up / down
 ├── repository/
-│   ├── card_repository.dart            # Hive CRUD for 'card' box
-│   └── progress_repository.dart       # Hive CRUD for 'progress' box
+│   ├── card_repository.dart     # Hive CRUD, box 'card'
+│   └── progress_repository.dart # Hive CRUD, box 'progress'
 ├── service/
-│   ├── card_service.dart               # Leitner algorithm
-│   ├── route_service.dart              # pushNamed / pushReplacementNamed wrappers
-│   ├── stt_service.dart               # Speech-to-text; reactive isListening, liveText; sttMatches()
-│   ├── sync_service.dart               # saveCard / removeCard — all-or-nothing Hive writes
-│   ├── theme_service.dart             # Reactive GetX service, persists to Hive 'settings'
-│   └── tts_service.dart               # Text-to-speech; reactive isSpeaking, wordStart, wordEnd
+│   ├── card_service.dart      # Leitner scheduling algorithm
+│   ├── route_service.dart     # navigatorKey, pushNamed wrappers
+│   ├── settings_service.dart  # 13 settings + study-time tracking
+│   ├── stt_service.dart       # STT — isListening, liveText, sttMatches()
+│   ├── sync_service.dart      # All-or-nothing Hive writes (views → here only)
+│   ├── theme_service.dart     # ThemeMode, toggle(), persists to Hive
+│   └── tts_service.dart       # TTS — isSpeaking, wordStart, wordEnd
 ├── util/
-│   ├── date_time_util.dart             # now(), daysToNowWithoutTime()
-│   ├── dialog_util.dart               # error(), ok(), okCancel(), hint()
-│   └── list_util.dart                 # sortAsc() / sortDesc()
+│   ├── date_time_util.dart    # now(), daysToNowWithoutTime()
+│   ├── dialog_util.dart       # error/ok/okCancel/hint
+│   └── list_util.dart         # sortAsc/sortDesc
 └── view/
-    ├── app_drawer.dart                 # Side nav drawer (gradient header, tiles, theme toggle)
-    ├── data_screen.dart               # Card list for a deck (edit / delete)
-    ├── download_screen.dart           # Manual download from GitHub (full screen)
-    ├── error_screen.dart              # Route error fallback
-    ├── home_screen.dart               # Root screen — no AppBar, burger in gradient header
-    ├── leitner_screen.dart            # Main study view (FA_EN / EN_DE decks)
-    ├── level_screen.dart              # Level picker for a deck
-    ├── loading_screen.dart            # Generic spinner screen
-    ├── merge_screen.dart              # Edit card form
-    ├── persist_screen.dart            # Add card form
-    ├── stats_screen.dart              # Per-deck stats with TabBar
+    ├── app_drawer.dart
+    ├── data_screen.dart
+    ├── download_screen.dart
+    ├── error_screen.dart
+    ├── home_screen.dart
+    ├── leitner_screen.dart
+    ├── level_screen.dart
+    ├── loading_screen.dart
+    ├── merge_screen.dart
+    ├── persist_screen.dart
+    ├── settings_screen.dart
+    ├── stats_screen.dart
     └── widget/
-        ├── animated_button.dart       # AnimatedButton(isActive, activeColor)
-        ├── animated_flag.dart         # AnimatedFlag — floating country flag
-        ├── animated_gradient_background.dart  # AMOLED-adaptive card background
-        ├── description_sheet.dart     # DescriptionSheet.show() — draggable bottom sheet
-        └── icon_button_widget.dart    # Styled icon button
+        ├── animated_button.dart
+        ├── animated_flag.dart
+        ├── animated_gradient_background.dart
+        ├── description_sheet.dart
+        └── icon_button_widget.dart
 ```
 
 ---
 
 ## 5 · Routes
 
-Initial route is `"/"` → `HomeScreen` (no startup download).
+All navigation: `Get.find<RouteService>().pushNamed(route, arguments: {...})`.
 
-| Constant | Path | Screen | Required args |
+| Constant | Path | Screen | Args |
 |---|---|---|---|
-| `RouteConfig.home` | `/` | `HomeScreen` | — |
-| `RouteConfig.visualLeitner` | `/visual-leitner` | `VisualLeitnerScreen` | `level: int` |
-| `RouteConfig.level` | `/level` | `LevelScreen` | `groupCode: GroupCode` |
-| `RouteConfig.data` | `/data` | `DataScreen` | `groupCode: GroupCode` |
-| `RouteConfig.leitner` | `/leitner` | `LeitnerScreen` | `groupCode: GroupCode`, `level: int` |
-| `RouteConfig.persist` | `/persist` | `PersistScreen` | `groupCode: GroupCode` |
-| `RouteConfig.merge` | `/merge` | `MergeScreen` | `cardEntity: CardEntity` |
-| `RouteConfig.download` | `/download` | `DownloadScreen` | — |
-| `RouteConfig.stats` | `/stats` | `StatsScreen` | — |
-| `RouteConfig.loading` | `/loading` | `LoadingScreen` | — |
-
-All navigation uses `Get.find<RouteService>().pushNamed()` or `pushReplacementNamed()`.
+| `home` | `/` | `HomeScreen` | — |
+| `level` | `/level` | `LevelScreen` | `groupCode: GroupCode` |
+| `leitner` | `/leitner` | `LeitnerScreen` | `groupCode: GroupCode`, `level: int` |
+| `data` | `/data` | `DataScreen` | `groupCode: GroupCode` |
+| `persist` | `/persist` | `PersistScreen` | `groupCode: GroupCode` |
+| `merge` | `/merge` | `MergeScreen` | `cardEntity: CardEntity` |
+| `download` | `/download` | `DownloadScreen` | — |
+| `stats` | `/stats` | `StatsScreen` | — |
+| `settings` | `/settings` | `SettingsScreen` | — |
+| `loading` | `/loading` | `LoadingScreen` | — |
 
 ---
 
-## 6 · GetX Dependency Injection
-
-Registration order in `DependencyConfig.registerDependencies()` is **critical**:
+## 6 · DI Registration Order (critical — do not reorder)
 
 ```
-1. ThemeService.init()      ← async; must be first — opens 'settings' Hive box
-2. SettingsService()        ← must follow ThemeService (reuses 'settings' box)
-3. RouteService()           ← provides navigatorKey for MaterialApp
-4. CardRepository()         ← opens 'card' Hive box
-5. ProgressRepository()     ← opens 'progress' Hive box
-6. CardService()            ← depends on both repositories
-7. SyncService()            ← depends on CardRepository
-8. TtsService()             ← no dependencies; registers flutter_tts handlers
-9. SttService()             ← speech-to-text; skips init on macOS (TCC crash)
+1. ThemeService.init()    ← async; opens 'settings' Hive box
+2. SettingsService()      ← reuses 'settings' box
+3. RouteService()         ← provides navigatorKey
+4. CardRepository()       ← opens 'card' box
+5. ProgressRepository()   ← opens 'progress' box
+6. CardService()          ← depends on 4 + 5
+7. SyncService()          ← depends on 4
+8. TtsService()
+9. SttService()           ← skips init on macOS (TCC crash)
 ```
-
-Usage everywhere: `Get.find<ServiceName>().method()`.
 
 ---
 
-## 7 · Entity Layer
+## 7 · Entities
 
-### CardEntity — Hive typeId: 1, box: `'card'`
-
-| Field | HiveField | Type | Notes |
+### CardEntity — typeId 1, box `'card'`
+| HiveField | Name | Type | Notes |
 |---|---|---|---|
-| `id` | 0 | `int` | Epoch seconds: `DateTime.now().millisecondsSinceEpoch ~/ 1000` |
-| `created` | 1 | `tz.TZDateTime` | Set on creation, never changed |
-| `modified` | 2 | `tz.TZDateTime` | Updated on content change |
-| `groupCode` | 3 | `String` | `"FA_EN"`, `"EN_DE"`, `"EN_DE_VERBS"`, or `"VISUAL"` |
-| `image` | 4 | `String` | Filename (Visual deck) or `""` |
-| `en` | 5 | `String` | English text |
-| `fa` | 6 | `String` | Farsi text |
-| `de` | 7 | `String` | Deutsch text |
-| `desc` | 8 | `String` | Description / hint |
+| 0 | `id` | `int` | `millisecondsSinceEpoch ~/ 1000` |
+| 1 | `created` | `TZDateTime` | set once |
+| 2 | `modified` | `TZDateTime` | updated on content change |
+| 3 | `groupCode` | `String` | `"FA_EN"` / `"EN_DE"` / `"EN_DE_VERBS"` / `"VISUAL"` |
+| 4 | `image` | `String` | filename or `""` |
+| 5–7 | `en`, `fa`, `de` | `String` | text fields |
+| 8 | `desc` | `String` | hint / description |
 
 Getter: `GroupCode get group => GroupCode.fromCode(groupCode)`
 
-### ProgressEntity — Hive typeId: 2, box: `'progress'`
-
-| Field | HiveField | Type | Notes |
+### ProgressEntity — typeId 2, box `'progress'`
+| HiveField | Name | Type | Notes |
 |---|---|---|---|
-| `cardId` | 0 | `int` | FK → CardEntity.id (box key) |
-| `level` | 1 | `int` | Current Leitner level. Default: `ProgressEntity.initLevel` = 0 |
-| `subLevel` | 2 | `int` | Sub-gating counter. Default: `ProgressEntity.initSubLevel` = 1 |
-| `order` | 3 | `int` | Study visit counter (for within-level ordering) |
-| `created` | 4 | `tz.TZDateTime` | — |
-| `modified` | 5 | `tz.TZDateTime` | Last time level/subLevel changed |
+| 0 | `cardId` | `int` | FK → CardEntity.id |
+| 1 | `level` | `int` | default `initLevel = 0` |
+| 2 | `subLevel` | `int` | default `initSubLevel = 1` |
+| 3 | `order` | `int` | visit counter, used for ordering |
+| 4 | `created` | `TZDateTime` | — |
+| 5 | `modified` | `TZDateTime` | last level/subLevel change |
 
-### ⚠️ Hive Adapter Warning
-`card_entity.g.dart` and `progress_entity.g.dart` reference `HiveTypeIds.cardId` / `HiveTypeIds.progressId` by name. **Never run `flutter pub run build_runner build`** — it would overwrite these with hardcoded integers. Re-apply manually if ever needed.
-
----
-
-## 8 · Repository Layer
-
-### CardRepository — box: `'card'`
-
-| Method | Signature | Notes |
-|---|---|---|
-| `listenable()` | `ValueListenable<Box<CardEntity>>` | For `ValueListenableBuilder` |
-| `merge()` | `Future<void> merge(CardEntity)` | Upsert by `card.id` |
-| `remove()` | `Future<void> remove(CardEntity)` | — |
-| `removeAll()` | `Future<void>` | Deletes all keys |
-| `removeList()` | `Future<void> removeList(List<CardEntity>)` | Parallel delete |
-| `findById()` | `CardEntity? findById(int id)` | Nullable |
-| `findAll()` | `List<CardEntity>` | — |
-| `findAllByGroupCode()` | `List<CardEntity> findAllByGroupCode(GroupCode)` | Filters by `groupCode` string |
-| `findAllGroupCodeBased()` | `Map<String, int>` | Count per groupCode — for StatsScreen |
-
-### ProgressRepository — box: `'progress'`
-
-| Method | Signature | Notes |
-|---|---|---|
-| `merge()` | `Future<void> merge(ProgressEntity)` | Upsert by `progress.cardId` |
-| `findByCardId()` | `ProgressEntity? findByCardId(int)` | Nullable |
-| `findOrCreate()` | `ProgressEntity findOrCreate(int cardId)` | Returns existing or default (NOT persisted) |
-| `findAll()` | `List<ProgressEntity>` | — |
-| `removeAll()` | `Future<void>` | — |
-| `exportAll()` | `List<Map<String, dynamic>>` | JSON-serializable snapshot for export |
+⚠️ `.g.dart` files reference `HiveTypeIds` by name — **never run `build_runner`**.
 
 ---
 
-## 9 · Service Layer
+## 8 · Repository API
 
-### CardService
+**CardRepository:** `listenable()`, `merge(card)`, `remove(card)`, `removeAll()`, `removeList(list)`, `findById(id)`, `findAll()`, `findAllByGroupCode(code)`, `findAllGroupCodeBased() → Map<String,int>`
+
+**ProgressRepository:** `merge(p)`, `findByCardId(id)`, `findOrCreate(cardId)` *(not persisted)*, `findAll()`, `removeAll()`, `exportAll() → List<Map>`
+
+---
+
+## 9 · Services
+
+### CardService — Leitner algorithm
 `findAllBasedOnLeitner(GroupCode) → List<(CardEntity, ProgressEntity)>`
+1. Load cards → build `Map<cardId, ProgressEntity>` via `findOrCreate`
+2. Group by level, sort keys **descending**
+3. Level 0: always due. Level N: `maxSubLevel = 2^(N-1)`
+   - Modified today → skip
+   - `subLevel < max` → increment subLevel, persist, skip
+   - `subLevel >= max` → **due**
+4. Sort each level group by `order` asc → return flattened list
 
-**Leitner Algorithm:**
-1. Load all cards for deck
-2. Build `Map<cardId, ProgressEntity>` via `findOrCreate`
-3. Group cards by level → `Map<int, List<CardEntity>>`
-4. Sort level keys **descending**
-5. Per level:
-   - **Level 0:** Always due — add all cards
-   - **Level N > 0:** `maxSubLevelCount = 2^(N-1)`
-     - `daysToNowWithoutTime(progress.modified) >= 1`?
-       - If `subLevel < maxSubLevelCount`: increment subLevel, persist, **skip**
-       - If `subLevel >= maxSubLevelCount`: **due — add**
-     - Else (modified today): **skip**
-6. Sort each level group by `progress.order` ascending
-7. Return flattened list
+### SyncService *(views must never write Hive directly)*
+`saveCard(CardEntity)` · `removeCard(CardEntity)` · `removeCards(List<CardEntity>)`
 
-### SyncService
-All-or-nothing Hive writes. Never write directly to Hive from views.
+### SettingsService — box `'settings'`
+13 reactive settings persisted via `ever()`:
+- **STT:** `micEnabled`, `autoListen`, `sttPauseMs` (ms), `sttThreshold` (0–1)
+- **TTS:** `speakEnabled`, `speechRate`, `autoSpeak`
+- **Display:** `copyEnabled`, `descEnabled`, `counterVisible`, `amoledDim`, `dimDelayMin`
+- **Study:** `cardOrder` (`CardOrder` — highFirst/lowFirst/random)
 
-| Method | Purpose |
-|---|---|
-| `saveCard(CardEntity)` | Upsert card content to Hive |
-| `removeCard(CardEntity)` | Delete one card from Hive |
-| `removeCards(List<CardEntity>)` | Delete multiple cards from Hive |
+Study time: `studyTimeSecs(GroupCode) → int` · `addStudyTime(GroupCode, Duration)` · keys: `studyTime_<code>`  
+`resetToDefaults()` — resets 13 settings only (not study time).
 
-> ⚠️ Auto-download on startup was removed. Downloads happen only via `DownloadScreen` (triggered manually from `AppDrawer`).
-
-### SettingsService
-- Hive box: `'settings'` (same box as ThemeService — different keys)
-- 13 user settings persisted reactively via `ever()`:
-  - **STT:** `micEnabled`, `autoListen`, `sttPauseMs`, `sttThreshold`
-  - **TTS:** `speakEnabled`, `speechRate`, `autoSpeak`
-  - **Display:** `copyEnabled`, `descEnabled`, `counterVisible`, `amoledDim`, `dimDelayMin`
-  - **Study:** `cardOrder` (`CardOrder` enum — highFirst/lowFirst/random)
-- **Study-time tracking:** cumulative foreground seconds per deck
-  - Hive keys: `studyTime_FA_EN`, `studyTime_EN_DE`, `studyTime_EN_DE_VERBS`, `studyTime_VISUAL`
-  - `studyTimeSecs(GroupCode)` → current total seconds
-  - `addStudyTime(GroupCode, Duration)` → adds elapsed, persists immediately
-- `resetToDefaults()` — resets all 13 settings (does not reset study time)
-
-### ThemeService
-- Hive box: `'settings'`, key: `'themeMode'`
-- `mode` → `ThemeMode` (reactive `Obs`)
-- `toggle()` → cycles `system → light → dark → system`
-- `setMode(ThemeMode)` → persists to Hive
-- `icon` / `label` getters for UI
+### ThemeService — box `'settings'`, key `'themeMode'`
+`toggle()` cycles system→light→dark→system · `setMode(ThemeMode)` · `mode`, `icon`, `label`
 
 ### TtsService
-- `speak(text, LanguageCode)` → `Future<bool>` — returns `false` if language engine not installed
-- `stop()` — stops playback immediately
-- Reactive: `isSpeaking`, `wordStart`, `wordEnd` — drive word highlight in `LeitnerScreen`
-- Locale map: `en → en-US`, `fa → fa-IR`, `de → de-DE`
-- Speech rate: `0.45` (slightly slower for language learning)
-- Requires Google TTS engine for Farsi and word-boundary progress events
+`speak(text, LanguageCode) → Future<bool>` · `stop()`  
+Reactive: `isSpeaking`, `wordStart`, `wordEnd` — drives word highlight.  
+Locales: `en→en-US`, `fa→fa-IR`, `de→de-DE`. Rate: `0.45`.
 
 ### SttService
-- `listen(LanguageCode)` → `Future<String?>` — starts mic, returns recognised text or `null`
-- `stop()` — stops listening immediately
-- Reactive: `isListening` (`RxBool`), `liveText` (`RxString`) — drive pulsing mic button in AppBar
-- Uses `ListenMode.confirmation` (not dictation — crashes on Samsung and some OEMs)
-- `pauseFor: 2s` — auto-stops after 2s of silence; reacts fast to both short and long utterances
-- `cancelOnError: true` — cleans up on error
-- Skips `initialize()` entirely on macOS (TCC SIGABRT before Dart catch)
-- `sttMatches(recognised, expected, {threshold: 0.75})` — top-level fuzzy comparator:
-  normalises both strings, checks ≥75% of expected words appear in recognised text
+`listen(LanguageCode) → Future<String?>` · `stop()`  
+Reactive: `isListening` (RxBool), `liveText` (RxString).  
+Always `ListenMode.confirmation` (dictation crashes Samsung). `pauseFor: 2s`. Skips init on macOS.  
+`sttMatches(recognised, expected, {threshold=0.75})` — fuzzy word-overlap check.
 
 ### RouteService
-- Holds `GlobalKey<NavigatorState> navigatorKey`
-- `pushNamed(route, {arguments})` → `Future`
-- `pushReplacementNamed(route, {arguments})` → replaces current
+`navigatorKey` · `pushNamed(route, {arguments})` · `pushReplacementNamed(route, {arguments})`
 
 ---
 
 ## 10 · Enums
 
-### GroupCode
 ```dart
 enum GroupCode { faEn('FA_EN'), enDe('EN_DE'), enDeVerbs('EN_DE_VERBS'), visual('VISUAL') }
-// .code → stored string
-// .title → 'English' | 'Deutsch' | 'Verbs' | 'Visual'
-// GroupCode.fromCode(String?) → defaults to faEn if unrecognised
-```
+// .code, .title ('English'|'Deutsch'|'Verbs'|'Visual'), GroupCode.fromCode(String?)
 
-### LanguageCode
-```dart
-enum LanguageCode { en, fa, de }
-// .direction → TextDirection.rtl (fa) | TextDirection.ltr (en, de)
-```
+enum LanguageCode { en, fa, de }  // .direction → rtl (fa) | ltr (en, de)
 
-### LevelDirection
-```dart
 enum LevelDirection { up, down }
+
+enum CardOrder { highFirst, lowFirst, random }
+// .code (index), .label, .subtitle, CardOrder.fromCode(int)
 ```
 
 ---
 
 ## 11 · Design System
 
-### Theme
-- Seed colour: `Color(0xFF3D5A80)` — muted steel-blue
-- Material 3, `ColorScheme.fromSeed`
-- `AppTheme.toolbarHeight = 64`
-- `AppBarTheme.actionsPadding = EdgeInsets.only(right: 12)`
+**Theme:** seed `Color(0xFF3D5A80)`, Material 3, `toolbarHeight = 64`, `actionsPadding = EdgeInsets.only(right: 12)`
 
-### Dark Mode Tokens (always use, never hardcode)
-| Use | Token |
-|---|---|
-| Card background | `colorScheme.surface` |
-| Elevated surface | `colorScheme.surfaceContainerHighest` |
-| Secondary text | `colorScheme.onSurfaceVariant` |
-| Borders | `colorScheme.outlineVariant` |
+**Always use tokens — never hardcode colours:**
+- surface, surfaceContainerHighest, onSurfaceVariant, outlineVariant
+- `AppBar`: `backgroundColor: accentColor, foregroundColor: Colors.white, elevation: 0`
+- Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated)
 
-### AppBar convention
-```dart
-AppBar(backgroundColor: _accentColor, foregroundColor: Colors.white, elevation: 0)
-```
+**Deck accent colours:**
+- FA_EN: `Colors.blue.shade600` / gradient `[0xFF1565C0, 0xFF42A5F5]`
+- EN_DE: `Colors.orange.shade700` / gradient `[0xFFE65100, 0xFFFFB74D]`
+- VISUAL: `Colors.teal.shade600`
 
-### Deck accent colours
-| Deck | Accent | Gradient |
-|---|---|---|
-| FA_EN (English) | `Colors.blue.shade600` | `[Color(0xFF1565C0), Color(0xFF42A5F5)]` |
-| EN_DE (Deutsch) | `Colors.orange.shade700` | `[Color(0xFFE65100), Color(0xFFFFB74D)]` |
-| Visual | `Colors.teal.shade600` | — |
+**Level colours (0→15):** red→deep-orange→orange→amber→yellow→lime→light-green→green→teal→cyan→light-blue→blue→indigo→deep-purple→purple→pink
 
-### Level colours (16-step palette)
-```dart
-Color _levelColor(int level) {
-  const colors = [
-    Color(0xFFF44336), Color(0xFFFF5722), Color(0xFFFF9800), Color(0xFFFFC107),
-    Color(0xFFFFEB3B), Color(0xFFCDDC39), Color(0xFF8BC34A), Color(0xFF4CAF50),
-    Color(0xFF009688), Color(0xFF00BCD4), Color(0xFF03A9F4), Color(0xFF2196F3),
-    Color(0xFF3F51B5), Color(0xFF673AB7), Color(0xFF9C27B0), Color(0xFFE91E63),
-  ];
-  return colors[level.clamp(0, colors.length - 1)];
-}
-```
+**Level icons:** `0:🐛 1:🐌 2:🐁 3:🐇 4:🦔 5:🦊 6:🐺 7:🐗 8:🐆 9:🦁 10:🐯 11:🦅 12:🦈 13:🦏 14:🐘 15:🐉`
 
-### Level icons (weakest → strongest animal)
-```
-0:🐛  1:🐌  2:🐁  3:🐇  4:🦔  5:🦊  6:🐺  7:🐗
-8:🐆  9:🦁  10:🐯  11:🦅  12:🦈  13:🦏  14:🐘  15:🐉
-```
+**Cards:** radius `14` (containers) / `12` (form fields) · shadow `Colors.black12, blur 6, offset (0,2)`
 
-### Cards / containers
-- Large radius: `BorderRadius.circular(14)` | Form fields: `12`
-- Shadow: `BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))`
-
-### AnimatedGradientBackground
-- **Dark:** `#0D1B2A → #152232 → #1A2B3C → #0F1923` (midnight navy, AMOLED-friendly)
-- **Light:** `#E8EDF2 → #D6DFE8 → #CDD8E3 → #D8E3EC` (cool silver-white)
-- 12-second animation loop
-
-### API deprecations
-Always `.withValues(alpha: x)` — never `.withOpacity(x)` (deprecated Flutter 3.x).
+**AnimatedGradientBackground:** dark `#0D1B2A→#152232→#1A2B3C→#0F1923` · light `#E8EDF2→#D6DFE8→#CDD8E3→#D8E3EC` · 12s loop
 
 ---
 
-## 12 · Screen Reference
+## 12 · Screens
 
-### HomeScreen
-- Initial route `/` — no AppBar
-- Burger menu lives inside gradient header; body wrapped in `Builder` for `Scaffold.of()`
-- Three deck cards + Visual card → navigate to `LevelScreen` or `VisualLeitnerScreen`
+### HomeScreen `/`
+No AppBar. Gradient header holds burger menu (`Builder` → `Scaffold.of()`). Body:
+- English card → `LevelScreen(faEn)`
+- Deutsch card → dialog: Sentences (`enDe`) / Verbs (`enDeVerbs`) → `LevelScreen`
+- Visual card → `LevelScreen(visual)`
+- Sync Cards tool card → `DownloadScreen`
 
-### LevelScreen
-- Shows all levels that have cards, sorted; colour + emoji badge per level
-- "Play All" FAB (`allLevel = -1`): runs full Leitner algorithm; STT grades cards (thumbs-up)
-- "Play Limited" AppBar icon (`allLimitedLevel = -2`): all cards, ignores schedule; STT just advances
-- Per-level play (level number ≥ 0): only cards at that level; STT just advances, no grading
-- All navigation to `LeitnerScreen` uses `pushNamed` (not `pushReplacementNamed`) so back returns here
-- `LeitnerScreen.allLevel = -1`, `LeitnerScreen.allLimitedLevel = -2` constants
+### LevelScreen `/level`
+Level list with colour+emoji badges. `allLevel=-1` (FAB, Play All — Leitner scheduled, STT grades), `allLimitedLevel=-2` (AppBar icon, ignore schedule, STT advances only), per-level ≥0 (STT advances only). Uses `pushNamed` so back returns here.
 
-### LeitnerScreen
-- Study view for FA_EN / EN_DE / EN_DE_VERBS decks
-- AppBar title: `X / Y` counter (left-aligned, small font)
-- **AMOLED burn-in protection:**
-  - Pixel shifting: `Timer.periodic(30s)` shifts ±2px via `Transform.translate`
-  - Auto-dim: after 2 min idle → `Colors.black` overlay alpha 0.85. Tap to wake.
-  - `Listener(onPointerDown:)` resets idle timer
-- AppBar actions: 🔊 speak + copy + 🎤 mic
-- 🔊 Speak button reads current card text via `TtsService`; icon toggles stop/speak while active
-- Word highlight: `Text.rich` with background colour span driven by `TtsService.wordStart/wordEnd`
-- TTS stops on page swipe, language flip, and screen dispose
-- Thumb buttons: `AnimatedButton(isActive, activeColor)` — green (up) / redAccent (down)
-- Description button → `DescriptionSheet.show()`
-- **Session complete dialog** shown at end of deck — "Stay" or "Done" (never auto-closes)
-- **STT mic button** (🎤): pulses red while listening; `SttService` auto-stops on silence (2s)
-  - Language always targets the learning language: FA_EN → EN, EN_DE/EN_DE_VERBS → DE
-  - Play All (`allLevel`): correct → thumbs-up + advance; auto-restarts for next card
-  - Play Limited / per-level: correct → advance only, no level change; auto-restarts
-  - Wrong → snackbar showing what was said vs expected
-  - Uses `ListenMode.confirmation` (not dictation — crashes on Samsung)
-- **Study-time tracking:** implements `WidgetsBindingObserver`
-  - `_sessionStart` records when foreground begins; `_accumulatedSecs` holds paused total
-  - `didChangeAppLifecycleState`: pauses timer on `paused`, resumes on `resumed`
-  - `dispose()` flushes remaining time → `SettingsService.addStudyTime(groupCode, elapsed)`
-  - Idle/locked phone time is **excluded** — only active foreground seconds count
+### LeitnerScreen `/leitner`
+Study screen for all decks. Counter `X/Y` in AppBar. AMOLED: pixel shift every 30s ±2px + auto-dim after `dimDelayMin` idle (black overlay 0.85). AppBar: 🔊 TTS + copy + 🎤 STT. Word highlight via `TtsService.wordStart/wordEnd`. Thumb buttons: `AnimatedButton` green/red. Session-complete dialog: Stay/Done.
 
-### VisualLeitnerScreen
-- Image URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main/images/{image}`
-- Same AMOLED burn-in protection as LeitnerScreen
-- Per-card language tab state: `Map<int, int> _langTabMap` (0=en, 1=de)
-- Revealed state: `Set<int> _revealedSet` — thumbs disabled until card tapped/revealed
+STT: language = learning lang (FA_EN→EN, EN_DE/VERBS→DE). Play All: correct→grade up + advance, wrong→snackbar. Play Limited/per-level: correct→advance only. Auto-restarts on correct.
 
-### DataScreen
-- Card list for a deck; tap → `MergeScreen`; FAB → `PersistScreen`
-- Delete per-card or delete-all (confirmation dialog)
-- RTL secondary text for FA_EN, LTR for EN_DE/VISUAL
+Study-time: `WidgetsBindingObserver` — pauses on `AppLifecycleState.paused`, resumes on `resumed`, flushes to `SettingsService` on `dispose()`. Foreground only.
 
-### DownloadScreen
-- Full-screen (not a modal). Navigate via `RouteConfig.download`.
-- Downloads `fa_en.json`, `en_de.json`, `en_de_verbs.json`, `visual.json` from GitHub
-- Base URL: `https://raw.githubusercontent.com/akz792000/Dictionary/main`
-- "Override" toggle per deck: ON resets progress to level 0 + subLevel 1 on download
+### SettingsScreen `/settings`
+Sections: STT, TTS, Display, Study. All via `SettingsService` reactively. Reset button → `resetToDefaults()`.
 
-### PersistScreen
-- ID: `DateTime.now().millisecondsSinceEpoch ~/ 1000`
-- Fields shown by groupCode: FA_EN → fa+en, EN_DE → en+de, VISUAL → en+de+image
-
-### MergeScreen
-- Shows read-only metadata chips (id, created, level, subLevel, order, modified)
-- All text fields editable; on save: calls `SyncService.saveCard()`
-
-### StatsScreen
-- TabBar: one tab per `GroupCode` value
-- **Time Studied hero card** at top of each tab — cumulative foreground study time for that deck
-  - Formatted as `Xh Ym` / `Xm Ys` / `Xs` depending on magnitude
-  - Sourced from `SettingsService.studyTimeSecs(groupCode)` (persisted in Hive)
-- Metrics: total, started, totalReviews, maxLevel, levelMap, reviewedToday, lastModified
+### StatsScreen `/stats`
+TabBar per deck. Hero card: time studied (`studyTimeSecs`). Metrics: total, started, totalReviews, maxLevel, level distribution bar chart, reviewedToday, lastModified.
 
 ### AppDrawer
-- Gradient profile header with `image.png`
-- Nav tiles: English deck, Deutsch deck, Visual deck, Sync Cards (→ DownloadScreen), Stats
-- Theme toggle tile (Obx-wrapped): cycles system/light/dark
-- About dialog at bottom
+Gradient header (image.png, name, "Language Learner"). Tools: Statistics. Settings: Settings, Theme toggle (`Obx`), About dialog. Footer: "Learning Leitner v2.0".
+
+### DataScreen `/data`
+Card list. Tap → `MergeScreen`. FAB → `PersistScreen`. Delete single or all. FA_EN → RTL secondary text.
+
+### DownloadScreen `/download`
+Downloads `fa_en.json`, `en_de.json`, `en_de_verbs.json`, `visual.json` from `https://raw.githubusercontent.com/akz792000/Dictionary/main`. "Override" toggle resets progress to level 0 + subLevel 1.
+
+### PersistScreen `/persist`
+ID = `millisecondsSinceEpoch ~/ 1000`. Fields by deck: FA_EN→fa+en, EN_DE→en+de, VISUAL→en+de+image.
+
+### MergeScreen `/merge`
+Read-only chips (id, created, level, subLevel, order, modified). Editable fields. Save → `SyncService.saveCard()`.
 
 ---
 
-## 13 · Widget Reference
+## 13 · Widgets & Utils
 
-### AnimatedButton
-```dart
-AnimatedButton({required bool isActive, required Color activeColor, required VoidCallback onPressed, required Widget child})
+**Widgets:**
+- `AnimatedButton(isActive, activeColor, onPressed, child)` — breathing scale+float, 3s loop
+- `AnimatedFlag(groupCode)` — floating flag, 3s loop
+- `AnimatedGradientBackground(child)` — 12s gradient, auto dark/light
+- `DescriptionSheet.show(context, description)` — draggable bottom sheet
+- `IconButtonWidget(icon, onTap, color?)` — styled icon button
+
+**Utils:**
+- `DateTimeUtil.now()` → `TZDateTime` · `daysToNowWithoutTime(dt)` → `int` (midnight-to-midnight)
+- `DialogUtil.error/ok/okCancel/hint(context, {title, description, onOk})`
+- `ListUtil.sortAsc/sortDesc(list)` — in place
+
+---
+
+## 14 · Android / Build
+
+- `applicationId = "com.flashmind.app"` · Kotlin `android/app/src/main/kotlin/com/flashmind/app/`
+- Permissions: `INTERNET`, `RECORD_AUDIO`, `BLUETOOTH`
+- Gradle `8.14`, AGP `8.11.1`, Kotlin `2.2.20`, Java/Kotlin target `VERSION_11`
+- `kotlin-android` plugin removed from `app/build.gradle.kts` (Flutter handles it)
+- Zscaler SSL fix in `gradle.properties`: `-Djavax.net.ssl.trustStoreType=KeychainStore`
+- iOS Simulator SSL: `_DevHttpOverrides` in `main.dart` (debug/`kDebugMode` only)
+- ADB wireless (Samsung A52): `adb pair <IP:PAIR_PORT>` then `adb connect <IP:MAIN_PORT>` — always different ports
+
+**Deploy:**
+```bash
+./deploy.sh               # build + install
+./deploy.sh --clean       # flutter clean first
+./deploy.sh --connect     # prompt for ADB address first
+./deploy.sh --backup      # backup Hive data before install, restore after
+flutter run --release     # quickest if already connected
 ```
-Breathing scale+float animation (3s loop, scale 1.0→1.12).
-
-### AnimatedFlag
-```dart
-AnimatedFlag({required GroupCode groupCode})
-```
-Floating flag animation (3s loop).
-
-### AnimatedGradientBackground
-```dart
-AnimatedGradientBackground({required Widget child})
-```
-12s gradient animation. Adapts dark/light automatically.
-
-### DescriptionSheet
-```dart
-DescriptionSheet.show(BuildContext context, String description)
-```
-Draggable modal bottom sheet.
-
-### IconButtonWidget
-```dart
-IconButtonWidget({required IconData icon, required VoidCallback onTap, Color? color})
-```
 
 ---
 
-## 14 · Utility Reference
+## 15 · Known Issues
 
-### DateTimeUtil
-- `now()` → `tz.TZDateTime` (local timezone)
-- `daysToNowWithoutTime(tz.TZDateTime)` → `int` — midnight-to-midnight day diff (drives Leitner scheduling)
-
-### DialogUtil
-- `error(context, {title, description})`
-- `ok(context, {title, description})`
-- `okCancel(context, {title, description, onOk})`
-- `hint(context, {title, description})`
-
-### ListUtil
-- `sortAsc(List)` → sorted in place
-- `sortDesc(List)` → sorted in place
-
-### ColorUtil
-- Gradient creation helpers
-
----
-
-## 15 · Android
-
-- `applicationId = "com.flashmind.app"`
-- Kotlin folder: `android/app/src/main/kotlin/com/flashmind/app/MainActivity.kt`
-- Permissions in `AndroidManifest.xml`: `INTERNET` (downloads/images), `RECORD_AUDIO` + `BLUETOOTH` (STT)
-- Java/Kotlin targets: `VERSION_11`
-- Toolchain versions: Gradle `8.14`, AGP `8.11.1`, Kotlin `2.2.20`
-- `kotlin-android` plugin removed from `app/build.gradle.kts` — Flutter's built-in Kotlin handles it
-- **Zscaler SSL fix** in `android/gradle.properties`:
-  ```properties
-  org.gradle.jvmargs=... -Djavax.net.ssl.trustStoreType=KeychainStore
-  ```
-- **iOS Simulator SSL** `CERTIFICATE_VERIFY_FAILED` → `_DevHttpOverrides` in `main.dart` (debug only, `kDebugMode` guard)
-
----
-
-## 16 · Wireless ADB (Samsung A52)
-
-Two separate steps — ports are always different:
-1. `adb pair <IP:PAIRING_PORT>` — short-lived port from "Pair device with pairing code" dialog
-2. `adb connect <IP:MAIN_PORT>` — persistent port from main "Wireless debugging" screen
-
-See `docs/android-device-debugging-guide.md` for full steps.
-
----
-
-## 17 · Workflow Conventions
-
-1. **🚨 NEVER commit or push without the user explicitly saying "commit" or "push". No exceptions.**
-2. **After every code change:** update `.github/copilot-instructions.md` to reflect the change — new routes, new services, removed features, changed behaviour, new gotchas. The instructions must always match the actual code.
-3. **Before every commit (only when user asks):** run `dart format lib/` first, then `flutter analyze lib/` — zero errors before committing. A pre-commit hook already runs `dart format` automatically.
-4. Dark mode must work on all screens — use design tokens, never hardcode colours.
-4. All new routes go in `route_config.dart` (constant + switch case).
-5. All new GetX services go in `dependency_config.dart` in correct dependency order.
-6. File names: `snake_case.dart`. Screen classes: `*Screen`. Widgets: descriptive names.
-7. Never write directly to Hive from views — always go through `SyncService`.
-8. **Keep comments up to date with every code change.**
-   - Classes: doc comment explaining purpose and key design decisions.
-   - Methods: comment if the *why* is not obvious from the name alone.
-   - Fields: inline comment when the meaning or constraint isn't self-evident.
-   - Do NOT comment obvious one-liners.
-   - When modifying code, update or remove stale comments in the same change.
-
----
-
-## 18 · Known Issues / Gotchas
-
-| Issue | Detail |
+| Issue | Fix / Note |
 |---|---|
-| Hive adapters | `card_entity.g.dart` and `progress_entity.g.dart` are manually maintained. **Do NOT run build_runner.** |
-| Max Hive key | `0xFFFFFFFF`. Use seconds epoch for IDs: `DateTime.now().millisecondsSinceEpoch ~/ 1000` |
-| iOS exit button | Removed — iOS HIG discourages quit buttons. Do not add back. |
-| Hive box `'settings'` | Opened by `ThemeService.init()` — not by Hive setup in `main.dart`. |
-| Hive schema corruption | `_openBoxSafe<T>()` in `main.dart` catches corrupt box errors, deletes and recreates fresh. User must re-download cards. |
-| STT on macOS | `speech_to_text.initialize()` causes OS-level TCC SIGABRT on macOS before Dart try-catch runs. Fix: skip STT init entirely when `defaultTargetPlatform == TargetPlatform.macOS`. |
-| STT on Samsung | `ListenMode.dictation` crashes on Samsung/some Android OEMs when speech is first detected. Always use `ListenMode.confirmation`. |
-| STT on iOS Simulator | Simulator doesn't support speech recognition. `listen()` throws `ListenFailedException`. Wrapped in try-catch; mic button is silently disabled. |
-| KGP build warnings | `flutter_tts` and `speech_to_text` apply `kotlin-android` in their own `build.gradle`. Patched in pub cache — see `docs/known-issues-and-fixes.md`. `deploy.sh` uses `--android-skip-build-dependency-validation` as fallback. |
-| `sync_screen.dart` | Orphaned file (no-op stub). Not used in any route. Keep for history. |
+| Hive adapters `.g.dart` | Manually maintained — **never run `build_runner`** |
+| Max Hive key | `0xFFFFFFFF` — use seconds epoch for IDs |
+| Hive box `'settings'` | Opened by `ThemeService.init()` only; not in main Hive setup |
+| Hive corruption | `_openBoxSafe<T>()` in `main.dart` deletes + recreates; user re-downloads cards |
+| STT macOS | TCC SIGABRT before Dart catch — skip `initialize()` when `TargetPlatform.macOS` |
+| STT Samsung | `ListenMode.dictation` crashes — always use `ListenMode.confirmation` |
+| STT iOS Sim | `ListenFailedException` — wrapped in try-catch, mic silently disabled |
+| KGP warnings | `flutter_tts`/`speech_to_text` apply `kotlin-android` in pub cache — see `docs/known-issues-and-fixes.md` |
+| `sync_screen.dart` | Orphaned no-op stub — keep for history, not routed |
+| iOS quit button | Do not add — against iOS HIG |
 
 ---
 
-## 20 · Deploying to Phone
+## 16 · Workflow Conventions
 
-**Quickest method** (phone already connected via ADB):
-```bash
-flutter run --release
-```
-Builds + installs in one command. No manual file transfer.
-
-**Using the deploy script:**
-```bash
-./deploy.sh                # build release + install (phone already connected)
-./deploy.sh --clean        # flutter clean first, then build + install
-./deploy.sh --connect      # prompts for wireless ADB address first, then builds + installs
-./deploy.sh --backup       # back up Hive data before install, restore after (prevents data loss)
-```
-
-**Wireless ADB connect steps** (when not already connected):
-1. On phone: Settings → Developer options → Wireless debugging → ON
-2. `adb pair <IP:PAIRING_PORT>` — port from "Pair device with pairing code" dialog
-3. `adb connect <IP:MAIN_PORT>` — port from main "Wireless debugging" screen
-4. Then run `./deploy.sh` or `flutter run --release`
-
-See `docs/android-device-debugging-guide.md` for full steps.
-
-- `docs/android-device-debugging-guide.md` — wireless ADB + ClassNotFoundException fix
-- `docs/known-issues-and-fixes.md` — Gradle SSL, JVM symlink, Android Studio issues
+1. 🚨 **Never commit/push without explicit user instruction.**
+2. After every code change: update this file to match.
+3. Before commit: `dart format lib/` then `flutter analyze lib/` — zero errors.
+4. Use design tokens — never hardcode colours.
+5. New routes → `route_config.dart` (constant + switch case).
+6. New services → `dependency_config.dart` in correct dependency order.
+7. File names: `snake_case.dart`. Screens: `*Screen`.
+8. Views never write Hive directly — always through `SyncService`.
+9. Comments: class doc + method why + field meaning. No obvious one-liners. Keep stale comments updated.

@@ -3,7 +3,7 @@
 A Flutter flashcard app using the **Leitner spaced-repetition system**.
 Cards move up levels when correct, drop to level 0 when wrong.
 
-**Three decks:** Farsi ↔ English · English ↔ Deutsch · Visual (image-based)
+**Four decks:** Farsi ↔ English · English ↔ Deutsch (sentences) · English ↔ Deutsch (verbs) · Visual (image-based)
 
 ---
 
