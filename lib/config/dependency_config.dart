@@ -5,6 +5,7 @@ import '../repository/progress_repository.dart';
 import '../service/card_service.dart';
 import '../service/route_service.dart';
 import '../service/settings_service.dart';
+import '../service/study_log_service.dart';
 import '../service/sync_service.dart';
 import '../service/theme_service.dart';
 import '../service/tts_service.dart';
@@ -31,7 +32,9 @@ class DependencyConfig {
     await Get.putAsync<CardService>(() => Future.value(CardService()));
     // 7. SyncService — depends on CardRepository.
     await Get.putAsync<SyncService>(() => Future.value(SyncService()));
-    // 8–9. Media services.
+    // 8. StudyLogService — opens 'studyLog' Hive box.
+    await Get.putAsync<StudyLogService>(() => Future.value(StudyLogService()));
+    // 9–10. Media services.
     await Get.putAsync<TtsService>(() => Future.value(TtsService()));
     await Get.putAsync<SttService>(() => Future.value(SttService()));
   }

@@ -16,6 +16,7 @@ import '../enums/language_code.dart';
 import '../enums/group_code.dart';
 import '../enums/level_direction.dart';
 import '../service/settings_service.dart';
+import '../service/study_log_service.dart';
 import '../service/tts_service.dart';
 import '../service/stt_service.dart';
 import '../util/date_time_util.dart';
@@ -119,6 +120,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   final TtsService _ttsService = Get.find<TtsService>();
   final SttService _sttService = Get.find<SttService>();
   final SettingsService _settingsService = Get.find<SettingsService>();
+  final StudyLogService _studyLogService = Get.find<StudyLogService>();
   final PageController _pageController =
       PageController(initialPage: 0, keepPage: true);
   final Map<int, ScrollController> _textScrollControllers = {};
@@ -167,6 +169,11 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   DateTime? _sessionStart;
   int _accumulatedSecs = 0;
 
+  /// Date string (YYYY-MM-DD) when this study session began — used so that a
+  /// session that started on day N and is persisted after midnight is still
+  /// attributed to day N.
+  late String _studyDate;
+
   /// True while the continuous STT loop is running (mic toggled on).
   bool _continuousMode = false;
 
@@ -180,6 +187,8 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   void initState() {
     super.initState();
     _sessionStart = DateTime.now(); // study-time: clock starts
+    _studyDate = _studyLogService
+        .dateKey(DateTimeUtil.now()); // lock date at session start
     WidgetsBinding.instance.addObserver(this);
     _languageCode = _getInitialLanguageCode();
     _loadCards();
@@ -204,11 +213,25 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     }
   }
 
+  /// Persists accumulated study time to both [SettingsService] (cumulative
+  /// total) and [StudyLogService] (per-session log), then resets the counter.
+  /// Resetting prevents double-counting if called from both [paused] and
+  /// [dispose] within the same session.
+  void _persistStudyTime() {
+    if (_accumulatedSecs < 1) return;
+    _settingsService.addStudyTime(
+        widget.groupCode, Duration(seconds: _accumulatedSecs));
+    _studyLogService.logSession(widget.groupCode, _accumulatedSecs,
+        date: _studyDate);
+    _accumulatedSecs = 0;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // App moved to background — pause the timer.
+      // Persist immediately so force-killing the app never loses study time.
       _flushElapsed();
+      _persistStudyTime();
     } else if (state == AppLifecycleState.resumed) {
       // App returned to foreground — resume the timer.
       _sessionStart = DateTime.now();
@@ -219,12 +242,9 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   void dispose() {
     _continuousMode = false;
     WidgetsBinding.instance.removeObserver(this);
-    // Flush any remaining foreground time and persist.
+    // Flush and persist any remaining time (normal back-navigation, no pause).
     _flushElapsed();
-    if (_accumulatedSecs > 0) {
-      _settingsService.addStudyTime(
-          widget.groupCode, Duration(seconds: _accumulatedSecs));
-    }
+    _persistStudyTime();
     _ttsScrollWorker?.dispose();
     for (final c in _textScrollControllers.values) {
       c.dispose();

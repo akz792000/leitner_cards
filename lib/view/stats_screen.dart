@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
-import 'package:leitner_cards/service/settings_service.dart';
+import 'package:leitner_cards/service/study_log_service.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 /// Learning-progress statistics screen, one tab per [GroupCode] deck.
@@ -109,16 +109,20 @@ class _StatsTab extends StatelessWidget {
     }
 
     final progressPercent = data.started / data.total;
-    final settingsService = Get.find<SettingsService>();
-    final totalSecs = settingsService.studyTimeSecs(groupCode);
+    final studyLog = Get.find<StudyLogService>();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time studied — hero card at the top
-          _buildTimeStudiedCard(context, totalSecs),
+          // 7-day bar chart
+          _buildPeriodBreakdown(context, studyLog),
+
+          const SizedBox(height: 12),
+
+          // Week / Month / Year summary tiles
+          _buildPeriodTiles(context, studyLog),
 
           const SizedBox(height: 24),
 
@@ -178,94 +182,229 @@ class _StatsTab extends StatelessWidget {
     );
   }
 
-  /// Hero card showing total study time formatted as Xh Ym Zs.
-  Widget _buildTimeStudiedCard(BuildContext context, int totalSecs) {
-    final scheme = Theme.of(context).colorScheme;
-    final hours = totalSecs ~/ 3600;
-    final mins = (totalSecs % 3600) ~/ 60;
-    final secs = totalSecs % 60;
-
-    // Build a human-friendly label:  "2h 14m"  or  "45m 30s"  or  "—"
-    String timeLabel;
-    String subLabel;
-    if (totalSecs == 0) {
-      timeLabel = '—';
-      subLabel = 'Start studying to track your time';
-    } else if (hours > 0) {
-      timeLabel = '${hours}h ${mins}m';
-      subLabel = '${totalSecs ~/ 60} minutes total';
-    } else if (mins > 0) {
-      timeLabel = '${mins}m ${secs}s';
-      subLabel = '$totalSecs seconds total';
-    } else {
-      timeLabel = '${secs}s';
-      subLabel = 'Keep going!';
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            scheme.primary.withValues(alpha: 0.85),
-            scheme.primary.withValues(alpha: 0.55),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
-        ],
+  /// Three gradient tiles: This Week / This Month / This Year.
+  Widget _buildPeriodTiles(BuildContext context, StudyLogService log) {
+    final accent = _accentFor(groupCode);
+    final periods = [
+      (
+        label: 'Week',
+        secs: log.periodSecs(groupCode, days: 7),
+        icon: Icons.view_week_outlined,
+        gradient: [
+          accent.withValues(alpha: 0.85),
+          accent.withValues(alpha: 0.55)
+        ]
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
+      (
+        label: 'Month',
+        secs: log.periodSecs(groupCode, days: 30),
+        icon: Icons.calendar_month_outlined,
+        gradient: [
+          accent.withValues(alpha: 0.65),
+          accent.withValues(alpha: 0.35)
+        ]
+      ),
+      (
+        label: 'Year',
+        secs: log.periodSecs(groupCode, days: 365),
+        icon: Icons.auto_stories_outlined,
+        gradient: [
+          accent.withValues(alpha: 0.50),
+          accent.withValues(alpha: 0.25)
+        ]
+      ),
+    ];
+
+    return Row(
+      children: periods.map((p) {
+        final h = p.secs ~/ 3600;
+        final m = (p.secs % 3600) ~/ 60;
+        final s = p.secs % 60;
+        final valueText = p.secs == 0
+            ? '—'
+            : h > 0
+                ? '${h}h ${m}m'
+                : m > 0
+                    ? '${m}m ${s}s'
+                    : '${s}s';
+
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(
+              right: p.label != 'Year' ? 8 : 0,
             ),
-            child:
-                const Icon(Icons.timer_outlined, color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: p.gradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [
+                BoxShadow(
+                    color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'TIME STUDIED',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                Icon(p.icon, size: 18, color: Colors.white70),
+                const SizedBox(height: 8),
                 Text(
-                  timeLabel,
+                  valueText,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 32,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  subLabel,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  p.label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// 7-day bar chart: today on the right, each bar = study seconds that day.
+  /// Bar heights are proportional to the day with the most study time.
+  Widget _buildPeriodBreakdown(BuildContext context, StudyLogService log) {
+    final scheme = Theme.of(context).colorScheme;
+    final now = DateTimeUtil.now();
+
+    // Build list of last 7 days oldest→newest (index 6 = today).
+    final days = List.generate(7, (i) {
+      final dt = now.subtract(Duration(days: 6 - i));
+      final key = log.dateKey(dt);
+      final secs = log.daySecs(groupCode, key);
+      final label = _dayLabel(dt.weekday, i == 6);
+      return (key: key, secs: secs, label: label, isToday: i == 6);
+    });
+
+    final maxSecs = days.map((d) => d.secs).fold(0, (a, b) => a > b ? a : b);
+    final accentColor = _accentFor(groupCode);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'LAST 7 DAYS',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 120,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: days.map((d) {
+                final ratio = maxSecs == 0 ? 0.0 : d.secs / maxSecs;
+                final barColor = d.isToday
+                    ? accentColor
+                    : accentColor.withValues(alpha: 0.45);
+
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // Time label above bar (only if non-zero)
+                        if (d.secs > 0)
+                          Text(
+                            _shortTime(d.secs),
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        const SizedBox(height: 3),
+                        // Bar
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOut,
+                          height: ratio == 0 ? 3 : (ratio * 88).clamp(3, 88),
+                          decoration: BoxDecoration(
+                            color: barColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Day label
+                        Text(
+                          d.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                d.isToday ? FontWeight.w700 : FontWeight.w400,
+                            color: d.isToday
+                                ? accentColor
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Short day label: Mon–Sun, today → "Today".
+  String _dayLabel(int weekday, bool isToday) {
+    if (isToday) return 'Today';
+    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return names[(weekday - 1).clamp(0, 6)];
+  }
+
+  /// Very compact time: "2h", "45m", "30s".
+  String _shortTime(int secs) {
+    if (secs >= 3600) return '${secs ~/ 3600}h';
+    if (secs >= 60) return '${secs ~/ 60}m';
+    return '${secs}s';
+  }
+
+  Color _accentFor(GroupCode gc) {
+    switch (gc) {
+      case GroupCode.faEn:
+        return Colors.blue.shade600;
+      case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
+        return Colors.orange.shade700;
+      case GroupCode.visual:
+        return Colors.teal.shade600;
+    }
   }
 
   Widget _buildSectionLabel(String label) {

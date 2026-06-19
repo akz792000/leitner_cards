@@ -13,6 +13,7 @@ import 'entity/progress_entity.dart';
 import 'repository/card_repository.dart';
 import 'repository/progress_repository.dart';
 import 'service/route_service.dart';
+import 'service/study_log_service.dart';
 import 'service/theme_service.dart';
 
 Future<void> main() async {
@@ -35,6 +36,7 @@ Future<void> setup() async {
 
   await _openBoxSafe<CardEntity>(CardRepository.boxId);
   await _openBoxSafe<ProgressEntity>(ProgressRepository.boxId);
+  await _openBoxSafe<dynamic>(StudyLogService.boxId);
 
   final directory = await path_provider.getApplicationDocumentsDirectory();
   debugPrint("Hive directory: ${directory.path}");
