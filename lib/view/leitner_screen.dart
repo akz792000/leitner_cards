@@ -23,7 +23,6 @@ import '../util/date_time_util.dart';
 import '../enums/card_order.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
-import 'widget/animated_flag.dart';
 import 'widget/description_sheet.dart';
 
 /// Paints rounded highlight boxes behind the currently spoken word.
@@ -71,19 +70,17 @@ class _WordHighlightPainter extends CustomPainter {
 }
 
 ///
-/// Handles all deck types: FA_EN, EN_DE, and VISUAL. Cards with a non-empty
-/// [CardEntity.image] field use an image-first reveal flow — the image is shown
-/// in full until the user taps to reveal bilingual text and thumb buttons.
-/// Cards without an image use the standard text flow with vertical-swipe language
-/// toggle.
+/// Handles all deck types: FA_EN, EN_DE, EN_DE_VERBS, and VISUAL.
 ///
 /// [level] controls which cards are loaded:
 /// - [allLevel] (-1): runs the full Leitner algorithm via [CardService].
 /// - [allLimitedLevel] (-2): shows every card in the deck regardless of schedule.
 /// - Any positive int: shows only cards at that exact level.
 ///
-/// Vertical swipe toggles between the two language sides of the card (text cards
-/// only — disabled for image cards, which use an EN/DE tab bar instead).
+/// A language tab bar is shown on every card (unified for all deck types).
+/// Tapping a tab switches the displayed language; the tab resets to the first
+/// language on every card change. Visual-deck cards additionally show an image
+/// that shrinks when tapped to reveal detail.
 /// Thumb-up promotes the card to the next level; thumb-down resets to level 0.
 ///
 /// Burn-in protection for AMOLED screens:
@@ -139,7 +136,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   late ProgressEntity _progressEntity;
   int _index = 0;
   int _level = 1;
-  late LanguageCode _languageCode;
+  int _activeTabIndex = 0; // index into _tabs; resets to 0 on each card change
 
   // Tracks whether the like/dislike button has been tapped for each card id.
   final Map<int, LevelDirection?> _levelChangedMap = {};
@@ -148,9 +145,8 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   final Map<int, int> _initialLevels = {};
   final Set<int> _orderChangedSet = {};
 
-  // Image-card state: which cards have been tapped to reveal, and per-card language tab.
+  // Image-card state: which cards have been tapped to reveal.
   final Set<int> _revealedSet = {};
-  final Map<int, int> _langTabMap = {};
 
   // Burn-in protection
   Timer? _idleTimer;
@@ -190,7 +186,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     _studyDate = _studyLogService
         .dateKey(DateTimeUtil.now()); // lock date at session start
     WidgetsBinding.instance.addObserver(this);
-    _languageCode = _getInitialLanguageCode();
     _loadCards();
     if (_pairs.isNotEmpty) {
       _cardEntity = _pairs[0].$1;
@@ -306,17 +301,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     });
   }
 
-  LanguageCode _getInitialLanguageCode() {
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
-        return LanguageCode.fa;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-      case GroupCode.visual:
-        return LanguageCode.en;
-    }
-  }
-
   void _loadCards() {
     switch (widget.level) {
       case LeitnerScreen.allLevel:
@@ -368,9 +352,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     }
   }
 
-  /// Returns true when [card] has an image that should drive the reveal-first UX.
-  bool _isImageCard(CardEntity card) => card.image.isNotEmpty;
-
   /// Toggles the revealed state for [card] and resets the idle timer.
   void _toggleReveal(CardEntity card) {
     setState(() {
@@ -383,6 +364,155 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     _resetIdleTimer();
   }
 
+  // ── Language tab helpers ────────────────────────────────────────────────────
+
+  /// Languages available as tabs for the current deck, in display order.
+  List<LanguageCode> get _tabs {
+    switch (widget.groupCode) {
+      case GroupCode.faEn:
+        return [LanguageCode.fa, LanguageCode.en];
+      case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
+      case GroupCode.visual:
+        return [LanguageCode.en, LanguageCode.de];
+    }
+  }
+
+  /// The language currently shown on the card.
+  LanguageCode get _activeLanguage => _tabs[_activeTabIndex];
+
+  /// The language the user is learning — always the last tab.
+  /// EN for faEn, DE for enDe / enDeVerbs / visual.
+  LanguageCode get _learningLanguage => _tabs.last;
+
+  /// Accent colour for the active deck, used by the tab bar highlight.
+  Color get _accentColor {
+    switch (widget.groupCode) {
+      case GroupCode.faEn:
+        return Colors.blue.shade600;
+      case GroupCode.enDe:
+      case GroupCode.enDeVerbs:
+        return Colors.orange.shade700;
+      case GroupCode.visual:
+        return Colors.teal.shade600;
+    }
+  }
+
+  String _flagEmoji(LanguageCode lang) {
+    switch (lang) {
+      case LanguageCode.fa:
+        return '🇮🇷';
+      case LanguageCode.en:
+        return '🇬🇧';
+      case LanguageCode.de:
+        return '🇩🇪';
+    }
+  }
+
+  String _langLabel(LanguageCode lang) {
+    switch (lang) {
+      case LanguageCode.fa:
+        return 'فارسی';
+      case LanguageCode.en:
+        return 'English';
+      case LanguageCode.de:
+        return 'Deutsch';
+    }
+  }
+
+  /// Full-width pill-style tab bar for switching between languages.
+  Widget _buildTabBar() {
+    // Build individual tab items
+    List<Widget> items = [];
+    for (int i = 0; i < _tabs.length; i++) {
+      final active = _activeTabIndex == i;
+      final isFirst = i == 0;
+      final isLast = i == _tabs.length - 1;
+
+      items.add(
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              _ttsService.stop();
+              setState(() => _activeTabIndex = i);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: active ? _accentColor : Colors.transparent,
+                borderRadius: BorderRadius.horizontal(
+                  left: isFirst ? const Radius.circular(8) : Radius.zero,
+                  right: isLast ? const Radius.circular(8) : Radius.zero,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_flagEmoji(_tabs[i]),
+                      style: TextStyle(fontSize: active ? 18 : 14)),
+                  const SizedBox(width: 6),
+                  Text(
+                    _langLabel(_tabs[i]),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                      color: active
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Insert level badge between the first and second tab
+      if (i == 0 && _tabs.length > 1) {
+        final base = _levelColor(_level);
+        items.add(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              border: Border.all(color: base, width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_levelEmoji(_level), style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 5),
+                Text(
+                  'LVL $_level',
+                  style: TextStyle(
+                    color: base,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: _accentColor.withValues(alpha: 0.5)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(children: items),
+      ),
+    );
+  }
+
   /// Increments [order] the first time a card is shown in this session.
   void _modifyOrder() async {
     if (!_orderChangedSet.contains(_cardEntity.id)) {
@@ -392,29 +522,24 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     }
   }
 
-  void _changeValue(int index, LanguageCode languageCode) {
+  void _changeValue(int index) {
     setState(() {
       _cardEntity = _pairs[index].$1;
       _progressEntity = _pairs[index].$2;
-      _languageCode = languageCode;
+      _activeTabIndex = 0; // reset to first tab for every new card
       _level = _progressEntity.level;
     });
     // Auto-speak the card when the page changes, if enabled.
     if (_settingsService.autoSpeak.value &&
         _settingsService.speakEnabled.value) {
-      final lang = _isImageCard(_cardEntity)
-          ? ((_langTabMap[_cardEntity.id] ?? 0) == 0
-              ? LanguageCode.en
-              : LanguageCode.de)
-          : languageCode;
-      _ttsService.speak(_currentText, lang);
+      _ttsService.speak(_currentText, _activeLanguage);
     }
   }
 
   void _onPageChanged(int value) {
     _ttsService.stop();
     _index = value;
-    _changeValue(_index, _getInitialLanguageCode());
+    _changeValue(_index);
     _modifyOrder();
   }
 
@@ -480,24 +605,15 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     );
   }
 
-  /// Returns the text currently shown on the card (matches [_getTextChild] / image-tab logic).
+  /// Returns the text currently shown on the card (driven by [_activeLanguage]).
   String get _currentText {
-    if (_isImageCard(_cardEntity)) {
-      return (_langTabMap[_cardEntity.id] ?? 0) == 0
-          ? _cardEntity.en
-          : _cardEntity.de;
-    }
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
-        return _languageCode == LanguageCode.fa
-            ? _cardEntity.fa
-            : _cardEntity.en;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-      case GroupCode.visual:
-        return _languageCode == LanguageCode.en
-            ? _cardEntity.en
-            : _cardEntity.de;
+    switch (_activeLanguage) {
+      case LanguageCode.fa:
+        return _cardEntity.fa;
+      case LanguageCode.en:
+        return _cardEntity.en;
+      case LanguageCode.de:
+        return _cardEntity.de;
     }
   }
 
@@ -514,49 +630,18 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   }
 
   /// Returns the language the user should speak for this deck.
-  /// faEn → always EN (learning English), enDe/enDeVerbs → always DE (learning German).
-  /// Visual → matches the currently selected lang tab.
-  LanguageCode get _sttLanguage {
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
-        return LanguageCode.en;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-        return LanguageCode.de;
-      case GroupCode.visual:
-        return (_langTabMap[_cardEntity.id] ?? 0) == 0
-            ? LanguageCode.en
-            : LanguageCode.de;
-    }
-  }
+  /// Always targets [_learningLanguage]: EN for faEn, DE for enDe/enDeVerbs/visual.
+  LanguageCode get _sttLanguage => _learningLanguage;
 
   /// Returns the expected answer text matching [_sttLanguage].
   String get _sttExpected {
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
+    switch (_learningLanguage) {
+      case LanguageCode.en:
         return _cardEntity.en;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
+      case LanguageCode.fa:
+        return _cardEntity.fa;
+      case LanguageCode.de:
         return _cardEntity.de;
-      case GroupCode.visual:
-        return (_langTabMap[_cardEntity.id] ?? 0) == 0
-            ? _cardEntity.en
-            : _cardEntity.de;
-    }
-  }
-
-  /// Advances to the next card without persisting any level/subLevel change.
-  /// Used by the continuous STT loop when an answer is wrong — card is skipped
-  /// but not graded so its Leitner state is untouched.
-  void _advancePage() {
-    if (_index < _pairs.length - 1) {
-      _pageController.animateToPage(
-        _index + 1,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      if (mounted) _showSessionCompleteDialog(context);
     }
   }
 
@@ -657,47 +742,15 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     if (mounted) setState(() => _continuousMode = false);
   }
 
-  void _onVerticalDragEnd(DragEndDetails details) {
-    _ttsService.stop();
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
-        _languageCode = _languageCode == LanguageCode.en
-            ? LanguageCode.fa
-            : LanguageCode.en;
-        break;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-      case GroupCode.visual:
-        _languageCode = _languageCode == LanguageCode.de
-            ? LanguageCode.en
-            : LanguageCode.de;
-        break;
-    }
-    _changeValue(_index, _languageCode);
-  }
-
   Widget _getTextChild(
       {required BuildContext context, required int pageIndex}) {
-    String message = '';
-
-    switch (widget.groupCode) {
-      case GroupCode.faEn:
-        message =
-            _languageCode == LanguageCode.fa ? _cardEntity.fa : _cardEntity.en;
-        break;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-      case GroupCode.visual:
-        message =
-            _languageCode == LanguageCode.en ? _cardEntity.en : _cardEntity.de;
-        break;
-    }
+    final message = _currentText;
 
     final textStyle = TextStyle(
       color: Theme.of(context).colorScheme.onSurface,
       fontSize: 28.0,
     );
-    final textAlign = _languageCode.direction == TextDirection.rtl
+    final textAlign = _activeLanguage.direction == TextDirection.rtl
         ? TextAlign.right
         : TextAlign.center;
 
@@ -711,7 +764,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             Text.rich(
               key: _textKeyForIndex(pageIndex),
               TextSpan(text: message),
-              textDirection: _languageCode.direction,
+              textDirection: _activeLanguage.direction,
               textAlign: textAlign,
               style: textStyle,
             ),
@@ -807,35 +860,98 @@ class _LeitnerScreenState extends State<LeitnerScreen>
           child: Opacity(opacity: opacity, child: child),
         );
       },
-      child: _isImageCard(card)
-          ? _buildImageCardContent(card, pageIndex)
-          : _buildCardContent(pageIndex),
+      child: _buildCardContent(card, pageIndex),
     );
   }
 
-  Widget _buildCardContent(int pageIndex) {
+  /// Unified card layout for all deck types.
+  ///
+  /// Returns the animal emoji for a given level (weakest→strongest).
+  String _levelEmoji(int level) {
+    const emojis = [
+      '🐛',
+      '🐌',
+      '🐁',
+      '🐇',
+      '🦔',
+      '🦊',
+      '🐺',
+      '🐗',
+      '🐆',
+      '🦁',
+      '🐯',
+      '🦅',
+      '🦈',
+      '🦏',
+      '🐘',
+      '🐉',
+    ];
+    return emojis[level.clamp(0, emojis.length - 1)];
+  }
+
+  /// Returns the accent colour for a given level (16-step rainbow palette).
+  Color _levelColor(int level) {
+    const colors = [
+      Color(0xFFF44336),
+      Color(0xFFFF5722),
+      Color(0xFFFF9800),
+      Color(0xFFFFC107),
+      Color(0xFFFFEB3B),
+      Color(0xFFCDDC39),
+      Color(0xFF8BC34A),
+      Color(0xFF4CAF50),
+      Color(0xFF009688),
+      Color(0xFF00BCD4),
+      Color(0xFF03A9F4),
+      Color(0xFF2196F3),
+      Color(0xFF3F51B5),
+      Color(0xFF673AB7),
+      Color(0xFF9C27B0),
+      Color(0xFFE91E63),
+    ];
+    return colors[level.clamp(0, colors.length - 1)];
+  }
+
+  /// Visual-deck cards show an image at the top whose height shrinks from 300
+  /// to 180 when tapped; all other content (tab bar, text, thumb buttons) is
+  /// always visible for every deck.
+  Widget _buildCardContent(CardEntity card, int pageIndex) {
+    final isImage = card.image.isNotEmpty;
     return Builder(
       builder: (context) => AnimatedGradientBackground(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 16, 0, 2),
-              child:
-                  Text('Level: $_level', style: const TextStyle(fontSize: 30)),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 4, 0, 2),
-              child: AnimatedFlag(
-                  imagePath: 'assets/flags/${_languageCode.name}.png'),
-            ),
+            // Image (Visual deck only)
+            if (isImage) ...[
+              GestureDetector(
+                onTap: () => _toggleReveal(card),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  height: _revealedSet.contains(card.id) ? 180 : 300,
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _buildImageStack(_revealedSet.contains(card.id),
+                      '$_imageBaseUrl/${card.image}'),
+                ),
+              ),
+            ],
+
+            // Language tab bar — full width
+            _buildTabBar(),
+
+            // Card text
             Expanded(
               child: Center(
-                // AnimatedSwitcher removed: keeping old+new _getTextChild alive
-                // simultaneously causes duplicate GlobalKey and ScrollController
-                // multi-attach errors (both share the same pageIndex-keyed resources).
                 child: _getTextChild(context: context, pageIndex: pageIndex),
               ),
             ),
+
+            // Thumb buttons
             Padding(
               padding: const EdgeInsets.all(28.0),
               child: Align(
@@ -931,266 +1047,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     );
   }
 
-  /// Builds the full card layout for an image card (Visual deck).
-  ///
-  /// Before reveal: image fills the card. After tap, the image shrinks to 45%
-  /// and bilingual text + thumb buttons appear below.
-  Widget _buildImageCardContent(CardEntity card, int pageIndex) {
-    final progress = _pairs[pageIndex].$2;
-    final revealed = _revealedSet.contains(card.id);
-    final levelChanged = _levelChangedMap[card.id];
-    final imageUrl = '$_imageBaseUrl/${card.image}';
-
-    return Builder(
-      builder: (context) => AnimatedGradientBackground(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
-              children: [
-                // ── Image ──────────────────────────────────────────────────
-                if (revealed)
-                  GestureDetector(
-                    onTap: () => _toggleReveal(card),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 450),
-                      curve: Curves.easeInOut,
-                      height: constraints.maxHeight * 0.45,
-                      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 12,
-                              offset: Offset(0, 4))
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: _buildImageStack(revealed, imageUrl),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _toggleReveal(card),
-                      child: Container(
-                        margin: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 12,
-                                offset: Offset(0, 4))
-                          ],
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: _buildImageStack(revealed, imageUrl),
-                      ),
-                    ),
-                  ),
-
-                // ── Language toggle + scrollable text (after reveal) ───────
-                if (revealed) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _langTabMap[card.id] = 0),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: (_langTabMap[card.id] ?? 0) == 0
-                                    ? Colors.blue.shade600
-                                    : Colors.transparent,
-                                borderRadius: const BorderRadius.horizontal(
-                                    left: Radius.circular(8)),
-                                border: Border.all(
-                                    color: Colors.blue.shade600
-                                        .withValues(alpha: 0.6)),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('🇺🇸',
-                                      style: TextStyle(
-                                          fontSize:
-                                              (_langTabMap[card.id] ?? 0) == 0
-                                                  ? 18
-                                                  : 14)),
-                                  const SizedBox(width: 6),
-                                  Text('English',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight:
-                                              (_langTabMap[card.id] ?? 0) == 0
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                          color:
-                                              (_langTabMap[card.id] ?? 0) == 0
-                                                  ? Colors.white
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _langTabMap[card.id] = 1),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: (_langTabMap[card.id] ?? 0) == 1
-                                    ? Colors.orange.shade700
-                                    : Colors.transparent,
-                                borderRadius: const BorderRadius.horizontal(
-                                    right: Radius.circular(8)),
-                                border: Border.all(
-                                    color: Colors.orange.shade700
-                                        .withValues(alpha: 0.6)),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('🇩🇪',
-                                      style: TextStyle(
-                                          fontSize:
-                                              (_langTabMap[card.id] ?? 0) == 1
-                                                  ? 18
-                                                  : 14)),
-                                  const SizedBox(width: 6),
-                                  Text('Deutsch',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight:
-                                              (_langTabMap[card.id] ?? 0) == 1
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                          color:
-                                              (_langTabMap[card.id] ?? 0) == 1
-                                                  ? Colors.white
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    // AnimatedSwitcher intentionally removed: it kept both old and
-                    // new SingleChildScrollView alive during the 250ms transition,
-                    // causing duplicate GlobalKey and ScrollController multi-attach
-                    // errors. Tab switching is instant with no perceptible delay.
-                    child: SingleChildScrollView(
-                      controller: _scrollControllerForIndex(pageIndex),
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                      child: Builder(builder: (context) {
-                        final message = (_langTabMap[card.id] ?? 0) == 0
-                            ? card.en
-                            : card.de;
-                        final primary = Theme.of(context).colorScheme.primary;
-                        // Text with GlobalKey is OUTSIDE Obx — key is stable
-                        // across TTS rebuilds, preventing duplicate-key errors.
-                        return Stack(
-                          children: [
-                            Text(
-                              key: _textKeyForIndex(pageIndex),
-                              message,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                height: 1.6,
-                              ),
-                            ),
-                            Obx(() {
-                              final speaking = _ttsService.isSpeaking.value;
-                              final start = _ttsService.wordStart.value;
-                              final end = _ttsService.wordEnd.value;
-                              if (!speaking ||
-                                  end <= start ||
-                                  end > message.length) {
-                                return const SizedBox.shrink();
-                              }
-                              return Positioned.fill(
-                                child: CustomPaint(
-                                  painter: _WordHighlightPainter(
-                                    textKey: _textKeyForIndex(pageIndex),
-                                    start: start,
-                                    end: end,
-                                    fillColor: primary.withValues(alpha: 0.28),
-                                    borderColor:
-                                        primary.withValues(alpha: 0.55),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        );
-                      }),
-                    ),
-                  ),
-                ] else
-                  const SizedBox.shrink(),
-
-                // ── Thumb buttons (only shown after reveal) ────────────────
-                if (revealed)
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          AnimatedButton(
-                            key: const ValueKey('dislike'),
-                            icon: const Icon(Icons.thumb_down_outlined,
-                                size: 30, color: Colors.white),
-                            isActive: levelChanged == LevelDirection.down,
-                            activeColor: Colors.redAccent,
-                            onPressed: levelChanged == LevelDirection.down
-                                ? null
-                                : () => _changePage(ProgressEntity.initLevel,
-                                    LevelDirection.down),
-                          ),
-                          AnimatedButton(
-                            key: const ValueKey('like'),
-                            icon: const Icon(Icons.thumb_up_alt_outlined,
-                                size: 30, color: Colors.white),
-                            isActive: levelChanged == LevelDirection.up,
-                            activeColor: Colors.green,
-                            onPressed: levelChanged == LevelDirection.up
-                                ? null
-                                : () => _changePage(
-                                    progress.level + 1, LevelDirection.up),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1213,49 +1069,39 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             if (!_settingsService.speakEnabled.value) {
               return const SizedBox.shrink();
             }
-            final isImage = _isImageCard(_cardEntity);
-            final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             return IconButton(
               icon: Icon(_ttsService.isSpeaking.value
                   ? Icons.stop_circle_outlined
                   : Icons.volume_up_outlined),
               tooltip: 'Speak',
-              onPressed: revealed
-                  ? () async {
-                      if (_ttsService.isSpeaking.value) {
-                        _ttsService.stop();
-                      } else {
-                        final lang = isImage
-                            ? ((_langTabMap[_cardEntity.id] ?? 0) == 0
-                                ? LanguageCode.en
-                                : LanguageCode.de)
-                            : _languageCode;
-                        final ok = await _ttsService.speak(_currentText, lang);
-                        if (!ok && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'TTS not available for this language. Install it via Settings → General management → Text-to-speech.'),
-                              duration: Duration(seconds: 4),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  : null,
+              onPressed: () async {
+                if (_ttsService.isSpeaking.value) {
+                  _ttsService.stop();
+                } else {
+                  final ok =
+                      await _ttsService.speak(_currentText, _activeLanguage);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'TTS not available for this language. Install it via Settings → General management → Text-to-speech.'),
+                        duration: Duration(seconds: 4),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
             );
           }),
           Obx(() {
             if (!_settingsService.copyEnabled.value) {
               return const SizedBox.shrink();
             }
-            final isImage = _isImageCard(_cardEntity);
-            final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             return IconButton(
               icon: const Icon(Icons.copy_outlined),
               tooltip: 'Copy',
-              onPressed: revealed ? () => _copyCurrentText(context) : null,
+              onPressed: () => _copyCurrentText(context),
             );
           }),
           // Mic button — red/pulsing while continuous loop is active or actively listening.
@@ -1263,12 +1109,9 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             if (!_settingsService.micEnabled.value) {
               return const SizedBox.shrink();
             }
-            final isImage = _isImageCard(_cardEntity);
-            final revealed = !isImage || _revealedSet.contains(_cardEntity.id);
             final listening = _sttService.isListening.value;
             final active = _continuousMode || listening;
             final available = _sttService.isAvailable;
-            final enabled = revealed && available;
             // _micPulse toggles between true/false on each animation end
             // to create a continuous oscillation only while active.
             return TweenAnimationBuilder<double>(
@@ -1290,7 +1133,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
                   color: active ? Colors.redAccent : null,
                 ),
                 tooltip: _continuousMode ? 'Stop listening' : 'Speak to answer',
-                onPressed: enabled ? () => _onMicPressed() : null,
+                onPressed: available ? () => _onMicPressed() : null,
               ),
             );
           }),
@@ -1307,16 +1150,12 @@ class _LeitnerScreenState extends State<LeitnerScreen>
               curve: Curves.easeInOut,
               builder: (context, offset, child) =>
                   Transform.translate(offset: offset, child: child),
-              child: GestureDetector(
-                onVerticalDragEnd:
-                    _isImageCard(_cardEntity) ? null : _onVerticalDragEnd,
-                child: PageView.builder(
-                  controller: _pageController,
-                  onPageChanged: _onPageChanged,
-                  itemCount: _pairs.length,
-                  itemBuilder: (context, index) =>
-                      _buildCardPage(_pairs[index].$1, index),
-                ),
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                itemCount: _pairs.length,
+                itemBuilder: (context, index) =>
+                    _buildCardPage(_pairs[index].$1, index),
               ),
             ),
             // Dim overlay — appears after 2 min of no interaction

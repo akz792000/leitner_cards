@@ -111,7 +111,7 @@ class SttService extends GetxService {
       } else if (current.isNotEmpty) {
         // Text unchanged — start/extend stability window.
         stableSince ??= DateTime.now();
-        if (DateTime.now().difference(stableSince!) >=
+        if (DateTime.now().difference(stableSince) >=
             Duration(milliseconds: stabilityMs)) {
           // Speech stable for [stabilityMs] — lock result before stop() fires
           // a final onResult that could replace the transcript.
