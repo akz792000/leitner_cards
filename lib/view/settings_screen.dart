@@ -37,19 +37,11 @@ class SettingsScreen extends StatelessWidget {
                 activeThumbColor: cs.primary,
                 onChanged: (v) => s.micEnabled.value = v,
               )),
-          Obx(() => SwitchListTile(
-                secondary: const Icon(Icons.refresh_outlined),
-                title: const Text('Auto-listen after correct'),
-                subtitle: const Text(
-                    'Restarts mic automatically after correct answer'),
-                value: s.autoListen.value,
-                activeThumbColor: cs.primary,
-                onChanged: (v) => s.autoListen.value = v,
-              )),
           Obx(() => _SliderTile(
                 icon: Icons.timer_outlined,
-                title: 'STT pause delay',
-                subtitle: 'How long to wait after silence before stopping',
+                title: 'STT silence timeout',
+                subtitle:
+                    'Fallback: stops if no speech detected within this time',
                 trailing: '${(s.sttPauseMs.value / 1000).toStringAsFixed(1)}s',
                 value: s.sttPauseMs.value.toDouble(),
                 min: 1000,
@@ -58,25 +50,40 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (v) => s.sttPauseMs.value = (v / 500).round() * 500,
               )),
           Obx(() => _SliderTile(
-                icon: Icons.tune_outlined,
-                title: 'Match strictness',
-                subtitle: 'How closely you must match the expected answer',
-                trailing: '${(s.sttThreshold.value * 100).round()}%',
-                value: s.sttThreshold.value,
-                min: 0.50,
-                max: 0.95,
-                divisions: 9, // steps of 0.05
-                onChanged: (v) => s.sttThreshold.value =
-                    (v * 20).round() / 20, // snap to 0.05
+                icon: Icons.hourglass_bottom_outlined,
+                title: 'Speech stability window',
+                subtitle:
+                    'How long speech must stay unchanged before being evaluated',
+                trailing:
+                    '${(s.sttStabilityMs.value / 1000).toStringAsFixed(1)}s',
+                value: s.sttStabilityMs.value.toDouble(),
+                min: 300,
+                max: 1500,
+                divisions: 12, // steps of 100
+                onChanged: (v) =>
+                    s.sttStabilityMs.value = (v / 100).round() * 100,
               )),
           Obx(() => SwitchListTile(
                 secondary: const Icon(Icons.search_outlined),
                 title: const Text('Accept if contains'),
                 subtitle: const Text(
-                    'Pass if expected phrase appears anywhere in your answer'),
+                    'Pass if the expected phrase appears as a contiguous sequence in your answer (extra words before/after are fine)'),
                 value: s.containsMode.value,
                 activeThumbColor: cs.primary,
                 onChanged: (v) => s.containsMode.value = v,
+              )),
+          Obx(() => _SliderTile(
+                icon: Icons.tune_outlined,
+                title: 'Match strictness',
+                subtitle:
+                    'Only used when "Accept if contains" is OFF — how closely you must match',
+                trailing: '${(s.sttThreshold.value * 100).round()}%',
+                value: s.sttThreshold.value,
+                min: 0.50,
+                max: 1.0,
+                divisions: 10, // steps of 0.05
+                onChanged: (v) => s.sttThreshold.value =
+                    (v * 20).round() / 20, // snap to 0.05
               )),
 
           // ── 🔊 Speak (TTS) ───────────────────────────────────────────────

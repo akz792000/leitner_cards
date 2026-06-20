@@ -11,8 +11,8 @@ class SettingsService extends GetxService {
 
   // STT keys
   static const _kMicEnabled = 'micEnabled';
-  static const _kAutoListen = 'autoListen';
   static const _kSttPauseMs = 'sttPauseMs'; // int, ms
+  static const _kSttStabilityMs = 'sttStabilityMs'; // int, ms
   static const _kSttThreshold = 'sttThreshold'; // double 0.0–1.0
   static const _kContainsMode = 'containsMode'; // bool
 
@@ -37,8 +37,10 @@ class SettingsService extends GetxService {
 
   // Reactive fields — STT
   final RxBool micEnabled = true.obs;
-  final RxBool autoListen = true.obs;
   final RxInt sttPauseMs = 2000.obs;
+
+  /// How long speech must stay unchanged before it is considered finalised.
+  final RxInt sttStabilityMs = 800.obs;
   final RxDouble sttThreshold = 0.75.obs;
 
   /// When true, STT accepts the answer if the expected phrase appears anywhere
@@ -82,8 +84,9 @@ class SettingsService extends GetxService {
     _load();
     // Persist every change automatically.
     ever(micEnabled, (_) => _box.put(_kMicEnabled, micEnabled.value));
-    ever(autoListen, (_) => _box.put(_kAutoListen, autoListen.value));
     ever(sttPauseMs, (_) => _box.put(_kSttPauseMs, sttPauseMs.value));
+    ever(sttStabilityMs,
+        (_) => _box.put(_kSttStabilityMs, sttStabilityMs.value));
     ever(sttThreshold, (_) => _box.put(_kSttThreshold, sttThreshold.value));
     ever(containsMode, (_) => _box.put(_kContainsMode, containsMode.value));
     ever(speakEnabled, (_) => _box.put(_kSpeakEnabled, speakEnabled.value));
@@ -100,8 +103,8 @@ class SettingsService extends GetxService {
 
   void _load() {
     micEnabled.value = _box.get(_kMicEnabled, defaultValue: true);
-    autoListen.value = _box.get(_kAutoListen, defaultValue: true);
     sttPauseMs.value = _box.get(_kSttPauseMs, defaultValue: 2000);
+    sttStabilityMs.value = _box.get(_kSttStabilityMs, defaultValue: 800);
     sttThreshold.value =
         (_box.get(_kSttThreshold, defaultValue: 0.75) as num).toDouble();
     containsMode.value = _box.get(_kContainsMode, defaultValue: true);
@@ -125,8 +128,8 @@ class SettingsService extends GetxService {
   /// Resets all settings to their default values.
   void resetToDefaults() {
     micEnabled.value = true;
-    autoListen.value = true;
     sttPauseMs.value = 2000;
+    sttStabilityMs.value = 800;
     sttThreshold.value = 0.75;
     containsMode.value = true;
     speakEnabled.value = true;

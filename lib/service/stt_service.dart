@@ -50,13 +50,19 @@ class SttService extends GetxService {
   /// Starts listening in the locale matching [language] and returns the
   /// recognised text when the user stops speaking, or `null` on failure.
   /// Times out after [timeout] if no result arrives (e.g. on iOS Simulator).
-  /// [pauseMs] controls how long to wait after silence before stopping.
+  /// [pauseMs] controls the STT engine's own silence timeout as a fallback.
+  /// Stops immediately once speech has been stable for 300 ms — so both
+  /// correct and wrong answers are evaluated without waiting the full pause.
   Future<String?> listen(LanguageCode language,
       {int pauseMs = 2000,
+      int stabilityMs = 800,
       Duration timeout = const Duration(seconds: 30)}) async {
     if (!_initialized || isListening.value) return null;
 
     String? result;
+    bool acceptingResults = true;
+    // Reset liveText here so any leftover text from the previous card doesn't
+    // seed a false stability trigger at the start of the new listen session.
     liveText.value = '';
     isListening.value = true;
 
@@ -72,7 +78,7 @@ class SttService extends GetxService {
         ),
         onResult: (r) {
           try {
-            if (r.recognizedWords.isNotEmpty) {
+            if (acceptingResults && r.recognizedWords.isNotEmpty) {
               result = r.recognizedWords;
               liveText.value = r.recognizedWords;
             }
@@ -87,10 +93,38 @@ class SttService extends GetxService {
       return null;
     }
 
-    // Wait until listening stops (status handler sets isListening=false) or timeout.
+    // Wait until listening stops, speech stabilises, or timeout expires.
+    // stableSince resets whenever liveText changes, so each new card starts
+    // with a clean slate (liveText is '' at the top of this method).
     final deadline = DateTime.now().add(timeout);
+    String lastCheckedText = '';
+    DateTime? stableSince;
+
     while (isListening.value && DateTime.now().isBefore(deadline)) {
       await Future.delayed(const Duration(milliseconds: 100));
+
+      final current = liveText.value;
+      if (current != lastCheckedText) {
+        // New words arrived — reset stability timer.
+        lastCheckedText = current;
+        stableSince = null;
+      } else if (current.isNotEmpty) {
+        // Text unchanged — start/extend stability window.
+        stableSince ??= DateTime.now();
+        if (DateTime.now().difference(stableSince!) >=
+            Duration(milliseconds: stabilityMs)) {
+          // Speech stable for [stabilityMs] — lock result before stop() fires
+          // a final onResult that could replace the transcript.
+          acceptingResults = false;
+          final locked = result;
+          try {
+            await _stt.stop();
+          } catch (_) {}
+          result = locked;
+          isListening.value = false;
+          break;
+        }
+      }
     }
     if (isListening.value) {
       try {
@@ -136,11 +170,15 @@ class SttService extends GetxService {
 /// Compares [recognised] against [expected] with fuzzy tolerance.
 ///
 /// Normalises both strings (lowercase, strip punctuation) then:
-/// 1. If [containsMode] is true and the expected phrase appears as a
-///    substring anywhere inside recognised, immediately accepts — extra
-///    words before/after are fine (e.g. "hi are you ali again" passes for "ali").
-/// 2. Falls through to the word-overlap threshold check: at least [threshold]
-///    fraction of expected words must appear in the recognised word set.
+/// Returns true when [recognised] text is close enough to [expected].
+///
+/// Two modes:
+/// 1. [containsMode] = true (default in settings): the expected phrase must
+///    appear as a **contiguous sequence** inside recognised — extra words
+///    before/after are fine, but inserted words or wrong order are not.
+///    "i am ali and" passes for "i am ali" ✅; "i am a ali" does not ❌.
+/// 2. [containsMode] = false: fuzzy — at least [threshold] fraction of
+///    expected words must appear in recognised (default 75%).
 bool sttMatches(
   String recognised,
   String expected, {
@@ -159,15 +197,19 @@ bool sttMatches(
   if (r.isEmpty || e.isEmpty) return false;
   if (r == e) return true;
 
-  // Fast path: accepted whenever the expected phrase is a substring of recognised.
-  if (containsMode && r.contains(e)) return true;
-
   final expectedWords = e.split(' ').where((w) => w.isNotEmpty).toList();
   if (expectedWords.isEmpty) return false;
 
   final recognisedWords = r.split(' ').toSet();
+
+  if (containsMode) {
+    // Recognised must contain the expected phrase as a contiguous sequence.
+    // Extra words before/after are fine; inserted words or wrong order are not.
+    return r.contains(e);
+  }
+
+  // Fuzzy threshold: at least [threshold] fraction of expected words present.
   final matchCount =
       expectedWords.where((w) => recognisedWords.contains(w)).length;
-
   return matchCount / expectedWords.length >= threshold;
 }

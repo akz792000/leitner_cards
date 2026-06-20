@@ -593,6 +593,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
       final recognised = await _sttService.listen(
         lang,
         pauseMs: _settingsService.sttPauseMs.value,
+        stabilityMs: _settingsService.sttStabilityMs.value,
       );
 
       if (!mounted || !_continuousMode) break;
@@ -627,7 +628,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
         // Wait for the page-flip animation + _onPageChanged to update state.
         await Future.delayed(const Duration(milliseconds: 700));
       } else {
-        // Wrong — show brief snackbar, skip card without changing its level.
+        // Wrong — show snackbar, stop the loop, stay on the same card.
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -643,17 +644,13 @@ class _LeitnerScreenState extends State<LeitnerScreen>
                         fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
           ));
         }
-        _advancePage();
-        if (isLastCard) {
-          setState(() => _continuousMode = false);
-          break;
-        }
-        // Brief pause so the snackbar is readable before the next listen starts.
-        await Future.delayed(const Duration(milliseconds: 900));
+        // Stop the continuous loop — user must press mic again to continue.
+        setState(() => _continuousMode = false);
+        break;
       }
     }
 
