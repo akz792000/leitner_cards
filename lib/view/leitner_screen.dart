@@ -707,6 +707,7 @@ class _LeitnerScreenState extends State<LeitnerScreen>
         lang,
         pauseMs: _settingsService.sttPauseMs.value,
         stabilityMs: _settingsService.sttStabilityMs.value,
+        expectedText: expected,
       );
 
       if (!mounted || !_continuousMode) break;

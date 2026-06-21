@@ -47,16 +47,47 @@ class SttService extends GetxService {
     }
   }
 
+  /// Estimates a comfortable reading duration for [text] in seconds.
+  ///
+  /// Uses ~120 words-per-minute (2 wps) as a baseline — slower than natural
+  /// speech to give the learner breathing room. Returns at least [minSeconds].
+  static int _estimateReadingSeconds(String text, {int minSeconds = 5}) {
+    final wordCount =
+        text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    // ~2 words per second → 0.5 s/word, rounded up.
+    final estimated = (wordCount * 0.5).ceil();
+    return estimated < minSeconds ? minSeconds : estimated;
+  }
+
   /// Starts listening in the locale matching [language] and returns the
   /// recognised text when the user stops speaking, or `null` on failure.
-  /// Times out after [timeout] if no result arrives (e.g. on iOS Simulator).
-  /// [pauseMs] controls the STT engine's own silence timeout as a fallback.
-  /// Stops immediately once speech has been stable for 300 ms — so both
-  /// correct and wrong answers are evaluated without waiting the full pause.
+  ///
+  /// When [expectedText] is provided the pause and timeout are scaled to give
+  /// the learner enough time to read the full sentence:
+  /// * **pauseMs** — the larger of [pauseMs] (from settings) and a value
+  ///   derived from the expected word count. This is the STT engine's own
+  ///   silence-after-speech timeout.
+  /// * **timeout** — the larger of [timeout] and the estimated reading time
+  ///   plus a generous buffer. This is the hard deadline for the entire
+  ///   listen session.
+  ///
+  /// [stabilityMs] controls how long the transcript must stay unchanged before
+  /// it is considered final.
   Future<String?> listen(LanguageCode language,
       {int pauseMs = 2000,
       int stabilityMs = 800,
-      Duration timeout = const Duration(seconds: 30)}) async {
+      Duration timeout = const Duration(seconds: 30),
+      String? expectedText}) async {
+    // Scale pause & timeout to text length so longer sentences get more time.
+    if (expectedText != null && expectedText.isNotEmpty) {
+      final readingSecs = _estimateReadingSeconds(expectedText);
+      // Pause: at least 1 s per 5 words, minimum is the user's setting.
+      final textPauseMs = (readingSecs * 400).clamp(pauseMs, 10000);
+      pauseMs = textPauseMs;
+      // Timeout: reading time + 50 % buffer, minimum is the caller's value.
+      final textTimeout = Duration(seconds: (readingSecs * 1.5).ceil());
+      if (textTimeout > timeout) timeout = textTimeout;
+    }
     if (!_initialized || isListening.value) return null;
 
     String? result;
