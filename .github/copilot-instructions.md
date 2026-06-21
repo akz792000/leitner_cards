@@ -89,7 +89,6 @@ lib/
     ├── home_screen.dart
     ├── leitner_screen.dart
     ├── level_screen.dart
-    ├── loading_screen.dart
     ├── merge_screen.dart
     ├── persist_screen.dart
     ├── settings_screen.dart
@@ -119,7 +118,6 @@ All navigation: `Get.find<RouteService>().pushNamed(route, arguments: {...})`.
 | `download` | `/download` | `DownloadScreen` | — |
 | `stats` | `/stats` | `StatsScreen` | — |
 | `settings` | `/settings` | `SettingsScreen` | — |
-| `loading` | `/loading` | `LoadingScreen` | — |
 
 ---
 
@@ -172,7 +170,7 @@ Getter: `GroupCode get group => GroupCode.fromCode(groupCode)`
 
 **CardRepository:** `listenable()`, `merge(card)`, `remove(card)`, `removeAll()`, `removeList(list)`, `findById(id)`, `findAll()`, `findAllByGroupCode(code)`, `findAllGroupCodeBased() → Map<String,int>`
 
-**ProgressRepository:** `merge(p)`, `findByCardId(id)`, `findOrCreate(cardId)` *(not persisted)*, `findAll()`, `removeAll()`, `exportAll() → List<Map>`
+**ProgressRepository:** `merge(p)`, `findByCardId(id)`, `findOrCreate(cardId)` *(not persisted)*, `findAll()`, `removeAll()`, `removeByCardId(id)`, `exportAll() → List<Map>`
 
 ---
 
@@ -189,7 +187,8 @@ Getter: `GroupCode get group => GroupCode.fromCode(groupCode)`
 4. Sort each level group by `order` asc → return flattened list
 
 ### SyncService *(views must never write Hive directly)*
-`saveCard(CardEntity)` · `removeCard(CardEntity)` · `removeCards(List<CardEntity>)`
+`saveCard(CardEntity)` · `removeCard(CardEntity, {withProgress: false})` · `removeCards(List<CardEntity>, {withProgress: false})`  
+`withProgress: true` also deletes the card's `ProgressEntity` from Hive.
 
 ### SettingsService — box `'settings'`
 13 reactive settings persisted via `ever()`:
@@ -293,10 +292,14 @@ TabBar per deck. Hero card: time studied (`studyTimeSecs`). Metrics: total, star
 Gradient header (image.png, name, "Language Learner"). Tools: Statistics. Settings: Settings, Theme toggle (`Obx`), About dialog. Footer: "Learning Leitner v2.0".
 
 ### DataScreen `/data`
-Card list. Tap → `MergeScreen`. FAB → `PersistScreen`. Delete single or all. FA_EN → RTL secondary text.
+Card list. Tap → `MergeScreen`. FAB → `PersistScreen`. Delete single or all — both show a confirmation dialog with an **"Also delete progress"** checkbox (unchecked by default). FA_EN → RTL secondary text.
 
 ### DownloadScreen `/download`
-Downloads `fa_en.json`, `en_de.json`, `en_de_verbs.json`, `visual.json` from `https://raw.githubusercontent.com/akz792000/Dictionary/main`. "Override" toggle resets progress to level 0 + subLevel 1.
+Smart sync from `https://raw.githubusercontent.com/akz792000/Dictionary/main`.  
+**Pass 1 (all rows):** existing cards with changed content → update + reset progress to level 0.  
+**Pass 2 (new cards):** starts from `existingCount` offset, adds up to `_newCardsLimit` (default 100, step 10, range 10–500) items not yet local. First sync adds items 0–99, second sync adds 100–199, etc.  
+**Override toggle (per deck):** resets ALL progress for that deck.  
+After sync shows a results dialog per deck: `↑ N updated  +N inserted  (total)`. Stays on page after OK.
 
 ### PersistScreen `/persist`
 ID = `millisecondsSinceEpoch ~/ 1000`. Fields by deck: FA_EN→fa+en, EN_DE→en+de, VISUAL→en+de+image.

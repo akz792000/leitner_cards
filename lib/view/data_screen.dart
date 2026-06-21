@@ -73,42 +73,87 @@ class _DataScreenState extends State<DataScreen> {
     return colors[level.clamp(0, colors.length - 1)];
   }
 
-  void _onRemove(CardEntity cardEntity) {
-    DialogUtil.okCancel(
-      context,
-      title: "Delete Card",
-      description: "Delete '${cardEntity.en}'?",
-      onOk: () async {
-        try {
-          await _syncService.removeCard(cardEntity);
-          _initialize();
-        } catch (e) {
-          if (mounted) DialogUtil.error(context, e);
-        }
-      },
+  /// Shows a confirmation dialog with an "Also delete progress" checkbox.
+  /// Returns a record (confirmed, withProgress) or null if dismissed.
+  Future<({bool withProgress})?> _confirmDelete(
+      String title, String description) async {
+    bool withProgress = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(description),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () => setLocal(() => withProgress = !withProgress),
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: withProgress,
+                      onChanged: (v) =>
+                          setLocal(() => withProgress = v ?? false),
+                    ),
+                    const Text('Also delete progress'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete')),
+          ],
+        ),
+      ),
     );
+    if (confirmed != true) return null;
+    return (withProgress: withProgress);
   }
 
-  void _onRemoveAll() {
+  void _onRemove(CardEntity cardEntity) async {
+    final result = await _confirmDelete(
+      'Delete Card',
+      "Delete '${cardEntity.en}'?",
+    );
+    if (result == null) return;
+    try {
+      await _syncService.removeCard(cardEntity,
+          withProgress: result.withProgress);
+      _initialize();
+    } catch (e) {
+      if (mounted) DialogUtil.error(context, e);
+    }
+  }
+
+  void _onRemoveAll() async {
     if (_cardEntities.isEmpty) {
       DialogUtil.ok(context,
-          title: "Nothing to delete",
-          description: "There are no cards in this deck.");
+          title: 'Nothing to delete',
+          description: 'There are no cards in this deck.');
       return;
     }
-    DialogUtil.okCancel(
-      context,
-      title: "Delete All",
-      description: "Delete all ${_cardEntities.length} cards?",
-      onOk: () async {
-        try {
-          await _syncService.removeCards(_cardEntities);
-          _initialize();
-        } catch (e) {
-          if (mounted) DialogUtil.error(context, e);
-        }
-      },
+    final result = await _confirmDelete(
+      'Delete All',
+      'Delete all ${_cardEntities.length} cards?',
     );
+    if (result == null) return;
+    try {
+      await _syncService.removeCards(_cardEntities,
+          withProgress: result.withProgress);
+      _initialize();
+    } catch (e) {
+      if (mounted) DialogUtil.error(context, e);
+    }
   }
 
   Widget _buildEmptyState() {

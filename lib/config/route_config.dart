@@ -7,7 +7,6 @@ import '../view/error_screen.dart';
 import '../view/home_screen.dart';
 import '../view/leitner_screen.dart';
 import '../view/level_screen.dart';
-import '../view/loading_screen.dart';
 import '../view/merge_screen.dart';
 import '../view/persist_screen.dart';
 import '../view/settings_screen.dart';
@@ -29,7 +28,6 @@ class RouteConfig {
   static const String merge = "/merge";
   static const String download = "/download";
   static const String stats = "/stats";
-  static const String loading = "/loading";
   static const String settings = "/settings";
 
   Route generateRoute(RouteSettings routeSettings) {
@@ -79,9 +77,6 @@ class RouteConfig {
 
         case settings:
           return MaterialPageRoute(builder: (_) => const SettingsScreen());
-
-        case loading:
-          return MaterialPageRoute(builder: (_) => const LoadingScreen());
 
         default:
           return MaterialPageRoute(builder: (_) => const ErrorScreen());

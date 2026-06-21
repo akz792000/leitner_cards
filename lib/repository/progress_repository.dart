@@ -37,6 +37,9 @@ class ProgressRepository {
 
   Future<void> removeAll() async => await _box.deleteAll(_box.keys);
 
+  /// Deletes the progress record for a single card, if it exists.
+  Future<void> removeByCardId(int cardId) async => await _box.delete(cardId);
+
   /// Returns all progress records as a list of plain maps — for JSON export.
   List<Map<String, dynamic>> exportAll() => _box.values
       .map((p) => {

@@ -11,9 +11,14 @@ import 'package:leitner_cards/util/date_time_util.dart';
 
 /// Full-screen view for manually downloading card decks from GitHub.
 ///
-/// Each deck row has an "Override" toggle: off preserves local progress;
-/// on resets every card in that deck to level 0 — useful after a major
-/// content update in the GitHub source JSON.
+/// Smart sync strategy:
+///   Pass 1 (all rows)  — existing cards with changed content are updated and
+///                         their progress reset to level 0 (correction detected).
+///   Pass 2 (last N)    — cards not yet in the local DB are added, but only
+///                         the most-recent [_newCardsLimit] items so the level-0
+///                         queue never becomes overwhelming.
+///   Override toggle    — resets ALL progress for that deck regardless of
+///                         content changes (useful for a full resync).
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
 
@@ -27,6 +32,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
   static const String _baseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main';
+
+  /// Maximum number of NEW (not yet local) cards added per deck per sync.
+  int _newCardsLimit = 100;
 
   final List<Map<String, dynamic>> _items = [
     {
@@ -61,44 +69,79 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
   bool _loading = false;
 
-  Future<void> _persistCard(
+  /// Pass 1: update an existing card if its content has changed.
+  /// Returns true if the card was updated (triggers progress reset).
+  Future<bool> _updateExisting(
       Map<String, dynamic> element, GroupCode groupCode, bool override) async {
     final id = element["id"] as int? ?? 0;
     final existing = _cardRepository.findById(id);
+    if (existing == null) return false; // new card — handled in pass 2
+    // Ignore cross-deck ID collisions (same epoch ID in a different deck).
+    if (existing.groupCode != groupCode.code) return false;
 
-    final entity = CardEntity(
+    final contentChanged = existing.image != (element["image"] ?? "") ||
+        existing.en != (element["en"] ?? "") ||
+        existing.fa != (element["fa"] ?? "") ||
+        existing.de != (element["de"] ?? "") ||
+        existing.desc != (element["desc"] ?? "");
+
+    if (!contentChanged && !override) return false;
+
+    await _cardRepository.merge(CardEntity(
       id: id,
-      created: existing?.created ?? DateTimeUtil.now(),
-      modified: existing?.modified ?? DateTimeUtil.now(),
+      created: existing.created,
+      modified: DateTimeUtil.now(),
       groupCode: groupCode.code,
       image: element["image"] ?? "",
       en: element["en"] ?? "",
       fa: element["fa"] ?? "",
       de: element["de"] ?? "",
       desc: element["desc"] ?? "",
-    );
+    ));
 
-    final contentChanged = existing == null ||
-        existing.image != entity.image ||
-        existing.en != entity.en ||
-        existing.fa != entity.fa ||
-        existing.de != entity.de ||
-        existing.desc != entity.desc;
-
-    if (override || contentChanged) {
-      await _cardRepository.merge(entity);
-    }
-
-    if (override) {
-      final progress = _progressRepository.findOrCreate(id);
-      progress.level = 0;
-      progress.subLevel = 1;
-      progress.modified = DateTimeUtil.now();
-      await _progressRepository.merge(progress);
-    }
+    // Content correction or override → restart learning from level 0.
+    final progress = _progressRepository.findOrCreate(id);
+    progress.level = 0;
+    progress.subLevel = 1;
+    progress.modified = DateTimeUtil.now();
+    await _progressRepository.merge(progress);
+    return true;
   }
 
-  Future<void> _download(Map<String, dynamic> item) async {
+  /// Pass 2: add a card that does not yet exist locally.
+  Future<bool> _addNew(
+      Map<String, dynamic> element, GroupCode groupCode) async {
+    final id = element["id"] as int? ?? 0;
+    final existing = _cardRepository.findById(id);
+    // Skip if the card already exists for this deck (already downloaded).
+    // Also skip if an ID collision exists with a different deck — Hive keys
+    // are unique, so we can't insert without overwriting the other deck's card.
+    if (existing != null) return false;
+
+    await _cardRepository.merge(CardEntity(
+      id: id,
+      created: DateTimeUtil.now(),
+      modified: DateTimeUtil.now(),
+      groupCode: groupCode.code,
+      image: element["image"] ?? "",
+      en: element["en"] ?? "",
+      fa: element["fa"] ?? "",
+      de: element["de"] ?? "",
+      desc: element["desc"] ?? "",
+    ));
+    return true;
+  }
+
+  /// Downloads one deck and returns `(updated, inserted, remaining, total)` counts.
+  ///
+  /// Pass 1 scans ALL remote rows and updates any existing card whose content
+  /// has changed (resetting its progress to level 0).
+  /// Pass 2 iterates ALL rows, skips cards already in the local DB, and inserts
+  /// up to [_newCardsLimit] new ones — then counts how many are still pending
+  /// for the next sync. This means each sync continues exactly where the last
+  /// one left off without relying on a fragile positional offset.
+  Future<({int updated, int inserted, int remaining, int total})> _download(
+      Map<String, dynamic> item) async {
     final response = await http.get(Uri.parse(item['url'] as String));
     if (response.statusCode != 200) {
       throw Exception(
@@ -107,25 +150,60 @@ class _DownloadScreenState extends State<DownloadScreen> {
     final List<dynamic> rows = json.decode(response.body);
     final GroupCode groupCode = item['groupCode'] as GroupCode;
     final bool override = item['toggle'] as bool;
+
+    int updated = 0;
+    int inserted = 0;
+    int remaining = 0;
+
+    // Pass 1 — corrections: scan ALL rows, update content if changed.
     for (final row in rows) {
-      await _persistCard(row as Map<String, dynamic>, groupCode, override);
+      if (await _updateExisting(
+          row as Map<String, dynamic>, groupCode, override)) {
+        updated++;
+      }
     }
+
+    // Pass 2 — new cards: iterate ALL rows in order, skip already-local IDs,
+    // insert up to _newCardsLimit new ones. Count remaining for next sync.
+    bool limitReached = false;
+    for (final rawRow in rows) {
+      final row = rawRow as Map<String, dynamic>;
+      final id = row['id'] as int? ?? 0;
+      if (_cardRepository.findById(id) != null) continue; // already local
+      if (limitReached) {
+        remaining++; // count cards deferred to next sync
+        continue;
+      }
+      if (await _addNew(row, groupCode)) {
+        inserted++;
+        if (inserted >= _newCardsLimit) limitReached = true;
+      }
+    }
+
+    return (
+      updated: updated,
+      inserted: inserted,
+      remaining: remaining,
+      total: rows.length
+    );
   }
 
   Future<void> _downloadAll() async {
     setState(() => _loading = true);
+    final List<Map<String, dynamic>> results = [];
     try {
       for (final item in _items) {
-        await _download(item);
+        final r = await _download(item);
+        results.add({
+          'name': item['name'] as String,
+          'icon': item['icon'] as String,
+          'updated': r.updated,
+          'inserted': r.inserted,
+          'remaining': r.remaining,
+          'total': r.total,
+        });
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Download complete'),
-              backgroundColor: Colors.green),
-        );
-        Navigator.pop(context);
-      }
+      if (mounted) _showResults(results);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +213,88 @@ class _DownloadScreenState extends State<DownloadScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showResults(List<Map<String, dynamic>> results) {
+    final cs = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Sync Complete'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: results.map((r) {
+            final isEnglish = r['icon'] == 'en';
+            final isVisual = r['icon'] == 'vi';
+            final color = isEnglish
+                ? Colors.blue.shade600
+                : isVisual
+                    ? Colors.teal.shade600
+                    : Colors.orange.shade700;
+            final updated = r['updated'] as int;
+            final inserted = r['inserted'] as int;
+            final remaining = r['remaining'] as int;
+            final total = r['total'] as int;
+            final String statusLine;
+            if (updated == 0 && inserted == 0) {
+              statusLine = remaining > 0
+                  ? '$remaining pending  ($total total)'
+                  : 'Up to date  ($total total)';
+            } else {
+              final parts = <String>[];
+              if (updated > 0) parts.add('↑ $updated updated');
+              if (inserted > 0) parts.add('+$inserted inserted');
+              if (remaining > 0) parts.add('$remaining pending');
+              statusLine = '${parts.join('  ')}  ($total total)';
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(r['name'] as String,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text(
+                          statusLine,
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context), // close dialog only
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -169,12 +329,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Download from GitHub',
+                      const Text('Smart Sync from GitHub',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 3),
                       Text(
-                        'Enable "Override" to reset card progress and replace with latest content.',
+                        'Corrections to existing cards are always applied (level reset to 0). '
+                        'Only the last N new cards are added to avoid flooding level 0.',
                         style:
                             TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                       ),
@@ -184,79 +345,125 @@ class _DownloadScreenState extends State<DownloadScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                Text(
-                  'DECKS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                    color: cs.onSurfaceVariant,
+          // Scrollable middle: new-cards control + deck list
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Max new cards control
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Text('Max new cards per sync:',
+                            style: TextStyle(
+                                fontSize: 13, color: cs.onSurfaceVariant)),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: _newCardsLimit > 10
+                              ? () => setState(() => _newCardsLimit =
+                                  (_newCardsLimit - 10).clamp(10, 500))
+                              : null,
+                        ),
+                        SizedBox(
+                          width: 44,
+                          child: Text(
+                            '$_newCardsLimit',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: _newCardsLimit < 500
+                              ? () => setState(() => _newCardsLimit =
+                                  (_newCardsLimit + 10).clamp(10, 500))
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Deck cards
-          ..._items.asMap().entries.map((entry) {
-            final i = entry.key;
-            final item = entry.value;
-            final isEnglish = item['icon'] == 'en';
-            final isVisual = item['icon'] == 'vi';
-            final accentColor = isEnglish
-                ? Colors.blue.shade600
-                : isVisual
-                    ? Colors.teal.shade600
-                    : Colors.orange.shade700;
-
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 1))
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Text(
+                      'DECKS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  // Deck cards
+                  ..._items.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final item = entry.value;
+                    final isEnglish = item['icon'] == 'en';
+                    final isVisual = item['icon'] == 'vi';
+                    final accentColor = isEnglish
+                        ? Colors.blue.shade600
+                        : isVisual
+                            ? Colors.teal.shade600
+                            : Colors.orange.shade700;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 1))
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        leading: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: accentColor.withAlpha(20),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: isVisual
+                              ? Icon(Icons.image_outlined,
+                                  color: accentColor, size: 32)
+                              : Image.asset('assets/flags/${item['icon']}.png',
+                                  width: 32, height: 32),
+                        ),
+                        title: Text(item['name'],
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          item['toggle']
+                              ? 'Override ON — resets all progress'
+                              : 'Override OFF — only corrections reset to 0',
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant),
+                        ),
+                        trailing: Switch(
+                          value: item['toggle'],
+                          activeColor: accentColor,
+                          onChanged: (value) =>
+                              setState(() => _items[i]['toggle'] = value),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
                 ],
               ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: accentColor.withAlpha(20),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: isVisual
-                      ? Icon(Icons.image_outlined, color: accentColor, size: 32)
-                      : Image.asset('assets/flags/${item['icon']}.png',
-                          width: 32, height: 32),
-                ),
-                title: Text(item['name'],
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  item['toggle']
-                      ? 'Override ON — resets progress'
-                      : 'Override OFF — keeps local progress',
-                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-                ),
-                trailing: Switch(
-                  value: item['toggle'],
-                  activeColor: accentColor,
-                  onChanged: (value) =>
-                      setState(() => _items[i]['toggle'] = value),
-                ),
-              ),
-            );
-          }),
-          const Spacer(),
+            ),
+          ),
+          // Download button — always pinned at the bottom
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             child: SizedBox(
