@@ -30,6 +30,7 @@ class SettingsService extends GetxService {
 
   // Study keys
   static const _kCardOrder = 'cardOrder'; // int → CardOrder.code
+  static const _kSubLevelOrder = 'subLevelOrder'; // int → CardOrder.code
 
   // Study-time keys — cumulative seconds spent studying each deck.
   // Key pattern: 'studyTime_<GroupCode.code>'
@@ -60,7 +61,11 @@ class SettingsService extends GetxService {
   final RxInt dimDelayMin = 2.obs;
 
   // Reactive fields — Study
+  /// Primary ordering: which level group appears first.
   final Rx<CardOrder> cardOrder = CardOrder.highFirst.obs;
+
+  /// Secondary ordering: within each level, which subLevel appears first.
+  final Rx<CardOrder> subLevelOrder = CardOrder.highFirst.obs;
 
   // Reactive study-time counters (seconds) — one per deck, updated on session end.
   final Map<GroupCode, RxInt> _studyTimeSecs = {
@@ -99,6 +104,8 @@ class SettingsService extends GetxService {
     ever(amoledDim, (_) => _box.put(_kAmoledDim, amoledDim.value));
     ever(dimDelayMin, (_) => _box.put(_kDimDelayMin, dimDelayMin.value));
     ever(cardOrder, (_) => _box.put(_kCardOrder, cardOrder.value.code));
+    ever(subLevelOrder,
+        (_) => _box.put(_kSubLevelOrder, subLevelOrder.value.code));
   }
 
   void _load() {
@@ -119,6 +126,8 @@ class SettingsService extends GetxService {
     dimDelayMin.value = _box.get(_kDimDelayMin, defaultValue: 2);
     cardOrder.value = CardOrder.fromCode(
         _box.get(_kCardOrder, defaultValue: CardOrder.highFirst.code));
+    subLevelOrder.value = CardOrder.fromCode(
+        _box.get(_kSubLevelOrder, defaultValue: CardOrder.highFirst.code));
     // Restore cumulative study times
     for (final g in GroupCode.values) {
       _studyTimeSecs[g]!.value = _box.get(_studyTimeKey(g), defaultValue: 0);
@@ -141,5 +150,6 @@ class SettingsService extends GetxService {
     amoledDim.value = true;
     dimDelayMin.value = 2;
     cardOrder.value = CardOrder.highFirst;
+    subLevelOrder.value = CardOrder.highFirst;
   }
 }

@@ -19,6 +19,7 @@ import '../service/settings_service.dart';
 import '../service/study_log_service.dart';
 import '../service/tts_service.dart';
 import '../service/stt_service.dart';
+import '../util/color_util.dart';
 import '../util/date_time_util.dart';
 import '../enums/card_order.dart';
 import 'widget/animated_gradient_background.dart';
@@ -317,17 +318,46 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             .toList();
         break;
     }
-    // Apply card order from settings.
-    switch (_settingsService.cardOrder.value) {
-      case CardOrder.highFirst:
-        _pairs.sort((a, b) => b.$2.level.compareTo(a.$2.level));
-        break;
-      case CardOrder.lowFirst:
-        _pairs.sort((a, b) => a.$2.level.compareTo(b.$2.level));
-        break;
-      case CardOrder.random:
-        _pairs.shuffle();
-        break;
+    // Apply two-level ordering from settings.
+    // Primary: by level (cardOrder). Secondary: by subLevel within each level (subLevelOrder).
+    final levelOrder = _settingsService.cardOrder.value;
+    final subOrder = _settingsService.subLevelOrder.value;
+
+    if (levelOrder == CardOrder.random) {
+      // Random at the top level → shuffle everything.
+      _pairs.shuffle();
+    } else {
+      // Sort by level first.
+      _pairs.sort((a, b) => levelOrder == CardOrder.highFirst
+          ? b.$2.level.compareTo(a.$2.level)
+          : a.$2.level.compareTo(b.$2.level));
+
+      if (subOrder == CardOrder.random) {
+        // Random within each level group — shuffle each group in place.
+        final Map<int, List<(CardEntity, ProgressEntity)>> byLevel = {};
+        for (final p in _pairs) {
+          (byLevel[p.$2.level] ??= []).add(p);
+        }
+        _pairs = [];
+        final keys = byLevel.keys.toList()
+          ..sort((a, b) => levelOrder == CardOrder.highFirst
+              ? b.compareTo(a)
+              : a.compareTo(b));
+        for (final key in keys) {
+          _pairs.addAll(byLevel[key]!..shuffle());
+        }
+      } else {
+        // Sort by level then subLevel.
+        _pairs.sort((a, b) {
+          final levelCmp = levelOrder == CardOrder.highFirst
+              ? b.$2.level.compareTo(a.$2.level)
+              : a.$2.level.compareTo(b.$2.level);
+          if (levelCmp != 0) return levelCmp;
+          return subOrder == CardOrder.highFirst
+              ? b.$2.subLevel.compareTo(a.$2.subLevel)
+              : a.$2.subLevel.compareTo(b.$2.subLevel);
+        });
+      }
     }
     // Snapshot initial levels so we can detect re-grading if the screen is
     // recreated after the user navigates away mid-session.
@@ -873,28 +903,10 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     return emojis[level.clamp(0, emojis.length - 1)];
   }
 
-  /// Returns the accent colour for a given level (16-step rainbow palette).
-  Color _levelColor(int level) {
-    const colors = [
-      Color(0xFFF44336),
-      Color(0xFFFF5722),
-      Color(0xFFFF9800),
-      Color(0xFFFFC107),
-      Color(0xFFFFEB3B),
-      Color(0xFFCDDC39),
-      Color(0xFF8BC34A),
-      Color(0xFF4CAF50),
-      Color(0xFF009688),
-      Color(0xFF00BCD4),
-      Color(0xFF03A9F4),
-      Color(0xFF2196F3),
-      Color(0xFF3F51B5),
-      Color(0xFF673AB7),
-      Color(0xFF9C27B0),
-      Color(0xFFE91E63),
-    ];
-    return colors[level.clamp(0, colors.length - 1)];
-  }
+  /// Returns the accent colour for a given level (16-step rainbow palette),
+  /// adapted to current theme brightness for readability.
+  Color _levelColor(int level) =>
+      ColorUtil.levelColor(level, Theme.of(context).brightness);
 
   /// Builds the card content — identical layout for all decks:
   /// tab bar → image (visual only) → text → thumb buttons.
@@ -975,6 +987,14 @@ class _LeitnerScreenState extends State<LeitnerScreen>
           onTap: () => Navigator.of(context).pop(),
         ),
         actions: [
+          // Description — only shown when card has a desc
+          if (_cardEntity.desc.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Description',
+              onPressed: () => DescriptionSheet.show(context,
+                  card: _cardEntity, groupCode: widget.groupCode),
+            ),
           Obx(() {
             if (!_settingsService.speakEnabled.value) {
               return const SizedBox.shrink();
@@ -1002,24 +1022,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
                   }
                 }
               },
-            );
-          }),
-          // Description — only shown when card has a desc
-          if (_cardEntity.desc.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.info_outline),
-              tooltip: 'Description',
-              onPressed: () => DescriptionSheet.show(context,
-                  card: _cardEntity, groupCode: widget.groupCode),
-            ),
-          Obx(() {
-            if (!_settingsService.copyEnabled.value) {
-              return const SizedBox.shrink();
-            }
-            return IconButton(
-              icon: const Icon(Icons.copy_outlined),
-              tooltip: 'Copy',
-              onPressed: () => _copyCurrentText(context),
             );
           }),
           // Mic button — red/pulsing while continuous loop is active or actively listening.
@@ -1053,6 +1055,16 @@ class _LeitnerScreenState extends State<LeitnerScreen>
                 tooltip: _continuousMode ? 'Stop listening' : 'Speak to answer',
                 onPressed: available ? () => _onMicPressed() : null,
               ),
+            );
+          }),
+          Obx(() {
+            if (!_settingsService.copyEnabled.value) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              icon: const Icon(Icons.copy_outlined),
+              tooltip: 'Copy',
+              onPressed: () => _copyCurrentText(context),
             );
           }),
         ],

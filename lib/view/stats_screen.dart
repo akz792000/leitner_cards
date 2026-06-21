@@ -6,6 +6,8 @@ import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/service/study_log_service.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
+import '../util/color_util.dart';
+
 /// Learning-progress statistics screen, one tab per [GroupCode] deck.
 ///
 /// Stats are computed synchronously from the Hive boxes on each build — no
@@ -538,27 +540,8 @@ class _StatsTab extends StatelessWidget {
     return 'All cards started! 🎉';
   }
 
-  Color _levelColor(int level) {
-    const colors = [
-      Color(0xFFF44336), // 0  red
-      Color(0xFFFF5722), // 1  deep orange
-      Color(0xFFFF9800), // 2  orange
-      Color(0xFFFFC107), // 3  amber
-      Color(0xFFFFEB3B), // 4  yellow
-      Color(0xFFCDDC39), // 5  lime
-      Color(0xFF8BC34A), // 6  light green
-      Color(0xFF4CAF50), // 7  green
-      Color(0xFF009688), // 8  teal
-      Color(0xFF00BCD4), // 9  cyan
-      Color(0xFF03A9F4), // 10 light blue
-      Color(0xFF2196F3), // 11 blue
-      Color(0xFF3F51B5), // 12 indigo
-      Color(0xFF673AB7), // 13 deep purple
-      Color(0xFF9C27B0), // 14 purple
-      Color(0xFFE91E63), // 15 pink
-    ];
-    return colors[level.clamp(0, colors.length - 1)];
-  }
+  Color _levelColor(int level, BuildContext context) =>
+      ColorUtil.levelColor(level, Theme.of(context).brightness);
 
   Widget _buildLevelDistribution(BuildContext context, _StatsData data) {
     final maxCount = data.levelMap.values.reduce((a, b) => a > b ? a : b);
@@ -577,7 +560,7 @@ class _StatsTab extends StatelessWidget {
         children: data.sortedLevels.map((level) {
           final count = data.levelMap[level]!;
           final ratio = count / maxCount;
-          final barColor = _levelColor(level);
+          final barColor = _levelColor(level, context);
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),

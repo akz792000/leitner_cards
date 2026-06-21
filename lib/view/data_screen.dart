@@ -8,6 +8,7 @@ import '../entity/card_entity.dart';
 import '../enums/group_code.dart';
 import '../service/route_service.dart';
 import '../service/sync_service.dart';
+import '../util/color_util.dart';
 import '../util/dialog_util.dart';
 
 /// Scrollable list of all cards in a deck with inline edit and delete actions.
@@ -51,27 +52,8 @@ class _DataScreenState extends State<DataScreen> {
     _initialize();
   }
 
-  Color _levelColor(int level) {
-    const colors = [
-      Color(0xFFF44336), // 0  red
-      Color(0xFFFF5722), // 1  deep orange
-      Color(0xFFFF9800), // 2  orange
-      Color(0xFFFFC107), // 3  amber
-      Color(0xFFFFEB3B), // 4  yellow
-      Color(0xFFCDDC39), // 5  lime
-      Color(0xFF8BC34A), // 6  light green
-      Color(0xFF4CAF50), // 7  green
-      Color(0xFF009688), // 8  teal
-      Color(0xFF00BCD4), // 9  cyan
-      Color(0xFF03A9F4), // 10 light blue
-      Color(0xFF2196F3), // 11 blue
-      Color(0xFF3F51B5), // 12 indigo
-      Color(0xFF673AB7), // 13 deep purple
-      Color(0xFF9C27B0), // 14 purple
-      Color(0xFFE91E63), // 15 pink
-    ];
-    return colors[level.clamp(0, colors.length - 1)];
-  }
+  Color _levelColor(int level, BuildContext context) =>
+      ColorUtil.levelColor(level, Theme.of(context).brightness);
 
   /// Shows a confirmation dialog with an "Also delete progress" checkbox.
   /// Returns a record (confirmed, withProgress) or null if dismissed.
@@ -175,7 +157,7 @@ class _DataScreenState extends State<DataScreen> {
 
   Widget _buildCardRow(CardEntity card, int index) {
     final level = _levelMap[card.id] ?? 0;
-    final color = _levelColor(level);
+    final color = _levelColor(level, context);
     final secondaryText = _isEnglish ? card.fa : card.de;
 
     return InkWell(

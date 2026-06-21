@@ -26,14 +26,27 @@ enum CardOrder {
     }
   }
 
-  String get subtitle {
+  String get subtitle => levelSubtitle;
+
+  String get levelSubtitle {
     switch (this) {
       case highFirst:
-        return 'Most mastered cards appear first';
+        return 'Higher Leitner levels appear first';
       case lowFirst:
-        return 'Least mastered cards appear first';
+        return 'Lower Leitner levels appear first';
       case random:
-        return 'Cards are shuffled each session';
+        return 'Level groups are shuffled each session';
+    }
+  }
+
+  String get subLevelSubtitle {
+    switch (this) {
+      case highFirst:
+        return 'Cards closer to their next review appear first';
+      case lowFirst:
+        return 'Freshly reviewed cards appear first';
+      case random:
+        return 'Cards within each level are shuffled';
     }
   }
 }

@@ -7,6 +7,7 @@ import 'package:leitner_cards/view/leitner_screen.dart';
 
 import '../config/route_config.dart';
 import '../service/route_service.dart';
+import '../util/color_util.dart';
 
 /// Level picker for a single language deck.
 ///
@@ -77,27 +78,8 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     }
   }
 
-  Color _levelColor(int level) {
-    const colors = [
-      Color(0xFFF44336), // 0  red
-      Color(0xFFFF5722), // 1  deep orange
-      Color(0xFFFF9800), // 2  orange
-      Color(0xFFFFC107), // 3  amber
-      Color(0xFFFFEB3B), // 4  yellow
-      Color(0xFFCDDC39), // 5  lime
-      Color(0xFF8BC34A), // 6  light green
-      Color(0xFF4CAF50), // 7  green
-      Color(0xFF009688), // 8  teal
-      Color(0xFF00BCD4), // 9  cyan
-      Color(0xFF03A9F4), // 10 light blue
-      Color(0xFF2196F3), // 11 blue
-      Color(0xFF3F51B5), // 12 indigo
-      Color(0xFF673AB7), // 13 deep purple
-      Color(0xFF9C27B0), // 14 purple
-      Color(0xFFE91E63), // 15 pink
-    ];
-    return colors[level.clamp(0, colors.length - 1)];
-  }
+  Color _levelColor(int level, BuildContext context) =>
+      ColorUtil.levelColor(level, Theme.of(context).brightness);
 
   String _levelEmoji(int level) {
     const emojis = [
@@ -121,8 +103,8 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     return emojis[level.clamp(0, emojis.length - 1)];
   }
 
-  Widget _levelBadge(int level) {
-    final color = _levelColor(level);
+  Widget _levelBadge(int level, BuildContext context) {
+    final color = _levelColor(level, context);
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -161,8 +143,8 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     );
   }
 
-  Widget _buildLevelCard(int level, int count) {
-    final color = _levelColor(level);
+  Widget _buildLevelCard(int level, int count, BuildContext context) {
+    final color = _levelColor(level, context);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
@@ -195,7 +177,7 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
               ),
             ),
             const SizedBox(width: 16),
-            _levelBadge(level),
+            _levelBadge(level, context),
             const SizedBox(width: 14),
             Expanded(
               child: Row(
@@ -323,8 +305,8 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     itemCount: levels.length,
-                    itemBuilder: (context, index) =>
-                        _buildLevelCard(levels[index].key, levels[index].value),
+                    itemBuilder: (context, index) => _buildLevelCard(
+                        levels[index].key, levels[index].value, context),
                   ),
           ),
         ],

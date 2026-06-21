@@ -162,17 +162,48 @@ class SettingsScreen extends StatelessWidget {
 
           // ── 🃏 Study ──────────────────────────────────────────────────────
           _SectionHeader(label: '🃏  Study', colorScheme: cs),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text('Level order',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant)),
+          ),
           Obx(() => Column(
                 children: CardOrder.values
                     .map((order) => RadioListTile<CardOrder>(
                           secondary: Icon(_cardOrderIcon(order)),
                           title: Text(order.label),
-                          subtitle: Text(order.subtitle),
+                          subtitle: Text(order.levelSubtitle),
                           value: order,
                           groupValue: s.cardOrder.value,
                           activeColor: cs.primary,
                           onChanged: (v) {
                             if (v != null) s.cardOrder.value = v;
+                          },
+                        ))
+                    .toList(),
+              )),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text('Within-level order (by subLevel)',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant)),
+          ),
+          Obx(() => Column(
+                children: CardOrder.values
+                    .map((order) => RadioListTile<CardOrder>(
+                          secondary: Icon(_cardOrderIcon(order)),
+                          title: Text(order.label),
+                          subtitle: Text(order.subLevelSubtitle),
+                          value: order,
+                          groupValue: s.subLevelOrder.value,
+                          activeColor: cs.primary,
+                          onChanged: (v) {
+                            if (v != null) s.subLevelOrder.value = v;
                           },
                         ))
                     .toList(),
