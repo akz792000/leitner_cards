@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/entity/progress_entity.dart';
@@ -21,6 +22,7 @@ import '../service/tts_service.dart';
 import '../service/stt_service.dart';
 import '../util/color_util.dart';
 import '../util/date_time_util.dart';
+import '../util/string_util.dart';
 import '../enums/card_order.dart';
 import 'widget/animated_gradient_background.dart';
 import 'widget/animated_button.dart';
@@ -548,7 +550,8 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     // Auto-speak the card when the page changes, if enabled.
     if (_settingsService.autoSpeak.value &&
         _settingsService.speakEnabled.value) {
-      _ttsService.speak(_currentText, _activeLanguage);
+      _ttsService.speak(
+          StringUtil.stripMarkdown(_currentText), _activeLanguage);
     }
   }
 
@@ -661,14 +664,13 @@ class _LeitnerScreenState extends State<LeitnerScreen>
 
   /// Returns the expected answer text matching [_sttLanguage].
   String get _sttExpected {
-    switch (_learningLanguage) {
-      case LanguageCode.en:
-        return _cardEntity.en;
-      case LanguageCode.fa:
-        return _cardEntity.fa;
-      case LanguageCode.de:
-        return _cardEntity.de;
-    }
+    final raw = switch (_learningLanguage) {
+      LanguageCode.en => _cardEntity.en,
+      LanguageCode.fa => _cardEntity.fa,
+      LanguageCode.de => _cardEntity.de,
+    };
+    // Strip markdown so STT compares against plain spoken words.
+    return StringUtil.stripMarkdown(raw);
   }
 
   /// Toggles the continuous STT loop on/off.
@@ -771,52 +773,85 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   Widget _getTextChild(
       {required BuildContext context, required int pageIndex}) {
     final message = _currentText;
-
-    final textStyle = TextStyle(
-      color: Theme.of(context).colorScheme.onSurface,
-      fontSize: 28.0,
-    );
-    final textAlign = _activeLanguage.direction == TextDirection.rtl
-        ? TextAlign.right
-        : TextAlign.center;
+    final cs = Theme.of(context).colorScheme;
+    final isRtl = _activeLanguage.direction == TextDirection.rtl;
+    final hasMarkdown = StringUtil.containsMarkdown(message);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: SingleChildScrollView(
         controller: _scrollControllerForIndex(pageIndex),
-        child: Stack(
-          children: [
-            // Plain text with stable GlobalKey — OUTSIDE Obx so key never duplicates.
-            Text.rich(
-              key: _textKeyForIndex(pageIndex),
-              TextSpan(text: message),
-              textDirection: _activeLanguage.direction,
-              textAlign: textAlign,
-              style: textStyle,
-            ),
-            // Highlight overlay — reads boxes from the RenderParagraph above.
-            Obx(() {
-              final speaking = _ttsService.isSpeaking.value;
-              final start = _ttsService.wordStart.value;
-              final end = _ttsService.wordEnd.value;
-              if (!speaking || end <= start || end > message.length) {
-                return const SizedBox.shrink();
-              }
-              final primary = Theme.of(context).colorScheme.primary;
-              return Positioned.fill(
-                child: CustomPaint(
-                  painter: _WordHighlightPainter(
-                    textKey: _textKeyForIndex(pageIndex),
-                    start: start,
-                    end: end,
-                    fillColor: primary.withValues(alpha: 0.28),
-                    borderColor: primary.withValues(alpha: 0.55),
+        child: hasMarkdown
+            ? Directionality(
+                textDirection: _activeLanguage.direction,
+                child: MarkdownBody(
+                  data: message,
+                  styleSheet:
+                      MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                    p: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 24.0,
+                    ),
+                    tableHead: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    tableBody: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 18.0,
+                    ),
+                    tableBorder: TableBorder.all(
+                      color: cs.outlineVariant,
+                      width: 1,
+                    ),
+                    tableColumnWidth: const FlexColumnWidth(),
+                    blockquoteDecoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(6),
+                      border:
+                          Border(left: BorderSide(color: cs.primary, width: 3)),
+                    ),
                   ),
+                  selectable: true,
                 ),
-              );
-            }),
-          ],
-        ),
+              )
+            : Stack(
+                children: [
+                  // Plain text with stable GlobalKey for word-highlight painter.
+                  Text.rich(
+                    key: _textKeyForIndex(pageIndex),
+                    TextSpan(text: message),
+                    textDirection: _activeLanguage.direction,
+                    textAlign: isRtl ? TextAlign.right : TextAlign.center,
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontSize: 28.0,
+                    ),
+                  ),
+                  // Word-highlight overlay (TTS progress).
+                  Obx(() {
+                    final speaking = _ttsService.isSpeaking.value;
+                    final start = _ttsService.wordStart.value;
+                    final end = _ttsService.wordEnd.value;
+                    if (!speaking || end <= start || end > message.length) {
+                      return const SizedBox.shrink();
+                    }
+                    final primary = cs.primary;
+                    return Positioned.fill(
+                      child: CustomPaint(
+                        painter: _WordHighlightPainter(
+                          textKey: _textKeyForIndex(pageIndex),
+                          start: start,
+                          end: end,
+                          fillColor: primary.withValues(alpha: 0.28),
+                          borderColor: primary.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
       ),
     );
   }
@@ -1008,8 +1043,8 @@ class _LeitnerScreenState extends State<LeitnerScreen>
                 if (_ttsService.isSpeaking.value) {
                   _ttsService.stop();
                 } else {
-                  final ok =
-                      await _ttsService.speak(_currentText, _activeLanguage);
+                  final ok = await _ttsService.speak(
+                      StringUtil.stripMarkdown(_currentText), _activeLanguage);
                   if (!ok && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

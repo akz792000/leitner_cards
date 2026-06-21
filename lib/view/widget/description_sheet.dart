@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
@@ -79,13 +80,38 @@ class DescriptionSheet extends StatelessWidget {
 
           Divider(height: 24, color: colorScheme.outlineVariant),
 
-          // Description text
-          Text(
-            card.desc,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurface,
-              height: 1.7,
+          // Description — rendered as Markdown so bold, lists, tables etc. work.
+          MarkdownBody(
+            data: card.desc,
+            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              p: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+                height: 1.7,
+              ),
+              strong: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                height: 1.7,
+              ),
+              tableHead: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+              tableBody: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+              tableBorder: TableBorder.all(
+                color: colorScheme.outlineVariant,
+                width: 1,
+              ),
+              blockquoteDecoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(6),
+                border: Border(
+                    left: BorderSide(color: colorScheme.primary, width: 3)),
+              ),
             ),
+            selectable: true,
           ),
         ],
       ),
