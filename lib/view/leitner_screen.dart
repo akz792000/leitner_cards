@@ -145,9 +145,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   final Map<int, int> _initialLevels = {};
   final Set<int> _orderChangedSet = {};
 
-  // Image-card state: which cards have been tapped to reveal.
-  final Set<int> _revealedSet = {};
-
   // Burn-in protection
   Timer? _idleTimer;
   Timer? _pixelShiftTimer;
@@ -353,17 +350,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   }
 
   /// Toggles the revealed state for [card] and resets the idle timer.
-  void _toggleReveal(CardEntity card) {
-    setState(() {
-      if (_revealedSet.contains(card.id)) {
-        _revealedSet.remove(card.id);
-      } else {
-        _revealedSet.add(card.id);
-      }
-    });
-    _resetIdleTimer();
-  }
-
   // ── Language tab helpers ────────────────────────────────────────────────────
 
   /// Languages available as tabs for the current deck, in display order.
@@ -541,6 +527,16 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     _index = value;
     _changeValue(_index);
     _modifyOrder();
+  }
+
+  /// Programmatically moves to an adjacent language tab.
+  /// [delta] is +1 (next tab) or -1 (previous tab), wrapping around.
+  void _cycleTab(int delta) {
+    if (_tabs.isEmpty) return;
+    _ttsService.stop();
+    setState(() {
+      _activeTabIndex = (_activeTabIndex + delta + _tabs.length) % _tabs.length;
+    });
   }
 
   /// Persists the new level/subLevel, updates local state, then advances the
@@ -810,15 +806,6 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             : () => _changePage(ProgressEntity.initLevel, LevelDirection.down),
         key: const ValueKey("dislike"),
       ),
-      // Description
-      IconButtonWidget(
-        const Icon(Icons.light_mode_outlined, size: 30),
-        onPressed: _cardEntity.desc.isEmpty
-            ? null
-            : () => DescriptionSheet.show(context,
-                card: _cardEntity, groupCode: widget.groupCode),
-        key: const ValueKey("desc"),
-      ),
       // Like
       AnimatedButton(
         icon: const Icon(Icons.thumb_up_alt_outlined,
@@ -832,14 +819,11 @@ class _LeitnerScreenState extends State<LeitnerScreen>
       ),
     ];
 
-    // Remove buttons that shouldn't show (skip widgets with no key)
+    // Remove buttons that shouldn't show
     result.removeWhere((element) {
       if (element.key == null) return false;
       final keyValue = (element.key as ValueKey).value;
-      return (keyValue == 'desc' &&
-              (_cardEntity.desc.isEmpty ||
-                  !_settingsService.descEnabled.value)) ||
-          (keyValue == 'like' && widget.level != LeitnerScreen.allLevel);
+      return keyValue == 'like' && widget.level != LeitnerScreen.allLevel;
     });
 
     return result;
@@ -912,138 +896,64 @@ class _LeitnerScreenState extends State<LeitnerScreen>
     return colors[level.clamp(0, colors.length - 1)];
   }
 
-  /// Visual-deck cards show an image at the top whose height shrinks from 300
-  /// to 180 when tapped; all other content (tab bar, text, thumb buttons) is
-  /// always visible for every deck.
+  /// Builds the card content — identical layout for all decks:
+  /// tab bar → image (visual only) → text → thumb buttons.
+  /// The GestureDetector wraps the whole page so vertical swipes anywhere
+  /// cycle the language tab; horizontal swipes go to the PageView.
   Widget _buildCardContent(CardEntity card, int pageIndex) {
-    final isImage = card.image.isNotEmpty;
     return Builder(
-      builder: (context) => AnimatedGradientBackground(
-        child: Column(
-          children: [
-            // Image (Visual deck only)
-            if (isImage) ...[
-              GestureDetector(
-                onTap: () => _toggleReveal(card),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
-                  height: _revealedSet.contains(card.id) ? 180 : 300,
-                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      builder: (context) => GestureDetector(
+        onVerticalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v < -300) _cycleTab(1); // swipe up   → next tab
+          if (v > 300) _cycleTab(-1); // swipe down → prev tab
+        },
+        child: AnimatedGradientBackground(
+          child: Column(
+            children: [
+              // Language tab bar with level badge — same for all decks
+              _buildTabBar(),
+
+              // Image (Visual deck only) — shown above the translation
+              if (card.image.isNotEmpty)
+                Container(
+                  height: 180,
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: _buildImageStack(_revealedSet.contains(card.id),
-                      '$_imageBaseUrl/${card.image}'),
+                  child: Image.network(
+                    '$_imageBaseUrl/${card.image}',
+                    fit: BoxFit.contain,
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : const Center(child: CircularProgressIndicator()),
+                    errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image, color: Colors.white38)),
+                  ),
+                ),
+
+              // Card text
+              Expanded(
+                child: Center(
+                  child: _getTextChild(context: context, pageIndex: pageIndex),
                 ),
               ),
-            ],
 
-            // Language tab bar — full width
-            _buildTabBar(),
-
-            // Card text
-            Expanded(
-              child: Center(
-                child: _getTextChild(context: context, pageIndex: pageIndex),
-              ),
-            ),
-
-            // Thumb buttons
-            Padding(
-              padding: const EdgeInsets.all(28.0),
-              child: Align(
-                alignment: Alignment.bottomCenter,
+              // Thumb buttons
+              Padding(
+                padding: const EdgeInsets.all(28.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: _bottomBar(),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    );
-  }
-
-  /// Renders the image with a "tap to reveal" hint overlay before reveal, and
-  /// a "tap to expand" hint badge after reveal.
-  Widget _buildImageStack(bool revealed, String imageUrl) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.network(
-          imageUrl,
-          fit: BoxFit.contain,
-          loadingBuilder: (_, child, progress) => progress == null
-              ? child
-              : Container(
-                  color: Colors.black12,
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-          errorBuilder: (_, __, ___) => Container(
-            color: Colors.grey.shade800,
-            child: const Center(
-              child: Icon(Icons.broken_image_outlined,
-                  size: 48, color: Colors.white38),
-            ),
-          ),
-        ),
-        if (!revealed)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.touch_app_outlined,
-                      color: Colors.white70, size: 18),
-                  SizedBox(width: 6),
-                  Text('Tap to reveal description',
-                      style: TextStyle(color: Colors.white70, fontSize: 13)),
-                ],
-              ),
-            ),
-          ),
-        if (revealed)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.fullscreen, color: Colors.white70, size: 14),
-                  SizedBox(width: 4),
-                  Text('Tap to expand',
-                      style: TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
-              ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -1094,6 +1004,14 @@ class _LeitnerScreenState extends State<LeitnerScreen>
               },
             );
           }),
+          // Description — only shown when card has a desc
+          if (_cardEntity.desc.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Description',
+              onPressed: () => DescriptionSheet.show(context,
+                  card: _cardEntity, groupCode: widget.groupCode),
+            ),
           Obx(() {
             if (!_settingsService.copyEnabled.value) {
               return const SizedBox.shrink();
