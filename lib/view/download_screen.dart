@@ -112,11 +112,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   Future<bool> _addNew(
       Map<String, dynamic> element, GroupCode groupCode) async {
     final id = element["id"] as int? ?? 0;
-    final existing = _cardRepository.findById(id);
-    // Skip if the card already exists for this deck (already downloaded).
-    // Also skip if an ID collision exists with a different deck — Hive keys
-    // are unique, so we can't insert without overwriting the other deck's card.
-    if (existing != null) return false;
+    if (_cardRepository.findById(id) != null) return false;
 
     await _cardRepository.merge(CardEntity(
       id: id,
