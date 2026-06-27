@@ -45,10 +45,33 @@ done
 
 # ── optional: wireless ADB connect ───────────────────────────────────────────
 if $CONNECT; then
-  yellow "Enter your phone's wireless ADB address (e.g. 192.168.1.42:5555):"
-  read -r ADB_ADDRESS
-  "$ADB" connect "$ADB_ADDRESS"
-  echo ""
+  # Check if already connected
+  ALREADY=$("$ADB" devices 2>/dev/null | grep -v "^List" | grep -v "^$" | grep "device$" | wc -l | tr -d ' ')
+  if [ "$ALREADY" -gt 0 ]; then
+    green "Device already connected ✓"
+  else
+    yellow ""
+    yellow "📱 Wireless ADB Setup"
+    yellow "   On your phone: Settings → Developer Options → Wireless Debugging"
+    yellow ""
+    yellow "Do you need to pair first? (y/N):"
+    read -r NEED_PAIR
+    if [ "$NEED_PAIR" = "y" ] || [ "$NEED_PAIR" = "Y" ]; then
+      yellow "   Tap 'Pair device with pairing code' on your phone."
+      yellow ""
+      yellow "Enter pairing address (e.g. 192.168.1.42:37123):"
+      read -r PAIR_ADDRESS
+      yellow "Enter pairing code (6-digit number shown on phone):"
+      read -r PAIR_CODE
+      "$ADB" pair "$PAIR_ADDRESS" "$PAIR_CODE"
+      echo ""
+    fi
+    yellow "Enter your phone's wireless ADB address (e.g. 192.168.1.42:5555):"
+    yellow "   (This is the IP:Port shown under 'Wireless debugging' — NOT the pairing one)"
+    read -r ADB_ADDRESS
+    "$ADB" connect "$ADB_ADDRESS"
+    echo ""
+  fi
 fi
 
 # ── check device is reachable and resolve serial ──────────────────────────────

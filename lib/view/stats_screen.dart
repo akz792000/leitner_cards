@@ -352,7 +352,7 @@ class _StatsTab extends StatelessWidget {
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 600),
                           curve: Curves.easeOut,
-                          height: ratio == 0 ? 3 : (ratio * 88).clamp(3, 88),
+                          height: ratio == 0 ? 3 : (ratio * 80).clamp(3, 80),
                           decoration: BoxDecoration(
                             color: barColor,
                             borderRadius: BorderRadius.circular(4),

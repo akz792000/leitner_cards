@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../repository/card_repository.dart';
 import '../repository/progress_repository.dart';
+import '../service/auth_service.dart';
 import '../service/card_service.dart';
 import '../service/route_service.dart';
 import '../service/settings_service.dart';
@@ -13,12 +14,15 @@ import '../service/stt_service.dart';
 
 /// Registers all GetX services and repositories in dependency order.
 ///
-/// [ThemeService] must be first — [MyApp] reads its mode synchronously.
-/// [SettingsService] comes second — it shares the 'settings' Hive box opened
-/// by [ThemeService]. Repositories precede services that depend on them.
+/// [AuthService] is registered first — the auth guard needs it before any
+/// screen is rendered. [ThemeService] must precede [MyApp] because the widget
+/// reads its mode synchronously. Repositories precede services that depend
+/// on them.
 class DependencyConfig {
   static Future registerDependencies() async {
-    // 1. ThemeService — opens 'settings' Hive box; must be first.
+    // 0. AuthService — Google Sign-In; needed by the auth guard.
+    await Get.putAsync<AuthService>(() => AuthService.init());
+    // 1. ThemeService — opens 'settings' Hive box; must be before MyApp.
     await Get.putAsync<ThemeService>(() => ThemeService.init());
     // 2. SettingsService — reads from the already-open 'settings' box.
     Get.put(SettingsService());

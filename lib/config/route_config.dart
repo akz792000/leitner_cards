@@ -1,12 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
+import '../service/auth_service.dart';
 import '../view/data_screen.dart';
 import '../view/download_screen.dart';
 import '../view/error_screen.dart';
 import '../view/home_screen.dart';
 import '../view/leitner_screen.dart';
 import '../view/level_screen.dart';
+import '../view/login_screen.dart';
 import '../view/merge_screen.dart';
 import '../view/persist_screen.dart';
 import '../view/settings_screen.dart';
@@ -18,8 +22,12 @@ import '../view/stats_screen.dart';
 /// extracts typed arguments from [RouteSettings.arguments] and throws an
 /// [ArgumentError] (rendered by [ErrorScreen]) when required params are absent
 /// or mistyped, keeping each screen's constructor free of null checks.
+///
+/// The `/` route acts as an auth guard — it renders [LoginScreen] when the
+/// user is not signed in, and [HomeScreen] when authenticated.
 class RouteConfig {
   static const String home = "/";
+  static const String login = "/login";
   static const String error = "/error";
   static const String level = "/level";
   static const String data = "/data";
@@ -36,7 +44,10 @@ class RouteConfig {
     try {
       switch (routeSettings.name) {
         case home:
-          return MaterialPageRoute(builder: (_) => const HomeScreen());
+          return MaterialPageRoute(builder: (_) => const _AuthGate());
+
+        case login:
+          return MaterialPageRoute(builder: (_) => const LoginScreen());
 
         case level:
           return MaterialPageRoute(
@@ -111,5 +122,26 @@ class RouteConfig {
     }
 
     return value;
+  }
+}
+
+/// Auth gate widget — reactively switches between [LoginScreen] and
+/// [HomeScreen] based on [AuthService.user].
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    // Skip auth on macOS debug — needs Desktop OAuth client (not available)
+    if (kDebugMode && defaultTargetPlatform == TargetPlatform.macOS) {
+      return const HomeScreen();
+    }
+    final authService = Get.find<AuthService>();
+    return Obx(() {
+      if (authService.user.value == null) {
+        return const LoginScreen();
+      }
+      return const HomeScreen();
+    });
   }
 }

@@ -1,12 +1,12 @@
 # FlashMind — Product Roadmap
 
-Last updated: 2026-06-22
+Last updated: 2026-06-27
 
 ---
 
 ## Vision
 
-FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repetition algorithm. There are no pre-loaded decks — every user signs in, creates their own decks, adds their own cards, and tracks their own progress. All data lives in Firebase (Firestore) with local caching for offline use.
+FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repetition algorithm. There are no pre-loaded decks — every user signs in, creates their own decks, adds their own cards, and tracks their own progress. All data lives **locally in Hive** (offline-first) and syncs to each user's **own Google Drive** (`appDataFolder`) — zero server cost.
 
 ---
 
@@ -26,47 +26,36 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 1 — Firebase Setup & Authentication
+## Phase 1 — Authentication (Google Sign-In)
 
-**Goal:** Every user must sign in before using the app. Firebase becomes the foundation.
+**Goal:** Every user must sign in before using the app.
 
 **Tasks:**
-- [ ] Add Firebase to the Flutter project (`flutterfire configure`)
-- [ ] Firebase Auth — Google Sign-In
-- [ ] Firebase Auth — Apple Sign-In (mandatory for App Store if offering social login)
-- [ ] Login screen — clean UI with Google + Apple sign-in buttons
-- [ ] Auth guard — redirect unauthenticated users to login
-- [ ] User profile document in Firestore: `/users/{uid}` (name, email, avatar, createdAt)
-- [ ] Sign-out functionality
-
-**Firestore structure:**
-```
-users/
-  {uid}/
-    profile: { name, email, avatar, createdAt, settings }
-    decks/
-      {deckId}/
-        info: { name, sourceLang, targetLang, icon, color, createdAt, updatedAt, cardCount }
-        cards/
-          {cardId}: { source, target, groupCode, createdAt, updatedAt }
-        progress/
-          {cardId}: { boxLevel, nextReview, correctCount, wrongCount, lastStudied }
-```
+- [x] Google Sign-In via `google_sign_in` v7
+- [x] Login screen — clean UI with Google sign-in button
+- [x] Auth guard — redirect unauthenticated users to login
+- [x] Sign-out functionality (drawer)
+- [x] Silent session restore on app relaunch (`attemptLightweightAuthentication`)
+- [x] macOS debug: bypass auth guard (Desktop OAuth not configured)
+- [ ] Apple Sign-In (mandatory for App Store — Phase 8)
+- [ ] Test Google Sign-In on Android device
 
 ---
 
 ## Phase 2 — Deck Management
 
-**Goal:** Users can create, edit, and delete their own decks via a wizard.
+**Goal:** Users can create, edit, and delete their own decks via a wizard. All data in Hive (local-first).
 
 **Tasks:**
+- [ ] DeckEntity (Hive typeId=3): id, name, sourceLang, targetLang, icon, color, createdAt, modifiedAt
+- [ ] DeckRepository: Hive CRUD for deck box
 - [ ] Home screen redesign — dynamic grid/list of user's decks (no hardcoded decks)
 - [ ] "Create Deck" button → wizard flow:
   1. Pick source language (e.g., Farsi, English, German, Spanish, French, ...)
   2. Pick target language
   3. Auto-suggest name (e.g., "Farsi → English") — user can edit
   4. Optional: pick icon and color
-  5. Confirm → deck created in Firestore
+  5. Confirm → deck created in Hive
 - [ ] Deck edit (rename, change icon/color)
 - [ ] Deck delete (with confirmation — deletes all cards + progress)
 - [ ] Deck list shows: name, card count, last studied, progress indicator
@@ -90,32 +79,41 @@ users/
 
 ## Phase 4 — Study Engine (Leitner + Progress)
 
-**Goal:** Connect the existing Leitner algorithm to the new Firestore data model.
+**Goal:** Connect the existing Leitner algorithm to the new deck-based data model.
 
 **Tasks:**
-- [ ] Refactor study engine to read cards from Firestore (instead of Hive)
-- [ ] Progress tracking writes to Firestore: `/users/{uid}/decks/{deckId}/progress/{cardId}`
-- [ ] Study time tracking per deck in Firestore
+- [ ] Refactor study engine to read cards by deckId (instead of GroupCode)
+- [ ] Progress tracking stays in Hive (per card, per deck)
+- [ ] Study time tracking per deck in Hive
 - [ ] STT pronunciation grading works with any language pair
 - [ ] TTS works with any language pair (auto-detect language from deck config)
-- [ ] Stats screen reads from Firestore progress data
-- [ ] Settings stored per user in Firestore (synced across devices)
+- [ ] Stats screen reads from Hive progress data per deck
+- [ ] Settings stored locally in Hive
 
 ---
 
-## Phase 5 — Offline Mode & Sync
+## Phase 5 — Google Drive Sync
 
-**Goal:** App works fully offline and syncs when connectivity returns.
+**Goal:** Sync deck data to each user's own Google Drive. Zero server cost.
+
+**Storage:** Google Drive `appDataFolder` — hidden, app-only folder per user.
+
+```
+appDataFolder/
+  manifest.json           ← deck list + timestamps
+  deck_{deckId}.json      ← deck info + cards + progress
+```
 
 **Tasks:**
-- [ ] Hive as local cache — mirror Firestore structure locally
-- [ ] On app launch: check connectivity → sync if online, use cache if offline
-- [ ] Write operations: save to Hive immediately, queue for Firestore sync
-- [ ] Sync service: push pending local changes when back online
-- [ ] Pull new/updated data from Firestore on reconnect
-- [ ] Conflict resolution: last-write-wins with `updatedAt` timestamps
-- [ ] Visual indicator: online/offline status in app bar
-- [ ] Firestore offline persistence enabled (built-in Flutter Firestore feature)
+- [ ] Request `drive.appdata` scope during Google Sign-In
+- [ ] DriveService: REST API calls via `http` package (list, create, update, download, delete)
+- [ ] SyncEngine: compare local vs Drive timestamps per deck
+- [ ] Sync flow: newer version wins (last-write-wins by `modifiedAt`)
+- [ ] Auto-sync on app open (background, if online)
+- [ ] Push dirty decks on app pause/background
+- [ ] Handle deletions via tombstone list
+- [ ] Visual indicator: sync status in app bar (syncing / synced / offline)
+- [ ] Manual sync button in settings
 
 ---
 
@@ -125,7 +123,7 @@ users/
 
 **Tasks:**
 - [ ] Onboarding screen (first-launch tutorial — 3-4 slides explaining the app)
-- [ ] Privacy policy page (hosted on a free site like GitHub Pages or Firebase Hosting)
+- [ ] Privacy policy page (hosted on a free site like GitHub Pages)
 - [ ] Terms of service page
 - [ ] Empty states — friendly UI when user has no decks / no cards
 - [ ] Error handling — network errors, auth errors, graceful fallbacks
@@ -156,7 +154,7 @@ users/
   - [ ] Create `key.properties` (DO NOT commit to git)
   - [ ] Configure `android/app/build.gradle` for release signing
 - [ ] Set `applicationId` — confirm `com.flashmind.app` is available
-- [ ] Set `minSdkVersion` (21+ recommended for Firebase)
+- [ ] Set `minSdkVersion` (21+ recommended)
 - [ ] Build release: `flutter build appbundle --release`
 - [ ] Test release build on multiple devices/emulators
 - [ ] Prepare store listing:
@@ -168,7 +166,7 @@ users/
   - [ ] Category: Education
   - [ ] Content rating questionnaire
   - [ ] Privacy policy URL (mandatory)
-  - [ ] Data safety section (declare Firebase Auth + Firestore usage)
+  - [ ] Data safety section (declare Google Sign-In + Google Drive usage)
 - [ ] Submit to Google Play Console
 - [ ] Review typically takes 1–3 days for first submission
 - [ ] Set up Google Play Console alerts (crashes, reviews)
@@ -238,7 +236,7 @@ users/
 - [ ] App Store: create in-app purchase "premium_unlock" (non-consumable, €0.99)
 - [ ] Gate check in app: `isPremium ? allow : showUpgradeDialog`
 - [ ] Restore purchases button (required by Apple)
-- [ ] Receipt validation (server-side via Firebase Cloud Functions, or client-side)
+- [ ] Receipt validation (client-side or via a lightweight serverless function)
 
 ### Revenue projections:
 
@@ -255,15 +253,9 @@ users/
 - Risk: fewer downloads (people hesitate to pay upfront for unknown apps)
 - Better if you have strong marketing/word-of-mouth
 
-### Firebase costs vs revenue:
+### Server costs:
 
-| Users | Firebase cost | Revenue needed to break even |
-|-------|-------------|------------------------------|
-| 100 | ~€0–2/month | 3 sales/month |
-| 1,000 | ~€5–15/month | 18 sales/month |
-| 10,000 | ~€50–150/month | 177 sales/month |
-
-At 5% conversion rate, you break even at ~3,500 downloads/month.
+**Zero.** All data lives in each user's own Google Drive. No backend to pay for. Revenue is pure profit minus store commission (15%).
 
 ---
 
@@ -272,8 +264,8 @@ At 5% conversion rate, you break even at ~3,500 downloads/month.
 **Goal:** Grow user base and improve the app based on feedback.
 
 **Tasks:**
-- [ ] Firebase Crashlytics — monitor crashes in production
-- [ ] Firebase Analytics — track user behavior (deck creation, study sessions, retention)
+- [ ] Crash monitoring (Sentry free tier or similar)
+- [ ] Analytics (consider privacy-friendly alternatives or store-built-in analytics)
 - [ ] Respond to store reviews promptly
 - [ ] Regular updates (every 2–4 weeks) — stores reward active apps
 - [ ] Localize store listings (English, German, Farsi, Spanish, French)
@@ -309,7 +301,7 @@ At 5% conversion rate, you break even at ~3,500 downloads/month.
 
 | Phase | Duration | Target |
 |-------|----------|--------|
-| Phase 1 — Firebase Auth | 2 weeks | |
+| Phase 1 — Google Sign-In | 2 weeks | |
 | Phase 2 — Deck Management | 2 weeks | |
 | Phase 3 — Card CRUD | 1–2 weeks | |
 | Phase 4 — Study Engine | 2 weeks | |

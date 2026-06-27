@@ -37,6 +37,7 @@ Deutsch sub-deck: HomeScreen shows a dialog to choose "Sentences" (`enDe`) or "V
 | UI | Flutter 3.x / Dart `>=3.3.0 <4.0.0` |
 | State / DI | GetX `^4.6.5` |
 | Storage | Hive `^2.2.3` + `hive_flutter ^1.1.0` |
+| Auth | `google_sign_in ^7.2.0` (standalone — no Firebase) |
 | HTTP | `http ^1.2.2` |
 | Timezone | `timezone ^0.10.1` + `intl ^0.20.2` |
 | TTS | `flutter_tts ^4.2.5` |
@@ -44,7 +45,7 @@ Deutsch sub-deck: HomeScreen shows a dialog to choose "Sentences" (`enDe`) or "V
 | Spinner | `flutter_spinkit ^5.1.0` |
 | Sizing | `sizer ^3.0.5` |
 
-Assets: `assets/icon.png`, `assets/image.png` (drawer avatar), `assets/flags/{en,de,fa}.png`.
+Assets: `assets/icon.png`, `assets/image.png` (drawer avatar), `assets/google_logo.png` (sign-in), `assets/flags/{en,de,fa}.png`.
 
 ---
 
@@ -52,11 +53,11 @@ Assets: `assets/icon.png`, `assets/image.png` (drawer avatar), `assets/flags/{en
 
 ```
 lib/
-├── main.dart                  # setup() + MyApp
+├── main.dart                  # setup() + Firebase.initializeApp() + MyApp
 ├── config/
 │   ├── app_theme.dart         # Light + dark ThemeData, toolbarHeight=64
 │   ├── dependency_config.dart # GetX DI registration (order is critical)
-│   └── route_config.dart      # Route constants + generateRoute()
+│   └── route_config.dart      # Route constants + generateRoute() + _AuthGate
 ├── entity/
 │   ├── card_entity.dart / .g.dart       # Hive typeId=1  ⚠️ never run build_runner
 │   ├── progress_entity.dart / .g.dart   # Hive typeId=2  ⚠️ never run build_runner
@@ -70,6 +71,7 @@ lib/
 │   ├── card_repository.dart     # Hive CRUD, box 'card'
 │   └── progress_repository.dart # Hive CRUD, box 'progress'
 ├── service/
+│   ├── auth_service.dart      # Firebase Auth + Google Sign-In, reactive user state
 │   ├── card_service.dart      # Leitner scheduling algorithm
 │   ├── route_service.dart     # navigatorKey, pushNamed wrappers
 │   ├── settings_service.dart  # 13 settings + study-time tracking
@@ -82,7 +84,8 @@ lib/
 │   ├── dialog_util.dart       # error/ok/okCancel/hint
 │   └── list_util.dart         # sortAsc/sortDesc
 └── view/
-    ├── app_drawer.dart
+    ├── app_drawer.dart        # Firebase user profile in header + sign-out
+    ├── login_screen.dart      # Google Sign-In screen
     ├── data_screen.dart
     ├── download_screen.dart
     ├── error_screen.dart
@@ -109,7 +112,8 @@ All navigation: `Get.find<RouteService>().pushNamed(route, arguments: {...})`.
 
 | Constant | Path | Screen | Args |
 |---|---|---|---|
-| `home` | `/` | `HomeScreen` | — |
+| `home` | `/` | `_AuthGate` → `LoginScreen` or `HomeScreen` | — |
+| `login` | `/login` | `LoginScreen` | — |
 | `level` | `/level` | `LevelScreen` | `groupCode: GroupCode` |
 | `leitner` | `/leitner` | `LeitnerScreen` | `groupCode: GroupCode`, `level: int` |
 | `data` | `/data` | `DataScreen` | `groupCode: GroupCode` |
@@ -124,6 +128,7 @@ All navigation: `Get.find<RouteService>().pushNamed(route, arguments: {...})`.
 ## 6 · DI Registration Order (critical — do not reorder)
 
 ```
+0. AuthService()          ← Google Sign-In (must be first for auth guard)
 1. ThemeService.init()    ← async; opens 'settings' Hive box
 2. SettingsService()      ← reuses 'settings' box
 3. RouteService()         ← provides navigatorKey
@@ -175,6 +180,16 @@ Getter: `GroupCode get group => GroupCode.fromCode(groupCode)`
 ---
 
 ## 9 · Services
+
+### AuthService — Google Sign-In (no Firebase)
+- Standalone `google_sign_in` v7 — no Firebase dependency
+- Reactive: `user` (`Rx<GoogleSignInAccount?>`), `isLoading` (`RxBool`), `isLoggedIn` (getter)
+- Convenience getters: `displayName`, `email`, `photoUrl`, `userId`
+- `init()` → initializes plugin + attempts silent session restore via `attemptLightweightAuthentication()`
+- `signInWithGoogle()` → interactive Google authentication
+- `signOut()` → signs out of Google
+- Auth guard at `/` route: `_AuthGate` reactively shows `LoginScreen` or `HomeScreen`
+- macOS debug: auth guard is bypassed (Google Sign-In needs a Desktop OAuth client)
 
 ### CardService — Leitner algorithm
 `findAllBasedOnLeitner(GroupCode) → List<(CardEntity, ProgressEntity)>`
@@ -289,7 +304,7 @@ Sections: STT, TTS, Display, Study. All via `SettingsService` reactively. Reset 
 TabBar per deck. Hero card: time studied (`studyTimeSecs`). Metrics: total, started, totalReviews, maxLevel, level distribution bar chart, reviewedToday, lastModified.
 
 ### AppDrawer
-Gradient header (image.png, name, "Language Learner"). Tools: Statistics. Settings: Settings, Theme toggle (`Obx`), About dialog. Footer: "Learning Leitner v2.0".
+Gradient header shows Firebase user's display name, email, and profile photo (falls back to `assets/image.png`). Tools: Statistics. Settings: Settings, Theme toggle (`Obx`), About, **Sign Out**. Footer: "Learning Leitner v2.0".
 
 ### DataScreen `/data`
 Card list. Tap → `MergeScreen`. FAB → `PersistScreen`. Delete single or all — both show a confirmation dialog with an **"Also delete progress"** checkbox (unchecked by default). FA_EN → RTL secondary text.
@@ -363,7 +378,24 @@ flutter run --release     # quickest if already connected
 
 ---
 
-## 16 · Workflow Conventions
+## 16 · Authentication & Cloud Sync
+
+**Architecture:** Local-first + Google Drive sync (no Firebase).
+
+| | |
+|---|---|
+| Auth | `google_sign_in` v7 standalone (no Firebase) |
+| Local storage | Hive (primary, always works offline) |
+| Cloud sync | Google Drive `appDataFolder` (planned — each user's own Drive) |
+| Cost | Zero — no server resources needed |
+
+**macOS Info.plist:** Contains `GIDClientID` and `CFBundleURLTypes` for Google Sign-In OAuth redirect.
+
+> ⚠️ Firebase project `flashmind-5de9c` has been deleted. No Firebase dependencies remain.
+
+---
+
+## 17 · Workflow Conventions
 
 1. 🚨 **Never commit/push without explicit user instruction.**
 2. After every code change: update this file to match.
