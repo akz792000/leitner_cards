@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
-import 'package:leitner_cards/enums/group_code.dart';
 
 /// Draggable modal bottom sheet showing a card's optional description text.
 ///
@@ -10,18 +9,15 @@ import 'package:leitner_cards/enums/group_code.dart';
 /// presented with consistent sizing and rounding.
 class DescriptionSheet extends StatelessWidget {
   final CardEntity card;
-  final GroupCode groupCode;
 
   const DescriptionSheet({
     super.key,
     required this.card,
-    required this.groupCode,
   });
 
   static Future<void> show(
     BuildContext context, {
     required CardEntity card,
-    required GroupCode groupCode,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -30,7 +26,7 @@ class DescriptionSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => DescriptionSheet(card: card, groupCode: groupCode),
+      builder: (_) => DescriptionSheet(card: card),
     );
   }
 

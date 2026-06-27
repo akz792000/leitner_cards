@@ -64,8 +64,9 @@ class RouteConfig {
         case leitner:
           return MaterialPageRoute(
               builder: (_) => LeitnerScreen(
-                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                    groupCode: _getRequired<String>(args, "groupCode"),
                     level: _getRequired<int>(args, "level"),
+                    deck: args?['deck'] as DeckEntity?,
                   ));
 
         case persist:

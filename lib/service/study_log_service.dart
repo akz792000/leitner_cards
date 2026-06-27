@@ -27,42 +27,56 @@ class StudyLogService extends GetxService {
   /// sessions crossing midnight are attributed to the day they began.
   /// Sessions shorter than 1 second are ignored.
   void logSession(GroupCode groupCode, int durationSecs, {String? date}) {
+    logSessionByCode(groupCode.code, durationSecs, date: date);
+  }
+
+  /// Logs a study session by raw code string (works for both legacy and UUID decks).
+  void logSessionByCode(String code, int durationSecs, {String? date}) {
     if (durationSecs < 1) return;
     final now = DateTimeUtil.now();
     _box.add(<String, dynamic>{
-      'gc': groupCode.code,
+      'gc': code,
       'd': date ?? dateKey(now),
       's': durationSecs,
     });
   }
 
   /// Seconds studied for [groupCode] on a specific [dateKey] string (YYYY-MM-DD).
-  int daySecs(GroupCode groupCode, String dateKey) {
+  int daySecs(GroupCode groupCode, String dateKey) =>
+      daySecsByCode(groupCode.code, dateKey);
+
+  /// Seconds studied for a raw code on a specific date key.
+  int daySecsByCode(String code, String dateKey) {
     return _entries
-        .where((e) =>
-            e['gc']?.toString() == groupCode.code &&
-            e['d']?.toString() == dateKey)
+        .where(
+            (e) => e['gc']?.toString() == code && e['d']?.toString() == dateKey)
         .fold(0, (sum, e) => sum + _secs(e));
   }
 
   /// Seconds studied for [groupCode] on today's date.
-  int todaySecs(GroupCode groupCode) {
+  int todaySecs(GroupCode groupCode) => todaySecsByCode(groupCode.code);
+
+  /// Seconds studied for a raw code on today's date.
+  int todaySecsByCode(String code) {
     final now = DateTimeUtil.now();
     final today = dateKey(now);
     return _entries
-        .where((e) =>
-            e['gc']?.toString() == groupCode.code &&
-            e['d']?.toString() == today)
+        .where(
+            (e) => e['gc']?.toString() == code && e['d']?.toString() == today)
         .fold(0, (sum, e) => sum + _secs(e));
   }
 
   /// Seconds studied for [groupCode] over the last [days] days (inclusive today).
-  int periodSecs(GroupCode groupCode, {required int days}) {
+  int periodSecs(GroupCode groupCode, {required int days}) =>
+      periodSecsByCode(groupCode.code, days: days);
+
+  /// Seconds studied for a raw code over the last [days] days.
+  int periodSecsByCode(String code, {required int days}) {
     final from = DateTimeUtil.now().subtract(Duration(days: days - 1));
     final fromKey = dateKey(from);
     return _entries
         .where((e) =>
-            e['gc']?.toString() == groupCode.code &&
+            e['gc']?.toString() == code &&
             (e['d']?.toString() ?? '').compareTo(fromKey) >= 0)
         .fold(0, (sum, e) => sum + _secs(e));
   }

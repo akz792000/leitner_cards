@@ -36,6 +36,10 @@ class CardRepository {
   List<CardEntity> findAllByGroupCode(GroupCode groupCode) =>
       _box.values.where((c) => c.groupCode == groupCode.code).toList();
 
+  /// All cards matching a raw groupCode string (works for both legacy and UUID).
+  List<CardEntity> findAllByCode(String code) =>
+      _box.values.where((c) => c.groupCode == code).toList();
+
   /// Card count per groupCode — used by stats screen.
   Map<String, int> findAllGroupCodeBased() {
     final result = <String, int>{};

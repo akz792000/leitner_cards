@@ -39,9 +39,6 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
   DeckEntity? get _deck =>
       widget.deckId != null ? _deckRepository.findById(widget.deckId!) : null;
 
-  /// Whether this is a legacy deck with a GroupCode enum value.
-  bool get _isLegacy => widget.groupCode != null;
-
   Color get _accentColor {
     final deck = _deck;
     if (deck != null) return Color(deck.colorValue);
@@ -81,15 +78,11 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     super.dispose();
   }
 
+  /// The raw groupCode string to query cards — either legacy code or deckId.
+  String get _cardCode => widget.groupCode?.code ?? widget.deckId ?? '';
+
   List<CardEntity> _queryCards() {
-    if (widget.groupCode != null) {
-      return _cardRepository.findAllByGroupCode(widget.groupCode!);
-    }
-    // User-created deck: cards stored with deckId in groupCode field.
-    return _cardRepository
-        .findAll()
-        .where((c) => c.groupCode == widget.deckId)
-        .toList();
+    return _cardRepository.findAllByCode(_cardCode);
   }
 
   void _initialize() {
@@ -171,14 +164,16 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     final color = _levelColor(level, context);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: _isLegacy
-          ? () async {
-              await Get.find<RouteService>().pushNamed(
-                RouteConfig.leitner,
-                arguments: {"groupCode": widget.groupCode!, "level": level},
-              );
-            }
-          : null,
+      onTap: () async {
+        await Get.find<RouteService>().pushNamed(
+          RouteConfig.leitner,
+          arguments: {
+            "groupCode": _cardCode,
+            "level": level,
+            "deck": _deck,
+          },
+        );
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
@@ -324,21 +319,6 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
               setState(() => _initialize());
             },
           ),
-          // Play limited (legacy only for now).
-          if (_count > 0 && _isLegacy)
-            IconButton(
-              icon: const Icon(Icons.skip_next_outlined),
-              tooltip: 'Play limited',
-              onPressed: () async {
-                await Get.find<RouteService>().pushNamed(
-                  RouteConfig.leitner,
-                  arguments: {
-                    "groupCode": widget.groupCode!,
-                    "level": LeitnerScreen.allLimitedLevel
-                  },
-                );
-              },
-            ),
         ],
       ),
       body: Column(
@@ -371,7 +351,7 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
           ),
         ],
       ),
-      floatingActionButton: _count == 0 || !_isLegacy
+      floatingActionButton: _count == 0
           ? null
           : FloatingActionButton.extended(
               heroTag: 'PlayAll',
@@ -383,8 +363,9 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
                 await Get.find<RouteService>().pushNamed(
                   RouteConfig.leitner,
                   arguments: {
-                    "groupCode": widget.groupCode!,
-                    "level": LeitnerScreen.allLevel
+                    "groupCode": _cardCode,
+                    "level": LeitnerScreen.allLevel,
+                    "deck": _deck,
                   },
                 );
               },

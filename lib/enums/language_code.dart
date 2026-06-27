@@ -12,4 +12,16 @@ enum LanguageCode {
   TextDirection get direction {
     return this == LanguageCode.fa ? TextDirection.rtl : TextDirection.ltr;
   }
+
+  /// Resolve from a two-letter lang string ("fa", "en", "de").
+  static LanguageCode fromLang(String lang) {
+    switch (lang.toLowerCase()) {
+      case 'fa':
+        return LanguageCode.fa;
+      case 'de':
+        return LanguageCode.de;
+      default:
+        return LanguageCode.en;
+    }
+  }
 }

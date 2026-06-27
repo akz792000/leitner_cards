@@ -82,6 +82,14 @@ class SettingsService extends GetxService {
     _box.put(_studyTimeKey(groupCode), _studyTimeSecs[groupCode]!.value);
   }
 
+  /// Adds study time by raw code string (works for both legacy and UUID decks).
+  void addStudyTimeByCode(String code, Duration elapsed) {
+    if (elapsed.inSeconds < 1) return;
+    final key = 'studyTime_$code';
+    final current = _box.get(key, defaultValue: 0) as int;
+    _box.put(key, current + elapsed.inSeconds);
+  }
+
   @override
   void onInit() {
     super.onInit();

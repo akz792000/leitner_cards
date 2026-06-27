@@ -24,7 +24,12 @@ class CardService {
   /// Returns a list of (CardEntity, ProgressEntity) pairs.
   List<(CardEntity, ProgressEntity)> findAllBasedOnLeitner(
       GroupCode groupCode) {
-    final cards = _cardRepository.findAllByGroupCode(groupCode);
+    return findAllBasedOnLeitnerByCode(groupCode.code);
+  }
+
+  /// Same as [findAllBasedOnLeitner] but accepts a raw groupCode string.
+  List<(CardEntity, ProgressEntity)> findAllBasedOnLeitnerByCode(String code) {
+    final cards = _cardRepository.findAllByCode(code);
 
     // Build a map of cardId → ProgressEntity (create default if missing)
     final progressMap = <int, ProgressEntity>{};

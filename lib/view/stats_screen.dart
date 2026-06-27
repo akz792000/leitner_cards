@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/entity/deck_entity.dart';
-import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
 import 'package:leitner_cards/repository/deck_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
@@ -54,18 +52,14 @@ class _StatsTab extends StatelessWidget {
 
   const _StatsTab({required this.deck});
 
-  /// Bridge to legacy GroupCode for study log queries.
-  GroupCode? get _legacyGroupCode =>
-      deck.groupCode.isNotEmpty ? GroupCode.fromCode(deck.groupCode) : null;
+  /// Raw code for querying cards/logs — legacy groupCode or deck.id.
+  String get _cardCode => deck.groupCode.isNotEmpty ? deck.groupCode : deck.id;
 
   _StatsData _compute() {
     final cardRepo = Get.find<CardRepository>();
     final progressRepo = Get.find<ProgressRepository>();
 
-    // Legacy decks use groupCode, future decks will use deckId.
-    final cards = deck.groupCode.isNotEmpty
-        ? cardRepo.findAllByGroupCode(GroupCode.fromCode(deck.groupCode))
-        : <CardEntity>[];
+    final cards = cardRepo.findAllByCode(_cardCode);
 
     if (cards.isEmpty) return _StatsData.empty();
 
@@ -206,14 +200,23 @@ class _StatsTab extends StatelessWidget {
     );
   }
 
-  /// Three gradient tiles: This Week / This Month / This Year.
+  /// Four gradient tiles: Today / Week / Month / Year.
   Widget _buildPeriodTiles(BuildContext context, StudyLogService log) {
     final accent = Color(deck.colorValue);
-    final gc = _legacyGroupCode;
+    final code = _cardCode;
     final periods = [
       (
+        label: 'Today',
+        secs: log.todaySecsByCode(code),
+        icon: Icons.today_outlined,
+        gradient: [
+          accent.withValues(alpha: 0.95),
+          accent.withValues(alpha: 0.70)
+        ]
+      ),
+      (
         label: 'Week',
-        secs: gc != null ? log.periodSecs(gc, days: 7) : 0,
+        secs: log.periodSecsByCode(code, days: 7),
         icon: Icons.view_week_outlined,
         gradient: [
           accent.withValues(alpha: 0.85),
@@ -222,7 +225,7 @@ class _StatsTab extends StatelessWidget {
       ),
       (
         label: 'Month',
-        secs: gc != null ? log.periodSecs(gc, days: 30) : 0,
+        secs: log.periodSecsByCode(code, days: 30),
         icon: Icons.calendar_month_outlined,
         gradient: [
           accent.withValues(alpha: 0.65),
@@ -231,7 +234,7 @@ class _StatsTab extends StatelessWidget {
       ),
       (
         label: 'Year',
-        secs: gc != null ? log.periodSecs(gc, days: 365) : 0,
+        secs: log.periodSecsByCode(code, days: 365),
         icon: Icons.auto_stories_outlined,
         gradient: [
           accent.withValues(alpha: 0.50),
@@ -240,65 +243,70 @@ class _StatsTab extends StatelessWidget {
       ),
     ];
 
-    return Row(
-      children: periods.map((p) {
-        final h = p.secs ~/ 3600;
-        final m = (p.secs % 3600) ~/ 60;
-        final s = p.secs % 60;
-        final valueText = p.secs == 0
-            ? '—'
-            : h > 0
-                ? '${h}h ${m}m'
-                : m > 0
-                    ? '${m}m ${s}s'
-                    : '${s}s';
+    Widget tile(dynamic p, {bool rightMargin = true}) {
+      final h = p.secs ~/ 3600;
+      final m = (p.secs % 3600) ~/ 60;
+      final s = p.secs % 60;
+      final valueText = p.secs == 0
+          ? '—'
+          : h > 0
+              ? '${h}h ${m}m'
+              : m > 0
+                  ? '${m}m ${s}s'
+                  : '${s}s';
 
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(
-              right: p.label != 'Year' ? 8 : 0,
+      return Expanded(
+        child: Container(
+          margin: EdgeInsets.only(right: rightMargin ? 8 : 0),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: p.gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: p.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(
-                    color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(p.icon, size: 18, color: Colors.white70),
-                const SizedBox(height: 8),
-                Text(
-                  valueText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  p.label,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                  color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+            ],
           ),
-        );
-      }).toList(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(p.icon, size: 18, color: Colors.white70),
+              const SizedBox(height: 8),
+              Text(
+                valueText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                p.label,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        tile(periods[3]),
+        tile(periods[2]),
+        tile(periods[1]),
+        tile(periods[0], rightMargin: false),
+      ],
     );
   }
 
@@ -312,8 +320,7 @@ class _StatsTab extends StatelessWidget {
     final days = List.generate(7, (i) {
       final dt = now.subtract(Duration(days: 6 - i));
       final key = log.dateKey(dt);
-      final gc = _legacyGroupCode;
-      final secs = gc != null ? log.daySecs(gc, key) : 0;
+      final secs = log.daySecsByCode(_cardCode, key);
       final label = _dayLabel(dt.weekday, i == 6);
       return (key: key, secs: secs, label: label, isToday: i == 6);
     });

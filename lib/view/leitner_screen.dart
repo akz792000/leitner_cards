@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/deck_entity.dart';
 import 'package:leitner_cards/entity/progress_entity.dart';
 import 'package:leitner_cards/service/card_service.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
@@ -95,13 +96,18 @@ class LeitnerScreen extends StatefulWidget {
   /// Sentinel: load all cards in the deck (ignores the schedule).
   static const int allLimitedLevel = -2;
 
-  final GroupCode groupCode;
+  /// Raw groupCode string — GroupCode.code for legacy, deck.id for user decks.
+  final String groupCode;
   final int level;
+
+  /// Optional deck entity for user-created decks (provides lang/color info).
+  final DeckEntity? deck;
 
   const LeitnerScreen({
     super.key,
     required this.groupCode,
     required this.level,
+    this.deck,
   });
 
   @override
@@ -213,9 +219,9 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   /// [dispose] within the same session.
   void _persistStudyTime() {
     if (_accumulatedSecs < 1) return;
-    _settingsService.addStudyTime(
+    _settingsService.addStudyTimeByCode(
         widget.groupCode, Duration(seconds: _accumulatedSecs));
-    _studyLogService.logSession(widget.groupCode, _accumulatedSecs,
+    _studyLogService.logSessionByCode(widget.groupCode, _accumulatedSecs,
         date: _studyDate);
     _accumulatedSecs = 0;
   }
@@ -303,16 +309,16 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   void _loadCards() {
     switch (widget.level) {
       case LeitnerScreen.allLevel:
-        _pairs = _cardService.findAllBasedOnLeitner(widget.groupCode);
+        _pairs = _cardService.findAllBasedOnLeitnerByCode(widget.groupCode);
         break;
       case LeitnerScreen.allLimitedLevel:
-        final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+        final cards = _cardRepository.findAllByCode(widget.groupCode);
         _pairs = cards
             .map((c) => (c, _progressRepository.findOrCreate(c.id)))
             .toList();
         break;
       default:
-        final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+        final cards = _cardRepository.findAllByCode(widget.groupCode);
         _pairs = cards
             .map((c) => (c, _progressRepository.findOrCreate(c.id)))
             .where((pair) => pair.$2.level == widget.level)
@@ -383,9 +389,19 @@ class _LeitnerScreenState extends State<LeitnerScreen>
   /// Toggles the revealed state for [card] and resets the idle timer.
   // ── Language tab helpers ────────────────────────────────────────────────────
 
+  /// Resolve the legacy GroupCode from the raw string, if applicable.
+  GroupCode? get _legacyGroupCode => GroupCode.tryFromCode(widget.groupCode);
+
   /// Languages available as tabs for the current deck, in display order.
   List<LanguageCode> get _tabs {
-    switch (widget.groupCode) {
+    final deck = widget.deck;
+    if (deck != null) {
+      return [
+        LanguageCode.fromLang(deck.sourceLang),
+        LanguageCode.fromLang(deck.targetLang),
+      ];
+    }
+    switch (_legacyGroupCode!) {
       case GroupCode.faEn:
         return [LanguageCode.fa, LanguageCode.en];
       case GroupCode.enDe:
@@ -404,7 +420,9 @@ class _LeitnerScreenState extends State<LeitnerScreen>
 
   /// Accent colour for the active deck, used by the tab bar highlight.
   Color get _accentColor {
-    switch (widget.groupCode) {
+    final deck = widget.deck;
+    if (deck != null) return Color(deck.colorValue);
+    switch (_legacyGroupCode!) {
       case GroupCode.faEn:
         return Colors.blue.shade600;
       case GroupCode.enDe:
@@ -1027,8 +1045,8 @@ class _LeitnerScreenState extends State<LeitnerScreen>
             IconButton(
               icon: const Icon(Icons.info_outline),
               tooltip: 'Description',
-              onPressed: () => DescriptionSheet.show(context,
-                  card: _cardEntity, groupCode: widget.groupCode),
+              onPressed: () =>
+                  DescriptionSheet.show(context, card: _cardEntity),
             ),
           Obx(() {
             if (!_settingsService.speakEnabled.value) {
