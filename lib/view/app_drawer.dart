@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../config/route_config.dart';
+import '../service/auth_service.dart';
 import '../service/route_service.dart';
 import '../service/theme_service.dart';
 
@@ -74,6 +75,18 @@ class AppDrawer extends StatelessWidget {
                       _showAboutDialog(context);
                     },
                   ),
+                  const Divider(height: 24),
+                  _navTile(
+                    context,
+                    icon: Icons.logout,
+                    iconColor: Colors.red,
+                    title: 'Sign Out',
+                    subtitle: 'Sign out of your account',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<AuthService>().signOut();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -86,6 +99,12 @@ class AppDrawer extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final authService = Get.find<AuthService>();
+    final user = authService.user.value;
+    final displayName = user?.displayName ?? 'Language Learner';
+    final email = user?.email ?? '';
+    final photoUrl = user?.photoUrl;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 24),
@@ -103,28 +122,34 @@ class AppDrawer extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 30,
-              backgroundImage: AssetImage('assets/image.png'),
+              backgroundImage: photoUrl != null
+                  ? NetworkImage(photoUrl)
+                  : const AssetImage('assets/image.png') as ImageProvider,
             ),
           ),
           const SizedBox(width: 14),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ali Karimizandi',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Language Learner',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),

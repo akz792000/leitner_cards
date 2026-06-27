@@ -47,3 +47,7 @@ app.*.map.json
 
 # Hive backup from deploy.sh --backup
 hive_backup.ab
+
+# Hive data backups (user data — never commit)
+hive_data_backup/
+hive_backup.ab
