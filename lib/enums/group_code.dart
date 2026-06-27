@@ -13,6 +13,13 @@ enum GroupCode {
   static GroupCode fromCode(String? code) => GroupCode.values
       .firstWhere((g) => g.code == code, orElse: () => GroupCode.faEn);
 
+  /// Look up by stored string value; returns null if unrecognised.
+  static GroupCode? tryFromCode(String? code) {
+    if (code == null || code.isEmpty) return null;
+    final matches = GroupCode.values.where((g) => g.code == code);
+    return matches.isEmpty ? null : matches.first;
+  }
+
   String get title {
     switch (this) {
       case faEn:

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/deck_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import '../repository/card_repository.dart';
+import '../repository/deck_repository.dart';
 import '../repository/progress_repository.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
@@ -33,39 +35,35 @@ class _DownloadScreenState extends State<DownloadScreen> {
   static const String _baseUrl =
       'https://raw.githubusercontent.com/akz792000/Dictionary/main';
 
+  /// GitHub JSON URLs for legacy GroupCode decks.
+  static const Map<String, String> _groupCodeUrls = {
+    'FA_EN': '$_baseUrl/fa_en.json',
+    'EN_DE': '$_baseUrl/en_de.json',
+    'EN_DE_VERBS': '$_baseUrl/en_de_verbs.json',
+    'VISUAL': '$_baseUrl/visual.json',
+  };
+
   /// Maximum number of NEW (not yet local) cards added per deck per sync.
   int _newCardsLimit = 100;
 
-  final List<Map<String, dynamic>> _items = [
-    {
-      "name": "English / Farsi",
-      "icon": "en",
-      "toggle": false,
-      "url": "$_baseUrl/fa_en.json",
-      "groupCode": GroupCode.faEn,
-    },
-    {
-      "name": "Deutsch / English",
-      "icon": "de",
-      "toggle": false,
-      "url": "$_baseUrl/en_de.json",
-      "groupCode": GroupCode.enDe,
-    },
-    {
-      "name": "Deutsch / Verbs",
-      "icon": "de",
-      "toggle": false,
-      "url": "$_baseUrl/en_de_verbs.json",
-      "groupCode": GroupCode.enDeVerbs,
-    },
-    {
-      "name": "Visual",
-      "icon": "vi",
-      "toggle": false,
-      "url": "$_baseUrl/visual.json",
-      "groupCode": GroupCode.visual,
-    },
-  ];
+  /// Built dynamically from DeckRepository — only decks with a sync URL.
+  late final List<Map<String, dynamic>> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    final decks = Get.find<DeckRepository>().findAll();
+    _items = decks
+        .where((d) =>
+            d.groupCode.isNotEmpty && _groupCodeUrls.containsKey(d.groupCode))
+        .map((d) => <String, dynamic>{
+              'deck': d,
+              'toggle': false,
+              'url': _groupCodeUrls[d.groupCode]!,
+              'groupCode': GroupCode.fromCode(d.groupCode),
+            })
+        .toList();
+  }
 
   bool _loading = false;
 
@@ -190,9 +188,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
     try {
       for (final item in _items) {
         final r = await _download(item);
+        final deck = item['deck'] as DeckEntity;
         results.add({
-          'name': item['name'] as String,
-          'icon': item['icon'] as String,
+          'name': deck.name,
+          'color': Color(deck.colorValue),
           'updated': r.updated,
           'inserted': r.inserted,
           'remaining': r.remaining,
@@ -226,13 +225,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: results.map((r) {
-            final isEnglish = r['icon'] == 'en';
-            final isVisual = r['icon'] == 'vi';
-            final color = isEnglish
-                ? Colors.blue.shade600
-                : isVisual
-                    ? Colors.teal.shade600
-                    : Colors.orange.shade700;
+            final color = r['color'] as Color;
             final updated = r['updated'] as int;
             final inserted = r['inserted'] as int;
             final remaining = r['remaining'] as int;
@@ -396,17 +389,24 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       ),
                     ),
                   ),
-                  // Deck cards
+                  // Deck cards — dynamic from DeckRepository.
+                  if (_items.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No syncable decks. Legacy decks with a GitHub source will appear here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: cs.onSurfaceVariant, fontSize: 14),
+                        ),
+                      ),
+                    ),
                   ..._items.asMap().entries.map((entry) {
                     final i = entry.key;
                     final item = entry.value;
-                    final isEnglish = item['icon'] == 'en';
-                    final isVisual = item['icon'] == 'vi';
-                    final accentColor = isEnglish
-                        ? Colors.blue.shade600
-                        : isVisual
-                            ? Colors.teal.shade600
-                            : Colors.orange.shade700;
+                    final deck = item['deck'] as DeckEntity;
+                    final accentColor = Color(deck.colorValue);
                     return Container(
                       margin: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 6),
@@ -429,13 +429,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
                             color: accentColor.withAlpha(20),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: isVisual
-                              ? Icon(Icons.image_outlined,
-                                  color: accentColor, size: 32)
-                              : Image.asset('assets/flags/${item['icon']}.png',
-                                  width: 32, height: 32),
+                          // ignore: non_const_argument_for_const_parameter
+                          child: Icon(
+                            IconData(deck.iconCodePoint,
+                                fontFamily: 'MaterialIcons'),
+                            color: accentColor,
+                            size: 32,
+                          ),
                         ),
-                        title: Text(item['name'],
+                        title: Text(deck.name,
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(
@@ -447,7 +449,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                         ),
                         trailing: Switch(
                           value: item['toggle'],
-                          activeColor: accentColor,
+                          activeThumbColor: accentColor,
                           onChanged: (value) =>
                               setState(() => _items[i]['toggle'] = value),
                         ),

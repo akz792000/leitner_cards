@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/deck_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/deck_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/service/study_log_service.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
 import '../util/color_util.dart';
 
-/// Learning-progress statistics screen, one tab per [GroupCode] deck.
+/// Learning-progress statistics screen, one tab per user deck.
 ///
 /// Stats are computed synchronously from the Hive boxes on each build — no
 /// separate state is needed since the data is already in-memory.
@@ -17,18 +20,29 @@ class StatsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final decks = Get.find<DeckRepository>().findAll();
+
+    if (decks.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Statistics')),
+        body: const Center(
+          child: Text('No decks yet — create one first.'),
+        ),
+      );
+    }
+
     return DefaultTabController(
-      length: GroupCode.values.length,
+      length: decks.length,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Statistics'),
           bottom: TabBar(
-            tabs: GroupCode.values.map((g) => Tab(text: g.title)).toList(),
+            isScrollable: decks.length > 3,
+            tabs: decks.map((d) => Tab(text: d.name)).toList(),
           ),
         ),
         body: TabBarView(
-          children:
-              GroupCode.values.map((g) => _StatsTab(groupCode: g)).toList(),
+          children: decks.map((d) => _StatsTab(deck: d)).toList(),
         ),
       ),
     );
@@ -36,14 +50,22 @@ class StatsScreen extends StatelessWidget {
 }
 
 class _StatsTab extends StatelessWidget {
-  final GroupCode groupCode;
+  final DeckEntity deck;
 
-  const _StatsTab({required this.groupCode});
+  const _StatsTab({required this.deck});
+
+  /// Bridge to legacy GroupCode for study log queries.
+  GroupCode? get _legacyGroupCode =>
+      deck.groupCode.isNotEmpty ? GroupCode.fromCode(deck.groupCode) : null;
 
   _StatsData _compute() {
     final cardRepo = Get.find<CardRepository>();
     final progressRepo = Get.find<ProgressRepository>();
-    final cards = cardRepo.findAllByGroupCode(groupCode);
+
+    // Legacy decks use groupCode, future decks will use deckId.
+    final cards = deck.groupCode.isNotEmpty
+        ? cardRepo.findAllByGroupCode(GroupCode.fromCode(deck.groupCode))
+        : <CardEntity>[];
 
     if (cards.isEmpty) return _StatsData.empty();
 
@@ -100,7 +122,7 @@ class _StatsTab extends StatelessWidget {
                 size: 56, color: Theme.of(context).colorScheme.outlineVariant),
             const SizedBox(height: 12),
             Text(
-              'No cards yet for ${groupCode.title}',
+              'No cards yet for ${deck.name}',
               style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 15),
@@ -186,11 +208,12 @@ class _StatsTab extends StatelessWidget {
 
   /// Three gradient tiles: This Week / This Month / This Year.
   Widget _buildPeriodTiles(BuildContext context, StudyLogService log) {
-    final accent = _accentFor(groupCode);
+    final accent = Color(deck.colorValue);
+    final gc = _legacyGroupCode;
     final periods = [
       (
         label: 'Week',
-        secs: log.periodSecs(groupCode, days: 7),
+        secs: gc != null ? log.periodSecs(gc, days: 7) : 0,
         icon: Icons.view_week_outlined,
         gradient: [
           accent.withValues(alpha: 0.85),
@@ -199,7 +222,7 @@ class _StatsTab extends StatelessWidget {
       ),
       (
         label: 'Month',
-        secs: log.periodSecs(groupCode, days: 30),
+        secs: gc != null ? log.periodSecs(gc, days: 30) : 0,
         icon: Icons.calendar_month_outlined,
         gradient: [
           accent.withValues(alpha: 0.65),
@@ -208,7 +231,7 @@ class _StatsTab extends StatelessWidget {
       ),
       (
         label: 'Year',
-        secs: log.periodSecs(groupCode, days: 365),
+        secs: gc != null ? log.periodSecs(gc, days: 365) : 0,
         icon: Icons.auto_stories_outlined,
         gradient: [
           accent.withValues(alpha: 0.50),
@@ -289,13 +312,14 @@ class _StatsTab extends StatelessWidget {
     final days = List.generate(7, (i) {
       final dt = now.subtract(Duration(days: 6 - i));
       final key = log.dateKey(dt);
-      final secs = log.daySecs(groupCode, key);
+      final gc = _legacyGroupCode;
+      final secs = gc != null ? log.daySecs(gc, key) : 0;
       final label = _dayLabel(dt.weekday, i == 6);
       return (key: key, secs: secs, label: label, isToday: i == 6);
     });
 
     final maxSecs = days.map((d) => d.secs).fold(0, (a, b) => a > b ? a : b);
-    final accentColor = _accentFor(groupCode);
+    final accentColor = Color(deck.colorValue);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -395,18 +419,6 @@ class _StatsTab extends StatelessWidget {
     if (secs >= 3600) return '${secs ~/ 3600}h';
     if (secs >= 60) return '${secs ~/ 60}m';
     return '${secs}s';
-  }
-
-  Color _accentFor(GroupCode gc) {
-    switch (gc) {
-      case GroupCode.faEn:
-        return Colors.blue.shade600;
-      case GroupCode.enDe:
-      case GroupCode.enDeVerbs:
-        return Colors.orange.shade700;
-      case GroupCode.visual:
-        return Colors.teal.shade600;
-    }
   }
 
   Widget _buildSectionLabel(String label) {

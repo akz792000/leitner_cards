@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/util/date_time_util.dart';
 
+import '../entity/deck_entity.dart';
 import '../enums/group_code.dart';
 import '../service/sync_service.dart';
 import '../util/dialog_util.dart';
@@ -11,11 +12,18 @@ import '../util/dialog_util.dart';
 ///
 /// The id is generated as seconds-epoch so it fits within Hive's 32-bit key
 /// constraint (`millisecondsSinceEpoch ~/ 1000`). Only the fields relevant to
-/// the selected deck are shown (Farsi field for English deck; Deutsch for Deutsch).
+/// the selected deck are shown based on source/target languages.
+///
+/// Accepts either a [GroupCode] (legacy) or a [DeckEntity] (new decks).
+/// When [deck] is provided it takes precedence — colors and language fields
+/// are derived from the entity.
 class PersistScreen extends StatefulWidget {
-  final GroupCode groupCode;
+  final GroupCode? groupCode;
+  final DeckEntity? deck;
 
-  const PersistScreen({super.key, required this.groupCode});
+  const PersistScreen({super.key, this.groupCode, this.deck})
+      : assert(groupCode != null || deck != null,
+            'Either groupCode or deck must be provided');
 
   @override
   _PersistScreenState createState() => _PersistScreenState();
@@ -30,12 +38,30 @@ class _PersistScreenState extends State<PersistScreen> {
   final TextEditingController _deController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
-  bool get _isEnglish => widget.groupCode == GroupCode.faEn;
-  Color get _accentColor =>
-      _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
-  List<Color> get _gradient => _isEnglish
-      ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
-      : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
+  String get _sourceLang =>
+      widget.deck?.sourceLang ??
+      (widget.groupCode == GroupCode.faEn ? 'fa' : 'en');
+  String get _targetLang =>
+      widget.deck?.targetLang ??
+      (widget.groupCode == GroupCode.faEn ? 'en' : 'de');
+
+  bool get _showFa => _sourceLang == 'fa' || _targetLang == 'fa';
+  bool get _showEn => _sourceLang == 'en' || _targetLang == 'en';
+  bool get _showDe => _sourceLang == 'de' || _targetLang == 'de';
+
+  Color get _accentColor => widget.deck != null
+      ? Color(widget.deck!.colorValue)
+      : (widget.groupCode == GroupCode.faEn
+          ? Colors.blue.shade600
+          : Colors.orange.shade700);
+
+  List<Color> get _gradient => [
+        _accentColor,
+        Color.lerp(_accentColor, Colors.white, 0.3) ?? _accentColor,
+      ];
+
+  String get _headerTitle =>
+      widget.deck?.name ?? widget.groupCode?.title ?? 'New Card';
 
   @override
   void dispose() {
@@ -49,6 +75,16 @@ class _PersistScreenState extends State<PersistScreen> {
   String? _required(String? value) =>
       (value == null || value.trim().isEmpty) ? 'This field is required' : null;
 
+  /// Resolves the groupCode to store on the card.
+  /// Legacy decks use the GroupCode string; user-created decks use the deck ID.
+  String get _cardGroupCode {
+    if (widget.deck != null) {
+      final d = widget.deck!;
+      return d.groupCode.isNotEmpty ? d.groupCode : d.id;
+    }
+    return widget.groupCode!.code;
+  }
+
   Future<void> _onPersist() async {
     if (_formKey.currentState!.validate()) {
       try {
@@ -57,7 +93,7 @@ class _PersistScreenState extends State<PersistScreen> {
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           created: now,
           modified: now,
-          groupCode: widget.groupCode.code,
+          groupCode: _cardGroupCode,
           fa: _faController.text.trim(),
           en: _enController.text.trim(),
           de: _deController.text.trim(),
@@ -100,6 +136,27 @@ class _PersistScreenState extends State<PersistScreen> {
     );
   }
 
+  Widget _buildHeaderIcon() {
+    if (widget.deck != null) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(51),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        // ignore: non_const_argument_for_const_parameter
+        child: Icon(
+          IconData(widget.deck!.iconCodePoint, fontFamily: 'MaterialIcons'),
+          color: Colors.white,
+          size: 22,
+        ),
+      );
+    }
+    final flagName = widget.groupCode == GroupCode.faEn ? 'en' : 'de';
+    return Image.asset('assets/flags/$flagName.png', width: 40, height: 40);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,13 +180,12 @@ class _PersistScreenState extends State<PersistScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Row(
               children: [
-                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png',
-                    width: 40, height: 40),
+                _buildHeaderIcon(),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.groupCode.title,
+                    Text(_headerTitle,
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -150,27 +206,30 @@ class _PersistScreenState extends State<PersistScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_isEnglish)
+                    if (_showFa)
                       _buildField(
                         label: 'Farsi',
                         hint: 'فارسی',
                         controller: _faController,
                         icon: Icons.translate,
                         textDirection: TextDirection.rtl,
+                        validator: _sourceLang == 'fa' ? _required : null,
                       ),
-                    _buildField(
-                      label: 'English',
-                      hint: 'e.g. apple',
-                      controller: _enController,
-                      icon: Icons.spellcheck,
-                      validator: _required,
-                    ),
-                    if (!_isEnglish)
+                    if (_showEn)
+                      _buildField(
+                        label: 'English',
+                        hint: 'e.g. apple',
+                        controller: _enController,
+                        icon: Icons.spellcheck,
+                        validator: _required,
+                      ),
+                    if (_showDe)
                       _buildField(
                         label: 'Deutsch',
                         hint: 'z.B. Apfel',
                         controller: _deController,
                         icon: Icons.translate,
+                        validator: _sourceLang == 'de' ? _required : null,
                       ),
                     _buildField(
                       label: 'Description',

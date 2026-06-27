@@ -9,9 +9,12 @@ import 'config/app_theme.dart';
 import 'config/dependency_config.dart';
 import 'config/route_config.dart';
 import 'entity/card_entity.dart';
+import 'entity/deck_entity.dart';
 import 'entity/progress_entity.dart';
 import 'repository/card_repository.dart';
+import 'repository/deck_repository.dart';
 import 'repository/progress_repository.dart';
+import 'service/deck_seed_service.dart';
 import 'service/route_service.dart';
 import 'service/study_log_service.dart';
 import 'service/theme_service.dart';
@@ -33,15 +36,20 @@ Future<void> setup() async {
   await Hive.initFlutter();
   Hive.registerAdapter(CardEntityAdapter());
   Hive.registerAdapter(ProgressEntityAdapter());
+  Hive.registerAdapter(DeckEntityAdapter());
 
   await _openBoxSafe<CardEntity>(CardRepository.boxId);
   await _openBoxSafe<ProgressEntity>(ProgressRepository.boxId);
+  await _openBoxSafe<DeckEntity>(DeckRepository.boxId);
   await _openBoxSafe<dynamic>(StudyLogService.boxId);
 
   final directory = await path_provider.getApplicationDocumentsDirectory();
   debugPrint("Hive directory: ${directory.path}");
 
   await DependencyConfig.registerDependencies();
+
+  // Seed legacy decks from GroupCode on first launch.
+  await DeckSeedService.seedIfNeeded();
 }
 
 /// Opens a Hive box, falling back to deleting and recreating it if the stored

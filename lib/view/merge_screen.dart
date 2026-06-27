@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/entity/card_entity.dart';
+import 'package:leitner_cards/entity/deck_entity.dart';
 import 'package:leitner_cards/entity/progress_entity.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
@@ -17,10 +18,14 @@ import '../util/dialog_util.dart';
 /// edited card re-enters the Leitner queue from the beginning. Read-only
 /// metadata (dates, order, level) is shown in a summary chip panel rather than
 /// editable fields to prevent accidental corruption.
+///
+/// Accepts an optional [DeckEntity] for user-created decks. When provided,
+/// colors and language fields are derived from the deck entity.
 class MergeScreen extends StatefulWidget {
   final CardEntity cardEntity;
+  final DeckEntity? deck;
 
-  const MergeScreen({super.key, required this.cardEntity});
+  const MergeScreen({super.key, required this.cardEntity, this.deck});
 
   @override
   _MergeScreenState createState() => _MergeScreenState();
@@ -42,14 +47,30 @@ class _MergeScreenState extends State<MergeScreen> {
   late final TextEditingController _subLevelController;
   late final TextEditingController _createdController;
   late final TextEditingController _modifiedController;
-  late final GroupCode _groupCode;
+  late final GroupCode? _groupCode;
 
-  bool get _isEnglish => _groupCode == GroupCode.faEn;
-  Color get _accentColor =>
-      _isEnglish ? Colors.blue.shade600 : Colors.orange.shade700;
-  List<Color> get _gradient => _isEnglish
-      ? [const Color(0xFF1565C0), const Color(0xFF42A5F5)]
-      : [const Color(0xFFE65100), const Color(0xFFFFB74D)];
+  String get _sourceLang =>
+      widget.deck?.sourceLang ?? (_groupCode == GroupCode.faEn ? 'fa' : 'en');
+  String get _targetLang =>
+      widget.deck?.targetLang ?? (_groupCode == GroupCode.faEn ? 'en' : 'de');
+
+  bool get _showFa => _sourceLang == 'fa' || _targetLang == 'fa';
+  bool get _showEn => _sourceLang == 'en' || _targetLang == 'en';
+  bool get _showDe => _sourceLang == 'de' || _targetLang == 'de';
+
+  Color get _accentColor => widget.deck != null
+      ? Color(widget.deck!.colorValue)
+      : (_groupCode == GroupCode.faEn
+          ? Colors.blue.shade600
+          : Colors.orange.shade700);
+
+  List<Color> get _gradient => [
+        _accentColor,
+        Color.lerp(_accentColor, Colors.white, 0.3) ?? _accentColor,
+      ];
+
+  String get _headerTitle =>
+      widget.deck?.name ?? _groupCode?.title ?? 'Edit Card';
 
   @override
   void initState() {
@@ -70,7 +91,7 @@ class _MergeScreenState extends State<MergeScreen> {
         TextEditingController(text: DateTimeUtil.adjustDateTime(card.created));
     _modifiedController = TextEditingController(
         text: DateTimeUtil.adjustDateTime(progress.modified));
-    _groupCode = GroupCode.fromCode(card.groupCode);
+    _groupCode = GroupCode.tryFromCode(card.groupCode);
   }
 
   @override
@@ -91,6 +112,48 @@ class _MergeScreenState extends State<MergeScreen> {
   String? _required(String? value) =>
       (value == null || value.trim().isEmpty) ? 'This field is required' : null;
 
+  /// Resolves the groupCode to store on the card.
+  String get _cardGroupCode {
+    if (widget.deck != null) {
+      final d = widget.deck!;
+      return d.groupCode.isNotEmpty ? d.groupCode : d.id;
+    }
+    return widget.cardEntity.groupCode;
+  }
+
+  void _onDelete() {
+    final label = widget.cardEntity.en.isNotEmpty
+        ? widget.cardEntity.en
+        : widget.cardEntity.fa;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Card'),
+        content: Text('Delete "$label"?\n\nThis cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _syncService.removeCard(widget.cardEntity,
+                    withProgress: true);
+              } catch (e) {
+                if (mounted) DialogUtil.error(context, e);
+                return;
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onMerge() async {
     if (_formKey.currentState!.validate()) {
       try {
@@ -99,7 +162,7 @@ class _MergeScreenState extends State<MergeScreen> {
           id: cardId,
           created: _created,
           modified: DateTimeUtil.now(),
-          groupCode: _groupCode.code,
+          groupCode: _cardGroupCode,
           fa: _faController.text.trim(),
           en: _enController.text.trim(),
           de: _deController.text.trim(),
@@ -243,6 +306,27 @@ class _MergeScreenState extends State<MergeScreen> {
     );
   }
 
+  Widget _buildHeaderIcon() {
+    if (widget.deck != null) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(51),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        // ignore: non_const_argument_for_const_parameter
+        child: Icon(
+          IconData(widget.deck!.iconCodePoint, fontFamily: 'MaterialIcons'),
+          color: Colors.white,
+          size: 22,
+        ),
+      );
+    }
+    final flagName = _groupCode == GroupCode.faEn ? 'en' : 'de';
+    return Image.asset('assets/flags/$flagName.png', width: 40, height: 40);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -266,14 +350,13 @@ class _MergeScreenState extends State<MergeScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Row(
               children: [
-                Image.asset('assets/flags/${_isEnglish ? 'en' : 'de'}.png',
-                    width: 40, height: 40),
+                _buildHeaderIcon(),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _groupCode.title,
+                      _headerTitle,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -298,27 +381,30 @@ class _MergeScreenState extends State<MergeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_isEnglish)
+                    if (_showFa)
                       _buildField(
                         label: 'Farsi',
                         hint: 'فارسی',
                         controller: _faController,
                         icon: Icons.translate,
                         textDirection: TextDirection.rtl,
+                        validator: _sourceLang == 'fa' ? _required : null,
                       ),
-                    _buildField(
-                      label: 'English',
-                      hint: 'e.g. apple',
-                      controller: _enController,
-                      icon: Icons.spellcheck,
-                      validator: _required,
-                    ),
-                    if (!_isEnglish)
+                    if (_showEn)
+                      _buildField(
+                        label: 'English',
+                        hint: 'e.g. apple',
+                        controller: _enController,
+                        icon: Icons.spellcheck,
+                        validator: _required,
+                      ),
+                    if (_showDe)
                       _buildField(
                         label: 'Deutsch',
                         hint: 'z.B. Apfel',
                         controller: _deController,
                         icon: Icons.translate,
+                        validator: _sourceLang == 'de' ? _required : null,
                       ),
                     _buildField(
                       label: 'Description',
@@ -340,6 +426,23 @@ class _MergeScreenState extends State<MergeScreen> {
                         onPressed: _onMerge,
                         icon: const Icon(Icons.save_outlined),
                         label: const Text('Save Changes',
+                            style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _onDelete,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Delete Card',
                             style: TextStyle(fontSize: 16)),
                       ),
                     ),

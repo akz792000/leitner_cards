@@ -3,4 +3,5 @@
 class HiveTypeIds {
   static const int cardId = 1; // CardEntity — all card types
   static const int progressId = 2; // ProgressEntity — progress/level data
+  static const int deckId = 3; // DeckEntity — user-created decks
 }

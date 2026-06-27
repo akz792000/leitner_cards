@@ -1,9 +1,11 @@
 import 'package:get/get.dart';
 
 import '../repository/card_repository.dart';
+import '../repository/deck_repository.dart';
 import '../repository/progress_repository.dart';
 import '../service/auth_service.dart';
 import '../service/card_service.dart';
+import '../service/deck_service.dart';
 import '../service/route_service.dart';
 import '../service/settings_service.dart';
 import '../service/study_log_service.dart';
@@ -28,12 +30,15 @@ class DependencyConfig {
     Get.put(SettingsService());
     // 3. RouteService — provides navigatorKey for MaterialApp.
     await Get.putAsync<RouteService>(() => Future.value(RouteService()));
-    // 4–5. Repositories — open their respective Hive boxes.
+    // 4–6. Repositories — open their respective Hive boxes.
+    await Get.putAsync<DeckRepository>(() => Future.value(DeckRepository()));
     await Get.putAsync<CardRepository>(() => Future.value(CardRepository()));
     await Get.putAsync<ProgressRepository>(
         () => Future.value(ProgressRepository()));
     // 6. CardService — depends on both repositories.
     await Get.putAsync<CardService>(() => Future.value(CardService()));
+    // 7. DeckService — orchestrates deck + card + progress deletion.
+    await Get.putAsync<DeckService>(() => Future.value(DeckService()));
     // 7. SyncService — depends on CardRepository.
     await Get.putAsync<SyncService>(() => Future.value(SyncService()));
     // 8. StudyLogService — opens 'studyLog' Hive box.

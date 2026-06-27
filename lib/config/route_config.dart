@@ -1,16 +1,16 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 
-import '../service/auth_service.dart';
+import '../entity/deck_entity.dart';
+import '../view/create_deck_screen.dart';
 import '../view/data_screen.dart';
+import '../view/deck_detail_screen.dart';
 import '../view/download_screen.dart';
+import '../view/edit_deck_screen.dart';
 import '../view/error_screen.dart';
 import '../view/home_screen.dart';
 import '../view/leitner_screen.dart';
 import '../view/level_screen.dart';
-import '../view/login_screen.dart';
 import '../view/merge_screen.dart';
 import '../view/persist_screen.dart';
 import '../view/settings_screen.dart';
@@ -23,11 +23,10 @@ import '../view/stats_screen.dart';
 /// [ArgumentError] (rendered by [ErrorScreen]) when required params are absent
 /// or mistyped, keeping each screen's constructor free of null checks.
 ///
-/// The `/` route acts as an auth guard — it renders [LoginScreen] when the
-/// user is not signed in, and [HomeScreen] when authenticated.
+/// The app is offline-first — `/` loads [HomeScreen] directly.
+/// Authentication is on-demand (triggered from the Sync screen).
 class RouteConfig {
   static const String home = "/";
-  static const String login = "/login";
   static const String error = "/error";
   static const String level = "/level";
   static const String data = "/data";
@@ -37,6 +36,9 @@ class RouteConfig {
   static const String download = "/download";
   static const String stats = "/stats";
   static const String settings = "/settings";
+  static const String createDeck = "/create-deck";
+  static const String deckDetail = "/deck-detail";
+  static const String editDeck = "/edit-deck";
 
   Route generateRoute(RouteSettings routeSettings) {
     final args = _getArgMap(routeSettings);
@@ -44,15 +46,13 @@ class RouteConfig {
     try {
       switch (routeSettings.name) {
         case home:
-          return MaterialPageRoute(builder: (_) => const _AuthGate());
-
-        case login:
-          return MaterialPageRoute(builder: (_) => const LoginScreen());
+          return MaterialPageRoute(builder: (_) => const HomeScreen());
 
         case level:
           return MaterialPageRoute(
               builder: (_) => LevelScreen(
-                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                    groupCode: args?['groupCode'] as GroupCode?,
+                    deckId: args?['deckId'] as String?,
                   ));
 
         case data:
@@ -71,13 +71,15 @@ class RouteConfig {
         case persist:
           return MaterialPageRoute(
               builder: (_) => PersistScreen(
-                    groupCode: _getRequired<GroupCode>(args, "groupCode"),
+                    groupCode: args?['groupCode'] as GroupCode?,
+                    deck: args?['deck'] as DeckEntity?,
                   ));
 
         case merge:
           return MaterialPageRoute(
               builder: (_) => MergeScreen(
                     cardEntity: _getRequired(args, "cardEntity"),
+                    deck: args?['deck'] as DeckEntity?,
                   ));
 
         case download:
@@ -88,6 +90,21 @@ class RouteConfig {
 
         case settings:
           return MaterialPageRoute(builder: (_) => const SettingsScreen());
+
+        case createDeck:
+          return MaterialPageRoute(builder: (_) => const CreateDeckScreen());
+
+        case deckDetail:
+          return MaterialPageRoute(
+              builder: (_) => DeckDetailScreen(
+                    deckId: _getRequired<String>(args, "deckId"),
+                  ));
+
+        case editDeck:
+          return MaterialPageRoute(
+              builder: (_) => EditDeckScreen(
+                    deckId: _getRequired<String>(args, "deckId"),
+                  ));
 
         default:
           return MaterialPageRoute(builder: (_) => const ErrorScreen());
@@ -122,26 +139,5 @@ class RouteConfig {
     }
 
     return value;
-  }
-}
-
-/// Auth gate widget — reactively switches between [LoginScreen] and
-/// [HomeScreen] based on [AuthService.user].
-class _AuthGate extends StatelessWidget {
-  const _AuthGate();
-
-  @override
-  Widget build(BuildContext context) {
-    // Skip auth on macOS debug — needs Desktop OAuth client (not available)
-    if (kDebugMode && defaultTargetPlatform == TargetPlatform.macOS) {
-      return const HomeScreen();
-    }
-    final authService = Get.find<AuthService>();
-    return Obx(() {
-      if (authService.user.value == null) {
-        return const LoginScreen();
-      }
-      return const HomeScreen();
-    });
   }
 }

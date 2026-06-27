@@ -2,23 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:leitner_cards/enums/group_code.dart';
 import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/deck_repository.dart';
 import 'package:leitner_cards/repository/progress_repository.dart';
 import 'package:leitner_cards/view/leitner_screen.dart';
-
 import '../config/route_config.dart';
+import '../entity/card_entity.dart';
+import '../entity/deck_entity.dart';
 import '../service/route_service.dart';
 import '../util/color_util.dart';
 
-/// Level picker for a single language deck.
+/// Level picker for a single deck.
 ///
-/// Lists all Leitner levels that have at least one card, each with its own
-/// colour and emoji badge. The FAB launches "Play All" (full Leitner schedule)
-/// and the AppBar actions offer "Play Limited" (all cards, no schedule) and
-/// a link to [DataScreen].
+/// Accepts either a legacy [GroupCode] or a [DeckEntity] (or both for legacy
+/// decks that have been seeded). Lists all Leitner levels with at least one
+/// card. The FAB launches "Play All", AppBar actions offer "Play Limited",
+/// "Edit cards" (→ [DeckDetailScreen]), and "Edit deck" (name/icon/color).
 class LevelScreen extends StatefulWidget {
-  final GroupCode groupCode;
+  final GroupCode? groupCode;
+  final String? deckId;
 
-  const LevelScreen({super.key, required this.groupCode});
+  const LevelScreen({super.key, this.groupCode, this.deckId})
+      : assert(groupCode != null || deckId != null,
+            'Either groupCode or deckId must be provided');
 
   @override
   State<LevelScreen> createState() => _LevelScreenState();
@@ -27,17 +32,28 @@ class LevelScreen extends StatefulWidget {
 class _LevelScreenState extends State<LevelScreen> with RouteAware {
   final CardRepository _cardRepository = Get.find<CardRepository>();
   final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
+  final DeckRepository _deckRepository = Get.find<DeckRepository>();
   late int _count;
   late Map<int, int> _levelMap;
 
-  bool get _isEnglish => widget.groupCode == GroupCode.faEn;
-  bool get _isVisual => widget.groupCode == GroupCode.visual;
+  DeckEntity? get _deck =>
+      widget.deckId != null ? _deckRepository.findById(widget.deckId!) : null;
 
-  // Accent colour adapts per deck type (also used for AppBar and FAB).
+  /// Whether this is a legacy deck with a GroupCode enum value.
+  bool get _isLegacy => widget.groupCode != null;
+
   Color get _accentColor {
-    if (_isEnglish) return Colors.blue.shade600;
-    if (_isVisual) return Colors.green.shade700;
+    final deck = _deck;
+    if (deck != null) return Color(deck.colorValue);
+    if (widget.groupCode == GroupCode.faEn) return Colors.blue.shade600;
+    if (widget.groupCode == GroupCode.visual) return Colors.green.shade700;
     return Colors.orange.shade700;
+  }
+
+  String get _title {
+    final deck = _deck;
+    if (deck != null) return deck.name;
+    return widget.groupCode?.title ?? 'Deck';
   }
 
   @override
@@ -49,14 +65,11 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe to route events so we refresh when navigating back from
-    // LeitnerScreen — level counts change after cards are graded.
     Get.find<RouteService>()
         .routeObserver
         .subscribe(this, ModalRoute.of(context)!);
   }
 
-  /// Called by [RouteObserver] when this screen comes back into view.
   @override
   void didPopNext() {
     setState(_initialize);
@@ -68,8 +81,19 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     super.dispose();
   }
 
+  List<CardEntity> _queryCards() {
+    if (widget.groupCode != null) {
+      return _cardRepository.findAllByGroupCode(widget.groupCode!);
+    }
+    // User-created deck: cards stored with deckId in groupCode field.
+    return _cardRepository
+        .findAll()
+        .where((c) => c.groupCode == widget.deckId)
+        .toList();
+  }
+
   void _initialize() {
-    final cards = _cardRepository.findAllByGroupCode(widget.groupCode);
+    final cards = _queryCards();
     _count = cards.length;
     _levelMap = <int, int>{};
     for (final card in cards) {
@@ -147,12 +171,14 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     final color = _levelColor(level, context);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () async {
-        await Get.find<RouteService>().pushNamed(
-          RouteConfig.leitner,
-          arguments: {"groupCode": widget.groupCode, "level": level},
-        );
-      },
+      onTap: _isLegacy
+          ? () async {
+              await Get.find<RouteService>().pushNamed(
+                RouteConfig.leitner,
+                arguments: {"groupCode": widget.groupCode!, "level": level},
+              );
+            }
+          : null,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
@@ -216,6 +242,32 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
     );
   }
 
+  Widget _buildHeaderIcon() {
+    final deck = _deck;
+    if (deck != null) {
+      return Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(51),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        // ignore: non_const_argument_for_const_parameter
+        child: Icon(
+          IconData(deck.iconCodePoint, fontFamily: 'MaterialIcons'),
+          color: Colors.white,
+          size: 18,
+        ),
+      );
+    }
+    if (widget.groupCode == GroupCode.visual) {
+      return const Icon(Icons.photo_library_outlined,
+          color: Colors.white, size: 26);
+    }
+    final flagName = widget.groupCode == GroupCode.faEn ? 'en' : 'de';
+    return Image.asset('assets/flags/$flagName.png', width: 26, height: 26);
+  }
+
   @override
   Widget build(BuildContext context) {
     final levels = _levelMap.entries.toList()
@@ -223,25 +275,19 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
 
     return Scaffold(
       appBar: AppBar(
-        // Title shows deck name + card count — no separate gradient header needed.
         title: Row(
           children: [
-            // Visual deck uses a camera icon; language decks use their flag.
-            _isVisual
-                ? const Icon(Icons.photo_library_outlined,
-                    color: Colors.white, size: 26)
-                : Image.asset(
-                    'assets/flags/${_isEnglish ? 'en' : 'de'}.png',
-                    width: 26,
-                    height: 26,
-                  ),
+            _buildHeaderIcon(),
             const SizedBox(width: 10),
-            Text(
-              widget.groupCode.title,
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
+            Flexible(
+              child: Text(
+                _title,
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(width: 8),
             Text(
@@ -259,17 +305,27 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
           child: const Icon(Icons.arrow_back_ios),
         ),
         actions: [
+          // View / edit cards.
           IconButton(
             icon: const Icon(Icons.list_alt_outlined),
-            tooltip: 'View cards',
+            tooltip: 'View / edit cards',
             onPressed: () async {
-              await Get.find<RouteService>().pushReplacementNamed(
-                RouteConfig.data,
-                arguments: {"groupCode": widget.groupCode},
-              );
+              if (widget.deckId != null) {
+                await Get.find<RouteService>().pushNamed(
+                  RouteConfig.deckDetail,
+                  arguments: {'deckId': widget.deckId!},
+                );
+              } else {
+                await Get.find<RouteService>().pushReplacementNamed(
+                  RouteConfig.data,
+                  arguments: {"groupCode": widget.groupCode!},
+                );
+              }
+              setState(() => _initialize());
             },
           ),
-          if (_count > 0)
+          // Play limited (legacy only for now).
+          if (_count > 0 && _isLegacy)
             IconButton(
               icon: const Icon(Icons.skip_next_outlined),
               tooltip: 'Play limited',
@@ -277,7 +333,7 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
                 await Get.find<RouteService>().pushNamed(
                   RouteConfig.leitner,
                   arguments: {
-                    "groupCode": widget.groupCode,
+                    "groupCode": widget.groupCode!,
                     "level": LeitnerScreen.allLimitedLevel
                   },
                 );
@@ -299,6 +355,10 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
                         Text('No cards yet',
                             style: TextStyle(
                                 color: Colors.grey.shade500, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text('Tap the list icon to add cards',
+                            style: TextStyle(
+                                color: Colors.grey.shade400, fontSize: 13)),
                       ],
                     ),
                   )
@@ -311,7 +371,7 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
           ),
         ],
       ),
-      floatingActionButton: _count == 0
+      floatingActionButton: _count == 0 || !_isLegacy
           ? null
           : FloatingActionButton.extended(
               heroTag: 'PlayAll',
@@ -323,7 +383,7 @@ class _LevelScreenState extends State<LevelScreen> with RouteAware {
                 await Get.find<RouteService>().pushNamed(
                   RouteConfig.leitner,
                   arguments: {
-                    "groupCode": widget.groupCode,
+                    "groupCode": widget.groupCode!,
                     "level": LeitnerScreen.allLevel
                   },
                 );

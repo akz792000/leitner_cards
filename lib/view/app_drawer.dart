@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../config/route_config.dart';
-import '../service/auth_service.dart';
 import '../service/route_service.dart';
 import '../service/theme_service.dart';
 
 /// Side navigation drawer shown from [HomeScreen].
 ///
-/// Contains a gradient profile header, deck navigation tiles, settings, and
-/// an about dialog. The theme toggle tile is wrapped in [Obx] so it reflects
-/// the current [ThemeService] state reactively without rebuilding the whole drawer.
+/// Contains a gradient app header, tool tiles, settings, and an about dialog.
+/// The theme toggle tile is wrapped in [Obx] so it reflects the current
+/// [ThemeService] state reactively without rebuilding the whole drawer.
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
@@ -28,6 +27,17 @@ class AppDrawer extends StatelessWidget {
                 children: [
                   _sectionLabel('Tools'),
                   const SizedBox(height: 4),
+                  _navTile(
+                    context,
+                    icon: Icons.cloud_sync_outlined,
+                    iconColor: Colors.teal,
+                    title: 'Sync Cards',
+                    subtitle: 'Download latest from cloud',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Get.find<RouteService>().pushNamed(RouteConfig.download);
+                    },
+                  ),
                   _navTile(
                     context,
                     icon: Icons.bar_chart_outlined,
@@ -75,18 +85,6 @@ class AppDrawer extends StatelessWidget {
                       _showAboutDialog(context);
                     },
                   ),
-                  const Divider(height: 24),
-                  _navTile(
-                    context,
-                    icon: Icons.logout,
-                    iconColor: Colors.red,
-                    title: 'Sign Out',
-                    subtitle: 'Sign out of your account',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.find<AuthService>().signOut();
-                    },
-                  ),
                 ],
               ),
             ),
@@ -99,12 +97,6 @@ class AppDrawer extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    final authService = Get.find<AuthService>();
-    final user = authService.user.value;
-    final displayName = user?.displayName ?? 'Language Learner';
-    final email = user?.email ?? '';
-    final photoUrl = user?.photoUrl;
-
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 24),
@@ -118,35 +110,33 @@ class AppDrawer extends StatelessWidget {
       child: Row(
         children: [
           Container(
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 8),
+              ],
             ),
-            child: CircleAvatar(
-              radius: 30,
-              backgroundImage: photoUrl != null
-                  ? NetworkImage(photoUrl)
-                  : const AssetImage('assets/image.png') as ImageProvider,
-            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.asset('assets/icon.png', fit: BoxFit.cover),
           ),
           const SizedBox(width: 14),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  displayName,
-                  style: const TextStyle(
+                  'FlashMind',
+                  style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
-                  email,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
+                  'Smart Flashcards',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),

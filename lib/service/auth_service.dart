@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-/// Manages authentication state via Google Sign-In (no Firebase).
+/// On-demand Google Sign-In service (offline-first architecture).
 ///
-/// Exposes reactive [user] and [isLoggedIn] so the UI can respond
-/// instantly when the auth state changes (login, logout).
-/// User data is stored locally — cloud sync uses Google Drive.
+/// The SDK is initialised lazily on the first call to [ensureInitialized].
+/// No sign-in attempt is made at app startup — authentication only happens
+/// when the user explicitly triggers it from the Sync screen.
 class AuthService extends GetxService {
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _sdkReady = false;
 
   /// Current signed-in account — null when signed out.
   final Rx<GoogleSignInAccount?> user = Rx<GoogleSignInAccount?>(null);
@@ -24,41 +24,40 @@ class AuthService extends GetxService {
   String? get photoUrl => user.value?.photoUrl;
   String? get userId => user.value?.id;
 
-  /// Initialises the service — sets up Google Sign-In and attempts
-  /// to restore the previous session silently.
-  static Future<AuthService> init() async {
-    final service = AuthService();
+  static Future<AuthService> init() async => AuthService();
 
+  /// Initialises the Google Sign-In SDK (once). Called before any auth action.
+  Future<void> ensureInitialized() async {
+    if (_sdkReady) return;
     try {
       await GoogleSignIn.instance.initialize(
         serverClientId:
             '999687772055-v2b76t4i62rma2u2t5o51a2f1dvkrj0j.apps.googleusercontent.com',
       );
 
-      // Listen to auth events (sign-in / sign-out)
       GoogleSignIn.instance.authenticationEvents.listen((event) {
         switch (event) {
           case GoogleSignInAuthenticationEventSignIn():
-            service.user.value = event.user;
+            user.value = event.user;
           case GoogleSignInAuthenticationEventSignOut():
-            service.user.value = null;
+            user.value = null;
         }
       });
 
-      // Try to restore previous session without user interaction
+      // Restore previous session silently if available.
       await GoogleSignIn.instance.attemptLightweightAuthentication();
+      _sdkReady = true;
     } catch (e) {
       debugPrint('Google Sign-In init error: $e');
     }
-
-    return service;
   }
 
-  /// Signs in with Google interactively.
+  /// Signs in with Google interactively. Initialises SDK if needed.
   Future<GoogleSignInAccount?> signInWithGoogle() async {
     try {
       isLoading.value = true;
-      final account = await _googleSignIn.authenticate();
+      await ensureInitialized();
+      final account = await GoogleSignIn.instance.authenticate();
       return account;
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
@@ -70,6 +69,6 @@ class AuthService extends GetxService {
 
   /// Signs out of Google.
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    await GoogleSignIn.instance.signOut();
   }
 }
