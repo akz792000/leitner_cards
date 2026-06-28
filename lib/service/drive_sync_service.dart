@@ -60,31 +60,49 @@ class DriveSyncService {
   // ──────────────────────────────── UPLOAD ────────────────────────────────
 
   /// Uploads deck metadata + cards + progress to Google Drive.
-  Future<DriveSyncResult> uploadDeck(DeckEntity deck) async {
+  Future<DriveSyncResult> uploadDeck(
+    DeckEntity deck, {
+    bool syncCards = true,
+    bool syncProgress = true,
+    bool syncDeckMeta = true,
+  }) async {
     try {
       final code = cardCode(deck);
       final folderId =
           await _driveService.ensureDeckFolder(driveFolderName(deck));
 
       // Deck metadata
-      await _driveService.uploadJson(folderId, 'deck.json', _deckToJson(deck));
+      if (syncDeckMeta) {
+        await _driveService.uploadJson(
+            folderId, 'deck.json', _deckToJson(deck));
+      }
 
-      final cards = _cardRepo.findAllByCode(code);
-      final cardList = cards.map(_cardToJson).toList();
-      await _driveService.uploadJson(folderId, 'cards.json', cardList);
+      int cardCount = 0;
+      int progressCount = 0;
 
-      final progressList = cards.map((c) {
-        final p = _progressRepo.findOrCreate(c.id);
-        return _progressToJson(p);
-      }).toList();
-      await _driveService.uploadJson(folderId, 'progress.json', progressList);
+      if (syncCards) {
+        final cards = _cardRepo.findAllByCode(code);
+        cardCount = cards.length;
+        final cardList = cards.map(_cardToJson).toList();
+        await _driveService.uploadJson(folderId, 'cards.json', cardList);
+      }
+
+      if (syncProgress) {
+        final cards = _cardRepo.findAllByCode(code);
+        final progressList = cards.map((c) {
+          final p = _progressRepo.findOrCreate(c.id);
+          return _progressToJson(p);
+        }).toList();
+        progressCount = progressList.length;
+        await _driveService.uploadJson(folderId, 'progress.json', progressList);
+      }
 
       debugPrint(
-          'DriveSyncService: uploaded ${cards.length} cards for ${deck.name}');
+          'DriveSyncService: uploaded $cardCount cards for ${deck.name}');
       return DriveSyncResult(
         deckName: deck.name,
-        uploaded: cards.length,
-        progressSynced: progressList.length,
+        uploaded: cardCount,
+        progressSynced: progressCount,
       );
     } catch (e) {
       return DriveSyncResult(deckName: deck.name, error: e.toString());
@@ -98,44 +116,74 @@ class DriveSyncService {
   /// Cards: changed content → update + reset progress to 0. New → insert.
   /// Progress: if local card exists and content matches, adopt the higher
   /// level (cloud wins only if cloud level > local level).
-  Future<DriveSyncResult> downloadDeck(DeckEntity deck,
-      {bool resetProgress = false}) async {
+  Future<DriveSyncResult> downloadDeck(
+    DeckEntity deck, {
+    bool resetProgress = false,
+    bool syncCards = true,
+    bool syncProgress = true,
+    bool syncDeckMeta = true,
+  }) async {
     try {
       final code = cardCode(deck);
       final folderId =
           await _driveService.ensureDeckFolder(driveFolderName(deck));
 
       // ── Deck metadata ──
-      await _applyDeckMetadata(deck, folderId);
-
-      // ── Cards ──
-      final rawCards = await _driveService.downloadJson(folderId, 'cards.json');
-      if (rawCards == null) {
-        return DriveSyncResult(
-            deckName: deck.name, error: 'No cards.json found on Drive');
+      if (syncDeckMeta) {
+        await _applyDeckMetadata(deck, folderId);
       }
-      final remoteCards = (rawCards as List).cast<Map<String, dynamic>>();
 
       int updated = 0;
       int inserted = 0;
-      final now = DateTimeUtil.now();
+      int downloadedCount = 0;
 
-      for (final rc in remoteCards) {
-        final id = rc['id'] as int? ?? 0;
-        if (id == 0) continue;
-        final existing = _cardRepo.findById(id);
+      // ── Cards ──
+      if (syncCards) {
+        final rawCards =
+            await _driveService.downloadJson(folderId, 'cards.json');
+        if (rawCards == null) {
+          return DriveSyncResult(
+              deckName: deck.name, error: 'No cards.json found on Drive');
+        }
+        final remoteCards = (rawCards as List).cast<Map<String, dynamic>>();
+        downloadedCount = remoteCards.length;
+        final now = DateTimeUtil.now();
 
-        if (existing != null && existing.groupCode == code) {
-          final changed = existing.en != (rc['en'] ?? '') ||
-              existing.fa != (rc['fa'] ?? '') ||
-              existing.de != (rc['de'] ?? '') ||
-              existing.image != (rc['image'] ?? '') ||
-              existing.desc != (rc['desc'] ?? '');
+        for (final rc in remoteCards) {
+          final id = rc['id'] as int? ?? 0;
+          if (id == 0) continue;
+          final existing = _cardRepo.findById(id);
 
-          if (changed || resetProgress) {
+          if (existing != null && existing.groupCode == code) {
+            final changed = existing.en != (rc['en'] ?? '') ||
+                existing.fa != (rc['fa'] ?? '') ||
+                existing.de != (rc['de'] ?? '') ||
+                existing.image != (rc['image'] ?? '') ||
+                existing.desc != (rc['desc'] ?? '');
+
+            if (changed || resetProgress) {
+              await _cardRepo.merge(CardEntity(
+                id: id,
+                created: existing.created,
+                modified: now,
+                groupCode: code,
+                image: rc['image'] ?? '',
+                en: rc['en'] ?? '',
+                fa: rc['fa'] ?? '',
+                de: rc['de'] ?? '',
+                desc: rc['desc'] ?? '',
+              ));
+              final p = _progressRepo.findOrCreate(id);
+              p.level = 0;
+              p.subLevel = 1;
+              p.modified = now;
+              await _progressRepo.merge(p);
+              updated++;
+            }
+          } else if (existing == null) {
             await _cardRepo.merge(CardEntity(
               id: id,
-              created: existing.created,
+              created: now,
               modified: now,
               groupCode: code,
               image: rc['image'] ?? '',
@@ -144,51 +192,36 @@ class DriveSyncService {
               de: rc['de'] ?? '',
               desc: rc['desc'] ?? '',
             ));
-            final p = _progressRepo.findOrCreate(id);
-            p.level = 0;
-            p.subLevel = 1;
-            p.modified = now;
-            await _progressRepo.merge(p);
-            updated++;
+            inserted++;
           }
-        } else if (existing == null) {
-          await _cardRepo.merge(CardEntity(
-            id: id,
-            created: now,
-            modified: now,
-            groupCode: code,
-            image: rc['image'] ?? '',
-            en: rc['en'] ?? '',
-            fa: rc['fa'] ?? '',
-            de: rc['de'] ?? '',
-            desc: rc['desc'] ?? '',
-          ));
-          inserted++;
         }
       }
 
       // ── Progress ──
       int progressSynced = 0;
-      final rawProgress =
-          await _driveService.downloadJson(folderId, 'progress.json');
-      if (rawProgress != null) {
-        final remoteProgress =
-            (rawProgress as List).cast<Map<String, dynamic>>();
-        for (final rp in remoteProgress) {
-          final cardId = rp['cardId'] as int? ?? 0;
-          final card = _cardRepo.findById(cardId);
-          if (card == null || card.groupCode != code) continue;
+      if (syncProgress) {
+        final rawProgress =
+            await _driveService.downloadJson(folderId, 'progress.json');
+        if (rawProgress != null) {
+          final remoteProgress =
+              (rawProgress as List).cast<Map<String, dynamic>>();
+          final now = DateTimeUtil.now();
+          for (final rp in remoteProgress) {
+            final cardId = rp['cardId'] as int? ?? 0;
+            final card = _cardRepo.findById(cardId);
+            if (card == null || card.groupCode != code) continue;
 
-          final local = _progressRepo.findOrCreate(cardId);
-          final remoteLevel = rp['level'] as int? ?? 0;
+            final local = _progressRepo.findOrCreate(cardId);
+            final remoteLevel = rp['level'] as int? ?? 0;
 
-          if (remoteLevel > local.level) {
-            local.level = remoteLevel;
-            local.subLevel = rp['subLevel'] as int? ?? 1;
-            local.order = rp['order'] as int? ?? local.order;
-            local.modified = now;
-            await _progressRepo.merge(local);
-            progressSynced++;
+            if (remoteLevel > local.level) {
+              local.level = remoteLevel;
+              local.subLevel = rp['subLevel'] as int? ?? 1;
+              local.order = rp['order'] as int? ?? local.order;
+              local.modified = now;
+              await _progressRepo.merge(local);
+              progressSynced++;
+            }
           }
         }
       }
@@ -197,7 +230,7 @@ class DriveSyncService {
           '— $updated updated, $inserted inserted, $progressSynced progress');
       return DriveSyncResult(
         deckName: deck.name,
-        downloaded: remoteCards.length,
+        downloaded: downloadedCount,
         updated: updated,
         inserted: inserted,
         progressSynced: progressSynced,
@@ -211,10 +244,16 @@ class DriveSyncService {
 
   /// Downloads cards from a Drive folder that has no local deck yet.
   /// Creates a new local deck and imports all cards + progress.
-  Future<DriveSyncResult> downloadCloudFolder(String folderName) async {
+  Future<DriveSyncResult> downloadCloudFolder(
+    String folderName, {
+    bool syncCards = true,
+    bool syncProgress = true,
+    bool syncDeckMeta = true,
+  }) async {
     try {
       final folderId = await _driveService.ensureDeckFolder(folderName);
 
+      // Always need cards.json for cloud-only folder (creates the local deck)
       final rawCards = await _driveService.downloadJson(folderId, 'cards.json');
       if (rawCards == null) {
         return DriveSyncResult(
@@ -227,8 +266,11 @@ class DriveSyncService {
       }
 
       // Try to read deck metadata from Drive
-      final rawDeck = await _driveService.downloadJson(folderId, 'deck.json');
-      final deckMeta = rawDeck is Map<String, dynamic> ? rawDeck : null;
+      Map<String, dynamic>? deckMeta;
+      if (syncDeckMeta) {
+        final rawDeck = await _driveService.downloadJson(folderId, 'deck.json');
+        deckMeta = rawDeck is Map<String, dynamic> ? rawDeck : null;
+      }
 
       // Derive source/target lang from metadata or folder name
       final parts = folderName.split('_');
@@ -256,48 +298,52 @@ class DriveSyncService {
 
       // Import cards
       int inserted = 0;
-      for (final rc in remoteCards) {
-        final id = rc['id'] as int? ?? 0;
-        if (id == 0) continue;
-        await _cardRepo.merge(CardEntity(
-          id: id,
-          created: now,
-          modified: now,
-          groupCode: folderName,
-          image: rc['image'] ?? '',
-          en: rc['en'] ?? '',
-          fa: rc['fa'] ?? '',
-          de: rc['de'] ?? '',
-          desc: rc['desc'] ?? '',
-        ));
-        inserted++;
+      if (syncCards) {
+        for (final rc in remoteCards) {
+          final id = rc['id'] as int? ?? 0;
+          if (id == 0) continue;
+          await _cardRepo.merge(CardEntity(
+            id: id,
+            created: now,
+            modified: now,
+            groupCode: folderName,
+            image: rc['image'] ?? '',
+            en: rc['en'] ?? '',
+            fa: rc['fa'] ?? '',
+            de: rc['de'] ?? '',
+            desc: rc['desc'] ?? '',
+          ));
+          inserted++;
+        }
       }
 
       // Import progress
       int progressSynced = 0;
-      final rawProgress =
-          await _driveService.downloadJson(folderId, 'progress.json');
-      if (rawProgress != null) {
-        final remoteProgress =
-            (rawProgress as List).cast<Map<String, dynamic>>();
-        for (final rp in remoteProgress) {
-          final cardId = rp['cardId'] as int? ?? 0;
-          final card = _cardRepo.findById(cardId);
-          if (card == null) continue;
-          final local = _progressRepo.findOrCreate(cardId);
-          local.level = rp['level'] as int? ?? 0;
-          local.subLevel = rp['subLevel'] as int? ?? 1;
-          local.order = rp['order'] as int? ?? local.order;
-          local.modified = now;
-          await _progressRepo.merge(local);
-          progressSynced++;
+      if (syncProgress) {
+        final rawProgress =
+            await _driveService.downloadJson(folderId, 'progress.json');
+        if (rawProgress != null) {
+          final remoteProgress =
+              (rawProgress as List).cast<Map<String, dynamic>>();
+          for (final rp in remoteProgress) {
+            final cardId = rp['cardId'] as int? ?? 0;
+            final card = _cardRepo.findById(cardId);
+            if (card == null) continue;
+            final local = _progressRepo.findOrCreate(cardId);
+            local.level = rp['level'] as int? ?? 0;
+            local.subLevel = rp['subLevel'] as int? ?? 1;
+            local.order = rp['order'] as int? ?? local.order;
+            local.modified = now;
+            await _progressRepo.merge(local);
+            progressSynced++;
+          }
         }
       }
 
       debugPrint('DriveSyncService: imported $folderName — $inserted cards');
       return DriveSyncResult(
         deckName: folderName,
-        downloaded: remoteCards.length,
+        downloaded: syncCards ? remoteCards.length : 0,
         inserted: inserted,
         progressSynced: progressSynced,
       );

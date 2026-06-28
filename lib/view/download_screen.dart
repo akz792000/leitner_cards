@@ -6,6 +6,14 @@ import 'package:leitner_cards/repository/deck_repository.dart';
 import 'package:leitner_cards/service/drive_service.dart';
 import 'package:leitner_cards/service/drive_sync_service.dart';
 
+/// User's selection from the sync options dialog.
+class _SyncOptions {
+  final bool cards;
+  final bool progress;
+  final bool deckInfo;
+  const _SyncOptions(this.cards, this.progress, this.deckInfo);
+}
+
 /// Represents a deck item in the sync list — either local or cloud-only.
 class _SyncItem {
   final DeckEntity? deck; // null for cloud-only
@@ -155,6 +163,64 @@ class _DownloadScreenState extends State<DownloadScreen> {
     return await _driveService.authorize();
   }
 
+  // ────────────────────── SYNC OPTIONS DIALOG ──────────────────────
+
+  /// Shows a modal asking which data to sync. Cards is checked by default.
+  /// Returns null if the user cancels.
+  Future<_SyncOptions?> _showSyncOptionsDialog(String action) async {
+    bool cards = true;
+    bool progress = false;
+    bool deckInfo = false;
+
+    return showDialog<_SyncOptions>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(action),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                dense: true,
+                title: const Text('Cards'),
+                subtitle: const Text('Flashcard content'),
+                value: cards,
+                onChanged: (v) => setDialogState(() => cards = v ?? true),
+              ),
+              CheckboxListTile(
+                dense: true,
+                title: const Text('Progress'),
+                subtitle: const Text('Study levels & order'),
+                value: progress,
+                onChanged: (v) => setDialogState(() => progress = v ?? false),
+              ),
+              CheckboxListTile(
+                dense: true,
+                title: const Text('Deck info'),
+                subtitle: const Text('Name, icon, color, sort order'),
+                value: deckInfo,
+                onChanged: (v) => setDialogState(() => deckInfo = v ?? false),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: (cards || progress || deckInfo)
+                  ? () => Navigator.pop(
+                      ctx, _SyncOptions(cards, progress, deckInfo))
+                  : null,
+              child: Text(action),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ────────────────────── BATCH ACTIONS ──────────────────────
 
   Future<void> _uploadSelected() async {
@@ -164,6 +230,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
       _showSnack('No local decks selected to upload');
       return;
     }
+    final opts = await _showSyncOptionsDialog('Upload');
+    if (opts == null) return;
     setState(() {
       _loading = true;
       _activeAction = 'upload';
@@ -171,7 +239,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
     try {
       final results = <DriveSyncResult>[];
       for (final item in items) {
-        results.add(await _syncService.uploadDeck(item.deck!));
+        results.add(await _syncService.uploadDeck(
+          item.deck!,
+          syncCards: opts.cards,
+          syncProgress: opts.progress,
+          syncDeckMeta: opts.deckInfo,
+        ));
       }
       if (mounted) {
         _refreshSelectedItems(items);
@@ -190,6 +263,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
     if (!await _ensureSignedIn()) return;
     final items = _selectedItems;
     if (items.isEmpty) return;
+    final opts = await _showSyncOptionsDialog('Download');
+    if (opts == null) return;
     setState(() {
       _loading = true;
       _activeAction = 'download';
@@ -198,10 +273,19 @@ class _DownloadScreenState extends State<DownloadScreen> {
       final results = <DriveSyncResult>[];
       for (final item in items) {
         if (item.isCloudOnly) {
-          results.add(
-              await _syncService.downloadCloudFolder(item.driveFolderName));
+          results.add(await _syncService.downloadCloudFolder(
+            item.driveFolderName,
+            syncCards: opts.cards,
+            syncProgress: opts.progress,
+            syncDeckMeta: opts.deckInfo,
+          ));
         } else {
-          results.add(await _syncService.downloadDeck(item.deck!));
+          results.add(await _syncService.downloadDeck(
+            item.deck!,
+            syncCards: opts.cards,
+            syncProgress: opts.progress,
+            syncDeckMeta: opts.deckInfo,
+          ));
         }
       }
       if (mounted) {
