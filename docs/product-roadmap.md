@@ -10,90 +10,23 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Current State (What's Already Built)
+## Completed (Phases 1, 2, 4)
 
-- Leitner spaced-repetition algorithm (levels 0–15)
-- Speech recognition (STT) with fuzzy matching — grades pronunciation
-- Dynamic STT timing based on text length
-- Text-to-speech (TTS) with word-by-word highlighting
-- Markdown rendering for card content
-- Settings screen (13 configurable options)
-- Card order: high level first / low level first / random
-- AMOLED burn-in protection (pixel shift + auto-dim)
-- Study time tracking per deck (foreground-only, paused when backgrounded)
-- Dark / light / system theme
-- Stats screen per deck
+- **Auth:** Google Sign-In (mobile + desktop OAuth), auth guard, silent restore, secrets via `.env`/`--dart-define`
+- **Deck Management:** Create/edit/delete decks, wizard flow, language picker, icon/color, long-press drag reorder (sortOrder synced to Drive)
+- **Study Engine:** Leitner algorithm (levels 0–15), deck-based progress, STT pronunciation grading, TTS with word highlighting, stats per deck, settings in Hive
+- **Core features:** Markdown rendering, AMOLED burn-in protection, dark/light/system theme, study time tracking, card ordering options
 
 ---
 
-## Phase 1 — Authentication (Google Sign-In) ✅
-
-**Goal:** Every user must sign in before using the app.
+## Phase 3 — Card Management (CRUD) — Remaining
 
 **Tasks:**
-- [x] Google Sign-In via `google_sign_in` v7 (mobile) + `googleapis_auth` (desktop)
-- [x] Login screen — clean UI with Google sign-in button
-- [x] Auth guard — redirect unauthenticated users to login
-- [x] Sign-out functionality (drawer)
-- [x] Silent session restore on app relaunch (`attemptLightweightAuthentication`)
-- [x] Desktop OAuth: browser loopback with client ID/secret via `--dart-define`
-- [x] Test Google Sign-In on Android device (Samsung SM-A528B)
-- [x] Secrets externalized to `.env` / `--dart-define` (not in source)
-- [ ] Apple Sign-In (mandatory for App Store — Phase 8)
-
----
-
-## Phase 2 — Deck Management ✅
-
-**Goal:** Users can create, edit, and delete their own decks via a wizard. All data in Hive (local-first).
-
-**Tasks:**
-- [x] DeckEntity (Hive typeId=3): id, name, sourceLang, targetLang, icon, color, createdAt, modifiedAt, groupCode, sortOrder
-- [x] DeckRepository: Hive CRUD for deck box
-- [x] Home screen redesign — dynamic list of user's decks (no hardcoded decks)
-- [x] "Create Deck" button → wizard flow:
-  1. Pick source language (I speak)
-  2. Pick target language (I learn)
-  3. Auto-suggest name (e.g., "Farsi → English") — user can edit
-  4. Optional: pick icon and color
-  5. Preview card with groupCode (e.g., FA_EN)
-  6. Confirm → deck created in Hive with groupCode set
-- [x] Deck edit (rename, change icon/color) — dedicated edit screen
-- [x] Deck delete (with confirmation — cascades to all cards + progress)
-- [x] Deck list shows: name, card count, groupCode
-- [x] Supported languages list (expandable — stored as LanguageCode enum)
-- [x] Deck reorder via long-press drag (sortOrder persisted in Hive + Drive)
-
----
-
-## Phase 3 — Card Management (CRUD) — Partial ✅
-
-**Goal:** Users can add, edit, and delete cards within a deck.
-
-**Tasks:**
-- [x] Card list view within a deck (DeckDetailScreen — sortable)
-- [x] Bulk import from JSON via Google Drive sync
-- [x] Bulk export deck as JSON via Google Drive sync
 - [ ] "Add Card" screen — in-app card creation (source text + target text)
 - [ ] Edit existing card in-app
 - [ ] Delete individual card (with confirmation)
 - [ ] Search within card list
 - [ ] Bulk import from CSV file
-
----
-
-## Phase 4 — Study Engine (Leitner + Progress) ✅
-
-**Goal:** Connect the existing Leitner algorithm to the new deck-based data model.
-
-**Tasks:**
-- [x] Refactor study engine to read cards by deckCode (unified groupCode/deckId)
-- [x] Progress tracking in Hive (per card, per deck)
-- [x] Study time tracking per deck in Hive (StudyLogService with ByCode methods)
-- [x] STT pronunciation grading works with any language pair
-- [x] TTS works with any language pair (auto-detect language from deck config)
-- [x] Stats screen reads from Hive progress data per deck
-- [x] Settings stored locally in Hive
 
 ---
 
@@ -319,14 +252,14 @@ My Drive/
 
 | Phase | Duration | Status |
 |-------|----------|--------|
-| Phase 1 — Google Sign-In | 2 weeks | ✅ Done |
-| Phase 2 — Deck Management | 2 weeks | ✅ Done |
-| Phase 3 — Card CRUD | 1–2 weeks | 🟡 Partial (import/export via Drive done; in-app add/edit/delete remaining) |
-| Phase 4 — Study Engine | 2 weeks | ✅ Done |
-| Phase 5 — Google Drive Sync | 1–2 weeks | 🟡 Partial (core sync done; auto-sync, conflict resolution remaining) |
-| Phase 6 — Polish | 1–2 weeks | 🟡 Partial (dead code cleaned; UI polish, error handling remaining) |
+| ~~Phase 1 — Google Sign-In~~ | — | ✅ Done |
+| ~~Phase 2 — Deck Management~~ | — | ✅ Done |
+| Phase 3 — Card CRUD | 1–2 weeks | 🟡 In-app add/edit/delete remaining |
+| ~~Phase 4 — Study Engine~~ | — | ✅ Done |
+| Phase 5 — Google Drive Sync | 1–2 weeks | 🟡 Auto-sync, conflict resolution remaining |
+| Phase 6 — Polish | 1–2 weeks | 🟡 UI polish, error handling remaining |
 | Phase 7 — Google Play | 1 week | ⬜ Not started |
 | Phase 8 — App Store | 1 week | ⬜ Not started |
 | Phase 9 — Monetisation | 1 week | ⬜ Not started |
 | Phase 10 — Post-Launch | Ongoing | ⬜ Not started |
-| **Total to first store launch** | **~10–14 weeks** | **~60% complete** |
+| **Total to first store launch** | **~7–9 weeks** | **~60% complete** |
