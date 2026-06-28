@@ -13,11 +13,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 ## Phase 1 — Card Management (CRUD)
 
 **Tasks:**
-- [ ] "Add Card" screen — in-app card creation (source text + target text)
-- [ ] Edit existing card in-app
-- [ ] Delete individual card (with confirmation)
 - [ ] Search within card list
-- [ ] Bulk import from CSV file
 
 ---
 

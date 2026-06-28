@@ -51,3 +51,6 @@ hive_backup.ab
 # Hive data backups (user data — never commit)
 hive_data_backup/
 hive_backup.ab
+
+# Drive OAuth token cache
+data/.token.json

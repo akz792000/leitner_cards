@@ -30,6 +30,7 @@ class SettingsService extends GetxService {
   // Study keys
   static const _kCardOrder = 'cardOrder'; // int → CardOrder.code
   static const _kSubLevelOrder = 'subLevelOrder'; // int → CardOrder.code
+  static const _kDailyNewCards = 'dailyNewCards'; // int, 0 = unlimited
 
   // Reactive fields — STT
   final RxBool micEnabled = true.obs;
@@ -61,6 +62,9 @@ class SettingsService extends GetxService {
 
   /// Secondary ordering: within each level, which subLevel appears first.
   final Rx<CardOrder> subLevelOrder = CardOrder.highFirst.obs;
+
+  /// Max number of new (level 0) cards shown per study session. 0 = unlimited.
+  final RxInt dailyNewCards = 50.obs;
 
   /// Adds study time by raw code string (works for both legacy and UUID decks).
   void addStudyTimeByCode(String code, Duration elapsed) {
@@ -94,6 +98,7 @@ class SettingsService extends GetxService {
     ever(cardOrder, (_) => _box.put(_kCardOrder, cardOrder.value.code));
     ever(subLevelOrder,
         (_) => _box.put(_kSubLevelOrder, subLevelOrder.value.code));
+    ever(dailyNewCards, (_) => _box.put(_kDailyNewCards, dailyNewCards.value));
   }
 
   void _load() {
@@ -116,6 +121,7 @@ class SettingsService extends GetxService {
         _box.get(_kCardOrder, defaultValue: CardOrder.highFirst.code));
     subLevelOrder.value = CardOrder.fromCode(
         _box.get(_kSubLevelOrder, defaultValue: CardOrder.highFirst.code));
+    dailyNewCards.value = _box.get(_kDailyNewCards, defaultValue: 50);
   }
 
   /// Resets all settings to their default values.
@@ -135,5 +141,6 @@ class SettingsService extends GetxService {
     dimDelayMin.value = 2;
     cardOrder.value = CardOrder.highFirst;
     subLevelOrder.value = CardOrder.highFirst;
+    dailyNewCards.value = 50;
   }
 }

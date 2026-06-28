@@ -163,51 +163,78 @@ class SettingsScreen extends StatelessWidget {
           // ── 🃏 Study ──────────────────────────────────────────────────────
           _SectionHeader(label: '🃏  Study', colorScheme: cs),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Text('Level order',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: cs.onSurfaceVariant)),
           ),
-          Obx(() => Column(
-                children: CardOrder.values
-                    .map((order) => RadioListTile<CardOrder>(
-                          secondary: Icon(_cardOrderIcon(order)),
-                          title: Text(order.label),
-                          subtitle: Text(order.levelSubtitle),
-                          value: order,
-                          groupValue: s.cardOrder.value,
-                          activeColor: cs.primary,
-                          onChanged: (v) {
-                            if (v != null) s.cardOrder.value = v;
-                          },
-                        ))
-                    .toList(),
-              )),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text('Within-level order (by subLevel)',
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Obx(() => SegmentedButton<CardOrder>(
+                  segments: CardOrder.values
+                      .map((order) => ButtonSegment<CardOrder>(
+                            value: order,
+                            label: Text(order.label),
+                            icon: Icon(_cardOrderIcon(order)),
+                          ))
+                      .toList(),
+                  selected: {s.cardOrder.value},
+                  onSelectionChanged: (v) => s.cardOrder.value = v.first,
+                )),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text('Within-level order',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: cs.onSurfaceVariant)),
           ),
-          Obx(() => Column(
-                children: CardOrder.values
-                    .map((order) => RadioListTile<CardOrder>(
-                          secondary: Icon(_cardOrderIcon(order)),
-                          title: Text(order.label),
-                          subtitle: Text(order.subLevelSubtitle),
-                          value: order,
-                          groupValue: s.subLevelOrder.value,
-                          activeColor: cs.primary,
-                          onChanged: (v) {
-                            if (v != null) s.subLevelOrder.value = v;
-                          },
-                        ))
-                    .toList(),
-              )),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Obx(() => SegmentedButton<CardOrder>(
+                  segments: CardOrder.values
+                      .map((order) => ButtonSegment<CardOrder>(
+                            value: order,
+                            label: Text(order.label),
+                            icon: Icon(_cardOrderIcon(order)),
+                          ))
+                      .toList(),
+                  selected: {s.subLevelOrder.value},
+                  onSelectionChanged: (v) => s.subLevelOrder.value = v.first,
+                )),
+          ),
+
+          // ── Daily new cards limit ────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Text('New cards per session',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant)),
+          ),
+          Obx(() {
+            final v = s.dailyNewCards.value;
+            return ListTile(
+              leading: const Icon(Icons.fiber_new_rounded),
+              title: Text(v == 0 ? 'Unlimited' : '$v cards'),
+              subtitle: const Text('Level 0 cards shown per session'),
+              trailing: SizedBox(
+                width: 180,
+                child: Slider(
+                  value: v.toDouble(),
+                  min: 0,
+                  max: 100,
+                  divisions: 10,
+                  label: v == 0 ? '∞' : '$v',
+                  onChanged: (val) => s.dailyNewCards.value = val.round(),
+                ),
+              ),
+            );
+          }),
 
           // ── Reset ─────────────────────────────────────────────────────────
           const SizedBox(height: 24),

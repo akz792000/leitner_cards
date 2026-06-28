@@ -2,8 +2,7 @@
 
 A Flutter flashcard app using the **Leitner spaced-repetition system**.
 Cards move up levels when correct, drop to level 0 when wrong.
-
-**Four decks:** Farsi ↔ English · English ↔ Deutsch (sentences) · English ↔ Deutsch (verbs) · Visual (image-based)
+Create your own decks, sync to Google Drive, study anywhere.
 
 ---
 
@@ -13,8 +12,9 @@ Cards move up levels when correct, drop to level 0 when wrong.
 |---|---|
 | UI | Flutter 3.x / Dart 3.x |
 | State / DI | GetX |
-| Storage | Hive (local) |
-| Card content | Downloaded manually from GitHub JSON |
+| Storage | Hive (local, offline-first) |
+| Sync | Google Drive (user's own account) |
+| Auth | Google Sign-In (mobile) · Desktop OAuth (browser loopback) |
 
 ---
 
@@ -24,6 +24,22 @@ Cards move up levels when correct, drop to level 0 when wrong.
 flutter pub get
 flutter doctor                      # fix anything flagged
 flutter doctor --android-licenses   # accept if prompted
+```
+
+### Secrets
+
+Create a `.env` file in the project root (already gitignored):
+
+```
+GOOGLE_CLIENT_ID=<your-desktop-oauth-client-id>
+GOOGLE_CLIENT_SECRET=<your-desktop-oauth-client-secret>
+```
+
+These are used for Desktop OAuth and the data upload script. See [`docs/google_oauth_setup.md`](./docs/google_oauth_setup.md) for setup details.
+
+**IDE setup:** In Android Studio → Run → Edit Configurations → Additional run args, add:
+```
+--dart-define-from-file=.env
 ```
 
 ---
@@ -114,7 +130,37 @@ flutter run --release   # release build, installs directly on phone
 
 ---
 
+## Flashcard data (`data/`)
+
+Personal flashcard JSON files, mirroring the Google Drive folder structure:
+
+```
+data/
+  FA_EN/cards.json           ← Farsi → English (5000+ cards)
+  EN_DE/cards.json           ← English → Deutsch
+  EN_DE_VERBS/cards.json     ← English → Deutsch verbs
+  upload_to_drive.py         ← upload script
+```
+
+### Upload to Google Drive
+
+After editing a JSON file locally, upload it to Drive:
+
+```bash
+python3 data/upload_to_drive.py              # upload all decks
+python3 data/upload_to_drive.py FA_EN        # upload only FA_EN
+```
+
+First run opens a browser for Google OAuth (token is cached for future runs).
+The script reads credentials from `.env` automatically.
+
+> **Note:** `data/` is gitignored — personal card data is never committed.
+
+---
+
 ## Docs
 
+- [`docs/product-roadmap.md`](./docs/product-roadmap.md) — product roadmap
+- [`docs/google_oauth_setup.md`](./docs/google_oauth_setup.md) — Google OAuth setup
 - [`docs/android-device-debugging-guide.md`](./docs/android-device-debugging-guide.md) — detailed ADB steps
 - [`docs/known-issues-and-fixes.md`](./docs/known-issues-and-fixes.md) — Gradle SSL, build issues

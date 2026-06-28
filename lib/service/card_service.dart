@@ -7,6 +7,7 @@ import '../entity/progress_entity.dart';
 import '../enums/group_code.dart';
 import '../repository/card_repository.dart';
 import '../repository/progress_repository.dart';
+import '../service/settings_service.dart';
 import '../util/date_time_util.dart';
 import '../util/list_util.dart';
 
@@ -53,9 +54,13 @@ class CardService {
       final List<(CardEntity, ProgressEntity)> addedItems = [];
 
       if (key == ProgressEntity.initLevel) {
-        // Level 0: always due
+        // Level 0: cap by dailyNewCards setting (0 = unlimited)
+        final limit = Get.find<SettingsService>().dailyNewCards.value;
+        int count = 0;
         for (final card in items) {
+          if (limit > 0 && count >= limit) break;
           addedItems.add((card, progressMap[card.id]!));
+          count++;
         }
       } else {
         final int maxSubLevelCount = pow(2, key - 1).toInt();
