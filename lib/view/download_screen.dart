@@ -1,26 +1,30 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import 'package:leitner_cards/entity/card_entity.dart';
 import 'package:leitner_cards/entity/deck_entity.dart';
-import 'package:leitner_cards/enums/group_code.dart';
-import '../repository/card_repository.dart';
-import '../repository/deck_repository.dart';
-import '../repository/progress_repository.dart';
-import 'package:leitner_cards/util/date_time_util.dart';
+import 'package:leitner_cards/repository/card_repository.dart';
+import 'package:leitner_cards/repository/deck_repository.dart';
+import 'package:leitner_cards/service/drive_service.dart';
+import 'package:leitner_cards/service/drive_sync_service.dart';
 
-/// Full-screen view for manually downloading card decks from GitHub.
-///
-/// Smart sync strategy:
-///   Pass 1 (all rows)  — existing cards with changed content are updated and
-///                         their progress reset to level 0 (correction detected).
-///   Pass 2 (last N)    — cards not yet in the local DB are added, but only
-///                         the most-recent [_newCardsLimit] items so the level-0
-///                         queue never becomes overwhelming.
-///   Override toggle    — resets ALL progress for that deck regardless of
-///                         content changes (useful for a full resync).
+/// Represents a deck item in the sync list — either local or cloud-only.
+class _SyncItem {
+  final DeckEntity? deck; // null for cloud-only
+  final String driveFolderName;
+  final bool isCloudOnly;
+
+  _SyncItem.local(this.deck)
+      : driveFolderName = Get.find<DriveSyncService>().driveFolderName(deck!),
+        isCloudOnly = false;
+
+  _SyncItem.cloud(this.driveFolderName)
+      : deck = null,
+        isCloudOnly = true;
+
+  String get id => deck?.id ?? 'cloud:$driveFolderName';
+  String get displayName => deck?.name ?? driveFolderName;
+}
+
+/// Sync screen — select decks then upload/download/reset via Google Drive.
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
 
@@ -29,245 +33,287 @@ class DownloadScreen extends StatefulWidget {
 }
 
 class _DownloadScreenState extends State<DownloadScreen> {
-  final CardRepository _cardRepository = Get.find<CardRepository>();
-  final ProgressRepository _progressRepository = Get.find<ProgressRepository>();
+  final DriveSyncService _syncService = Get.find<DriveSyncService>();
+  final DriveService _driveService = Get.find<DriveService>();
+  final CardRepository _cardRepo = Get.find<CardRepository>();
+  final DeckRepository _deckRepo = Get.find<DeckRepository>();
 
-  static const String _baseUrl =
-      'https://raw.githubusercontent.com/akz792000/Dictionary/main';
-
-  /// GitHub JSON URLs for legacy GroupCode decks.
-  static const Map<String, String> _groupCodeUrls = {
-    'FA_EN': '$_baseUrl/fa_en.json',
-    'EN_DE': '$_baseUrl/en_de.json',
-    'EN_DE_VERBS': '$_baseUrl/en_de_verbs.json',
-    'VISUAL': '$_baseUrl/visual.json',
-  };
-
-  /// Maximum number of NEW (not yet local) cards added per deck per sync.
-  int _newCardsLimit = 100;
-
-  /// Built dynamically from DeckRepository — only decks with a sync URL.
-  late final List<Map<String, dynamic>> _items;
+  List<_SyncItem> _items = [];
+  final Set<String> _selectedIds = {};
+  bool _loading = false;
+  bool _loadingFolders = false;
+  String? _activeAction;
 
   @override
   void initState() {
     super.initState();
-    final decks = Get.find<DeckRepository>().findAll();
-    _items = decks
-        .where((d) =>
-            d.groupCode.isNotEmpty && _groupCodeUrls.containsKey(d.groupCode))
-        .map((d) => <String, dynamic>{
-              'deck': d,
-              'toggle': false,
-              'url': _groupCodeUrls[d.groupCode]!,
-              'groupCode': GroupCode.fromCode(d.groupCode),
-            })
-        .toList();
+    _refreshItems(selectAll: true);
   }
 
-  bool _loading = false;
-
-  /// Pass 1: update an existing card if its content has changed.
-  /// Returns true if the card was updated (triggers progress reset).
-  Future<bool> _updateExisting(
-      Map<String, dynamic> element, GroupCode groupCode, bool override) async {
-    final id = element["id"] as int? ?? 0;
-    final existing = _cardRepository.findById(id);
-    if (existing == null) return false; // new card — handled in pass 2
-    // Ignore cross-deck ID collisions (same epoch ID in a different deck).
-    if (existing.groupCode != groupCode.code) return false;
-
-    final contentChanged = existing.image != (element["image"] ?? "") ||
-        existing.en != (element["en"] ?? "") ||
-        existing.fa != (element["fa"] ?? "") ||
-        existing.de != (element["de"] ?? "") ||
-        existing.desc != (element["desc"] ?? "");
-
-    if (!contentChanged && !override) return false;
-
-    await _cardRepository.merge(CardEntity(
-      id: id,
-      created: existing.created,
-      modified: DateTimeUtil.now(),
-      groupCode: groupCode.code,
-      image: element["image"] ?? "",
-      en: element["en"] ?? "",
-      fa: element["fa"] ?? "",
-      de: element["de"] ?? "",
-      desc: element["desc"] ?? "",
-    ));
-
-    // Content correction or override → restart learning from level 0.
-    final progress = _progressRepository.findOrCreate(id);
-    progress.level = 0;
-    progress.subLevel = 1;
-    progress.modified = DateTimeUtil.now();
-    await _progressRepository.merge(progress);
-    return true;
+  void _refreshItems({bool selectAll = false}) {
+    final decks = _deckRepo.findAll();
+    _items = decks.map((d) => _SyncItem.local(d)).toList();
+    // Remove stale selections for items that no longer exist
+    final validIds = _items.map((i) => i.id).toSet();
+    _selectedIds.retainAll(validIds);
+    if (selectAll) _selectedIds.addAll(validIds);
   }
 
-  /// Pass 2: add a card that does not yet exist locally.
-  Future<bool> _addNew(
-      Map<String, dynamic> element, GroupCode groupCode) async {
-    final id = element["id"] as int? ?? 0;
-    if (_cardRepository.findById(id) != null) return false;
-
-    await _cardRepository.merge(CardEntity(
-      id: id,
-      created: DateTimeUtil.now(),
-      modified: DateTimeUtil.now(),
-      groupCode: groupCode.code,
-      image: element["image"] ?? "",
-      en: element["en"] ?? "",
-      fa: element["fa"] ?? "",
-      de: element["de"] ?? "",
-      desc: element["desc"] ?? "",
-    ));
-    return true;
-  }
-
-  /// Downloads one deck and returns `(updated, inserted, remaining, total)` counts.
-  ///
-  /// Pass 1 scans ALL remote rows and updates any existing card whose content
-  /// has changed (resetting its progress to level 0).
-  /// Pass 2 iterates ALL rows, skips cards already in the local DB, and inserts
-  /// up to [_newCardsLimit] new ones — then counts how many are still pending
-  /// for the next sync. This means each sync continues exactly where the last
-  /// one left off without relying on a fragile positional offset.
-  Future<({int updated, int inserted, int remaining, int total})> _download(
-      Map<String, dynamic> item) async {
-    final response = await http.get(Uri.parse(item['url'] as String));
-    if (response.statusCode != 200) {
-      throw Exception(
-          'Failed to download ${item['name']}: HTTP ${response.statusCode}');
-    }
-    final List<dynamic> rows = json.decode(response.body);
-    final GroupCode groupCode = item['groupCode'] as GroupCode;
-    final bool override = item['toggle'] as bool;
-
-    int updated = 0;
-    int inserted = 0;
-    int remaining = 0;
-
-    // Pass 1 — corrections: scan ALL rows, update content if changed.
-    for (final row in rows) {
-      if (await _updateExisting(
-          row as Map<String, dynamic>, groupCode, override)) {
-        updated++;
+  /// Refresh only the items that were acted on (by id).
+  void _refreshSelectedItems(List<_SyncItem> acted) {
+    final allDecks = _deckRepo.findAll();
+    setState(() {
+      for (final item in acted) {
+        final idx = _items.indexWhere((i) => i.id == item.id);
+        if (idx == -1) continue;
+        if (item.isCloudOnly) {
+          // Cloud-only item may now exist locally after download
+          final folderName = item.driveFolderName;
+          final localDeck = allDecks
+              .where((d) => _syncService.driveFolderName(d) == folderName)
+              .firstOrNull;
+          if (localDeck != null) {
+            // Replace cloud-only with local item, keep selected
+            _selectedIds.remove(item.id);
+            _items[idx] = _SyncItem.local(localDeck);
+            _selectedIds.add(_items[idx].id);
+          }
+        } else {
+          // Re-fetch the local deck (card count may have changed)
+          final fresh =
+              allDecks.where((d) => d.id == item.deck!.id).firstOrNull;
+          if (fresh != null) {
+            _items[idx] = _SyncItem.local(fresh);
+          }
+        }
       }
-    }
-
-    // Pass 2 — new cards: iterate ALL rows in order, skip already-local IDs,
-    // insert up to _newCardsLimit new ones. Count remaining for next sync.
-    bool limitReached = false;
-    for (final rawRow in rows) {
-      final row = rawRow as Map<String, dynamic>;
-      final id = row['id'] as int? ?? 0;
-      if (_cardRepository.findById(id) != null) continue; // already local
-      if (limitReached) {
-        remaining++; // count cards deferred to next sync
-        continue;
-      }
-      if (await _addNew(row, groupCode)) {
-        inserted++;
-        if (inserted >= _newCardsLimit) limitReached = true;
-      }
-    }
-
-    return (
-      updated: updated,
-      inserted: inserted,
-      remaining: remaining,
-      total: rows.length
-    );
+    });
   }
 
-  Future<void> _downloadAll() async {
-    setState(() => _loading = true);
-    final List<Map<String, dynamic>> results = [];
+  /// Fetch Drive folders and add cloud-only items.
+  Future<void> _loadCloudFolders() async {
+    if (!await _ensureSignedIn()) return;
+    setState(() => _loadingFolders = true);
     try {
-      for (final item in _items) {
-        final r = await _download(item);
-        final deck = item['deck'] as DeckEntity;
-        results.add({
-          'name': deck.name,
-          'color': Color(deck.colorValue),
-          'updated': r.updated,
-          'inserted': r.inserted,
-          'remaining': r.remaining,
-          'total': r.total,
+      final folders = await _driveService.listDeckFolders();
+      final localFolderNames = _items
+          .where((i) => !i.isCloudOnly)
+          .map((i) => i.driveFolderName)
+          .toSet();
+      final cloudOnly = folders
+          .where((f) => !localFolderNames.contains(f))
+          .map((f) => _SyncItem.cloud(f))
+          .toList();
+      if (mounted) {
+        setState(() {
+          // Remove old cloud-only items, add fresh ones
+          _items.removeWhere((i) => i.isCloudOnly);
+          _items.addAll(cloudOnly);
         });
       }
-      if (mounted) _showResults(results);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) _showSnack('Failed to list Drive folders: $e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _loadingFolders = false);
     }
   }
 
-  void _showResults(List<Map<String, dynamic>> results) {
+  int _cardCount(_SyncItem item) {
+    if (item.deck == null) return 0;
+    final code = _syncService.cardCode(item.deck!);
+    return _cardRepo.findAllByCode(code).length;
+  }
+
+  List<_SyncItem> get _selectedItems =>
+      _items.where((i) => _selectedIds.contains(i.id)).toList();
+
+  bool get _allSelected =>
+      _items.isNotEmpty && _selectedIds.length == _items.length;
+
+  void _toggleAll() {
+    setState(() {
+      if (_allSelected) {
+        _selectedIds.clear();
+      } else {
+        _selectedIds.addAll(_items.map((i) => i.id));
+      }
+    });
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  Future<bool> _ensureSignedIn() async {
+    if (_driveService.isAuthorized) return true;
+    return await _driveService.authorize();
+  }
+
+  // ────────────────────── BATCH ACTIONS ──────────────────────
+
+  Future<void> _uploadSelected() async {
+    if (!await _ensureSignedIn()) return;
+    final items = _selectedItems.where((i) => !i.isCloudOnly).toList();
+    if (items.isEmpty) {
+      _showSnack('No local decks selected to upload');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _activeAction = 'upload';
+    });
+    try {
+      final results = <DriveSyncResult>[];
+      for (final item in items) {
+        results.add(await _syncService.uploadDeck(item.deck!));
+      }
+      if (mounted) {
+        _refreshSelectedItems(items);
+        _showResultsDialog('Upload', results);
+      }
+    } finally {
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _activeAction = null;
+        });
+    }
+  }
+
+  Future<void> _downloadSelected() async {
+    if (!await _ensureSignedIn()) return;
+    final items = _selectedItems;
+    if (items.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _activeAction = 'download';
+    });
+    try {
+      final results = <DriveSyncResult>[];
+      for (final item in items) {
+        if (item.isCloudOnly) {
+          results.add(
+              await _syncService.downloadCloudFolder(item.driveFolderName));
+        } else {
+          results.add(await _syncService.downloadDeck(item.deck!));
+        }
+      }
+      if (mounted) {
+        _refreshSelectedItems(items);
+        _showResultsDialog('Download', results);
+      }
+    } finally {
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _activeAction = null;
+        });
+    }
+  }
+
+  Future<void> _resetSelected() async {
+    final items = _selectedItems.where((i) => !i.isCloudOnly).toList();
+    if (items.isEmpty) {
+      _showSnack('No local decks selected to reset');
+      return;
+    }
+    final names = items.map((i) => i.displayName).join(', ');
+    if (!mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Reset Progress'),
+        content: Text(
+            'Reset all card levels to 0 for:\n$names\n\nThis cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Reset', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() {
+      _loading = true;
+      _activeAction = 'reset';
+    });
+    try {
+      int total = 0;
+      for (final item in items) {
+        total += await _syncService.resetProgress(item.deck!);
+      }
+      if (mounted) {
+        _refreshSelectedItems(items);
+        _showSnack('🔄 $total cards reset to level 0');
+      }
+    } finally {
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _activeAction = null;
+        });
+    }
+  }
+
+  // ──────────────────────── UI HELPERS ──────────────────────────
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showResultsDialog(String action, List<DriveSyncResult> results) {
     final cs = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Sync Complete'),
+            const Icon(Icons.check_circle_outline, color: Colors.green),
+            const SizedBox(width: 8),
+            Text('$action Complete'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: results.map((r) {
-            final color = r['color'] as Color;
-            final updated = r['updated'] as int;
-            final inserted = r['inserted'] as int;
-            final remaining = r['remaining'] as int;
-            final total = r['total'] as int;
-            final String statusLine;
-            if (updated == 0 && inserted == 0) {
-              statusLine = remaining > 0
-                  ? '$remaining pending  ($total total)'
-                  : 'Up to date  ($total total)';
+            final String status;
+            if (r.hasError) {
+              status = '❌ ${r.error}';
+            } else if (r.updated == 0 && r.inserted == 0) {
+              status = '✅ Up to date (${r.uploaded} cards)';
             } else {
               final parts = <String>[];
-              if (updated > 0) parts.add('↑ $updated updated');
-              if (inserted > 0) parts.add('+$inserted inserted');
-              if (remaining > 0) parts.add('$remaining pending');
-              statusLine = '${parts.join('  ')}  ($total total)';
+              if (r.uploaded > 0) parts.add('${r.uploaded} uploaded');
+              if (r.updated > 0) parts.add('${r.updated} updated');
+              if (r.inserted > 0) parts.add('+${r.inserted} new');
+              if (r.progressSynced > 0)
+                parts.add('${r.progressSynced} progress');
+              status = parts.join(', ');
             }
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  Container(
-                    width: 4,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r['name'] as String,
+                        Text(r.deckName,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text(
-                          statusLine,
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
+                        Text(status,
+                            style: TextStyle(
+                                fontSize: 12, color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ),
@@ -278,22 +324,43 @@ class _DownloadScreenState extends State<DownloadScreen> {
         ),
         actions: [
           FilledButton(
-            onPressed: () => Navigator.pop(context), // close dialog only
-            child: const Text('OK'),
-          ),
+              onPressed: () => Navigator.pop(context), child: const Text('OK')),
         ],
       ),
     );
   }
 
+  // ──────────────────────── BUILD ───────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final hasSelection = _selectedIds.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Download Cards'),
+        title: const Text('Sync'),
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _loading || _loadingFolders ? null : _loadCloudFolders,
+            icon: _loadingFolders
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.cloud_outlined),
+            tooltip: 'Check Drive for more decks',
+          ),
+          TextButton.icon(
+            onPressed: _items.isEmpty ? null : _toggleAll,
+            icon: Icon(
+              _allSelected ? Icons.deselect : Icons.select_all,
+              size: 20,
+            ),
+            label: Text(_allSelected ? 'None' : 'All'),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -310,7 +377,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.cloud_download_outlined,
+                  child: Icon(Icons.cloud_sync_outlined,
                       color: Colors.blue.shade600, size: 28),
                 ),
                 const SizedBox(width: 14),
@@ -318,13 +385,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Smart Sync from GitHub',
+                      const Text('Google Drive Sync',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 3),
                       Text(
-                        'Corrections to existing cards are always applied (level reset to 0). '
-                        'Only the last N new cards are added to avoid flooding level 0.',
+                        'Select decks, then download, upload, or reset.',
                         style:
                             TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                       ),
@@ -334,159 +400,221 @@ class _DownloadScreenState extends State<DownloadScreen> {
               ],
             ),
           ),
-          // Scrollable middle: new-cards control + deck list
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // Selection count
+          if (_items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Row(
                 children: [
-                  // Max new cards control
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        Text('Max new cards per sync:',
-                            style: TextStyle(
-                                fontSize: 13, color: cs.onSurfaceVariant)),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: _newCardsLimit > 10
-                              ? () => setState(() => _newCardsLimit =
-                                  (_newCardsLimit - 10).clamp(10, 500))
-                              : null,
-                        ),
-                        SizedBox(
-                          width: 44,
-                          child: Text(
-                            '$_newCardsLimit',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          onPressed: _newCardsLimit < 500
-                              ? () => setState(() => _newCardsLimit =
-                                  (_newCardsLimit + 10).clamp(10, 500))
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Text(
-                      'DECKS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                  Text(
+                    '${_selectedIds.length} of ${_items.length} selected',
+                    style: TextStyle(
+                        fontSize: 13,
                         color: cs.onSurfaceVariant,
-                      ),
-                    ),
+                        fontWeight: FontWeight.w500),
                   ),
-                  // Deck cards — dynamic from DeckRepository.
-                  if (_items.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No syncable decks. Legacy decks with a GitHub source will appear here.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: cs.onSurfaceVariant, fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ..._items.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final item = entry.value;
-                    final deck = item['deck'] as DeckEntity;
-                    final accentColor = Color(deck.colorValue);
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: cs.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 1))
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        leading: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: accentColor.withAlpha(20),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          // ignore: non_const_argument_for_const_parameter
-                          child: Icon(
-                            IconData(deck.iconCodePoint,
-                                fontFamily: 'MaterialIcons'),
-                            color: accentColor,
-                            size: 32,
-                          ),
-                        ),
-                        title: Text(deck.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          item['toggle']
-                              ? 'Override ON — resets all progress'
-                              : 'Override OFF — only corrections reset to 0',
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                        trailing: Switch(
-                          value: item['toggle'],
-                          activeThumbColor: accentColor,
-                          onChanged: (value) =>
-                              setState(() => _items[i]['toggle'] = value),
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          // Deck list
+          Expanded(
+            child: _items.isEmpty
+                ? Center(
+                    child: Text(
+                        'No decks yet. Create a deck or tap ☁ to check Drive.',
+                        style: TextStyle(
+                            color: cs.onSurfaceVariant, fontSize: 14)),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _items.length,
+                    itemBuilder: (context, index) =>
+                        _buildDeckTile(_items[index]),
+                  ),
+          ),
+          // Loading indicator
+          if (_loading)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${_activeAction ?? 'Syncing'}…',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          // Action buttons
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Row(
+                children: [
+                  _actionButton(
+                    icon: Icons.cloud_download_outlined,
+                    label: 'Download',
+                    color: Colors.blue.shade600,
+                    onPressed:
+                        _loading || !hasSelection ? null : _downloadSelected,
+                  ),
+                  const SizedBox(width: 10),
+                  _actionButton(
+                    icon: Icons.cloud_upload_outlined,
+                    label: 'Upload',
+                    color: Colors.green.shade600,
+                    onPressed:
+                        _loading || !hasSelection ? null : _uploadSelected,
+                  ),
+                  const SizedBox(width: 10),
+                  _actionButton(
+                    icon: Icons.restart_alt_outlined,
+                    label: 'Reset',
+                    color: Colors.red.shade600,
+                    onPressed:
+                        _loading || !hasSelection ? null : _resetSelected,
+                  ),
                 ],
               ),
             ),
           ),
-          // Download button — always pinned at the bottom
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _loading ? null : _downloadAll,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.download),
-                label: Text(_loading ? 'Downloading…' : 'Download All Decks',
-                    style: const TextStyle(fontSize: 16)),
-              ),
-            ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDeckTile(_SyncItem item) {
+    final cs = Theme.of(context).colorScheme;
+    final deck = item.deck;
+    final accentColor =
+        deck != null ? Color(deck.colorValue) : Colors.grey.shade400;
+    final count = _cardCount(item);
+    final selected = _selectedIds.contains(item.id);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      decoration: BoxDecoration(
+        color: selected
+            ? (item.isCloudOnly
+                ? Colors.orange.shade50
+                : cs.primaryContainer.withAlpha(60))
+            : cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: selected
+            ? Border.all(
+                color: item.isCloudOnly
+                    ? Colors.orange.withAlpha(120)
+                    : cs.primary.withAlpha(120),
+                width: 1.5)
+            : null,
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: _loading ? null : () => _toggle(item.id),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 10, 14, 10),
+          child: Row(
+            children: [
+              Checkbox(
+                value: selected,
+                onChanged: _loading ? null : (_) => _toggle(item.id),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accentColor.withAlpha(item.isCloudOnly ? 30 : 20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  item.isCloudOnly
+                      ? Icons.cloud_download_outlined
+                      // ignore: non_const_argument_for_const_parameter
+                      : IconData(deck!.iconCodePoint,
+                          fontFamily: 'MaterialIcons'),
+                  color:
+                      item.isCloudOnly ? Colors.orange.shade700 : accentColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(item.displayName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14)),
+                        if (item.isCloudOnly) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('Cloud',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.isCloudOnly
+                          ? 'On Drive · tap Download to import'
+                          : '$count card${count == 1 ? '' : 's'} · '
+                              '${_syncService.deckCode(deck!)}',
+                      style:
+                          TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 48,
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: color,
+            disabledBackgroundColor: color.withAlpha(60),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 18),
+          label: Text(label, style: const TextStyle(fontSize: 13)),
+        ),
       ),
     );
   }

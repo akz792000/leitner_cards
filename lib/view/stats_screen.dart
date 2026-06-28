@@ -53,7 +53,10 @@ class _StatsTab extends StatelessWidget {
   const _StatsTab({required this.deck});
 
   /// Raw code for querying cards/logs — legacy groupCode or deck.id.
-  String get _cardCode => deck.groupCode.isNotEmpty ? deck.groupCode : deck.id;
+  String get _cardCode {
+    if (deck.groupCode.isNotEmpty) return deck.groupCode;
+    return '${deck.sourceLang.toUpperCase()}_${deck.targetLang.toUpperCase()}';
+  }
 
   _StatsData _compute() {
     final cardRepo = Get.find<CardRepository>();

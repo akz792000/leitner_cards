@@ -45,6 +45,9 @@ class DeckEntity {
   String
       groupCode; // legacy mapping: "FA_EN", "EN_DE", etc. Empty for new decks.
 
+  @HiveField(9)
+  int sortOrder; // manual ordering on home screen (lower = higher)
+
   DeckEntity({
     required this.id,
     required this.name,
@@ -55,5 +58,6 @@ class DeckEntity {
     required this.createdAt,
     required this.modifiedAt,
     this.groupCode = '',
+    this.sortOrder = 0,
   });
 }

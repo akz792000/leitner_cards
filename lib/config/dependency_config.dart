@@ -9,6 +9,8 @@ import '../service/deck_service.dart';
 import '../service/route_service.dart';
 import '../service/settings_service.dart';
 import '../service/study_log_service.dart';
+import '../service/drive_service.dart';
+import '../service/drive_sync_service.dart';
 import '../service/sync_service.dart';
 import '../service/theme_service.dart';
 import '../service/tts_service.dart';
@@ -41,6 +43,9 @@ class DependencyConfig {
     await Get.putAsync<DeckService>(() => Future.value(DeckService()));
     // 7. SyncService — depends on CardRepository.
     await Get.putAsync<SyncService>(() => Future.value(SyncService()));
+    // 7b. DriveService + DriveSyncService — Google Drive sync.
+    Get.put(DriveService());
+    Get.put(DriveSyncService());
     // 8. StudyLogService — opens 'studyLog' Hive box.
     await Get.putAsync<StudyLogService>(() => Future.value(StudyLogService()));
     // 9–10. Media services.

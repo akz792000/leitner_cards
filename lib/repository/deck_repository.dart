@@ -31,10 +31,13 @@ class DeckRepository {
     return matches.isEmpty ? null : matches.first;
   }
 
-  /// All decks, ordered by creation date (newest first).
+  /// All decks, ordered by sortOrder (lower first), then creation date.
   List<DeckEntity> findAll() {
     final decks = _box.values.toList();
-    decks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    decks.sort((a, b) {
+      final cmp = a.sortOrder.compareTo(b.sortOrder);
+      return cmp != 0 ? cmp : a.createdAt.compareTo(b.createdAt);
+    });
     return decks;
   }
 

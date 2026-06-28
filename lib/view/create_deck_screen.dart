@@ -94,15 +94,18 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
     if (!_canCreate) return;
 
     final now = tz.TZDateTime.now(tz.local);
+    final src = _sourceLang!.code;
+    final tgt = _targetLang!.code;
     final deck = DeckEntity(
       id: _uuid.v4(),
       name: _nameController.text.trim(),
-      sourceLang: _sourceLang!.code,
-      targetLang: _targetLang!.code,
+      sourceLang: src,
+      targetLang: tgt,
       iconCodePoint: _deckIcons[_selectedIconIndex].codePoint,
       colorValue: _deckColors[_selectedColorIndex],
       createdAt: now,
       modifiedAt: now,
+      groupCode: '${src.toUpperCase()}_${tgt.toUpperCase()}',
     );
 
     await Get.find<DeckRepository>().merge(deck);
@@ -271,7 +274,13 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
     );
   }
 
+  String? get _groupCode {
+    if (_sourceLang == null || _targetLang == null) return null;
+    return '${_sourceLang!.code.toUpperCase()}_${_targetLang!.code.toUpperCase()}';
+  }
+
   Widget _buildPreviewCard(Color color) {
+    final code = _groupCode;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -285,14 +294,32 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
           Icon(_deckIcons[_selectedIconIndex], color: Colors.white, size: 28),
           const SizedBox(width: 12),
           Flexible(
-            child: Text(
-              _nameController.text.isEmpty ? 'Preview' : _nameController.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _nameController.text.isEmpty
+                      ? 'Preview'
+                      : _nameController.text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (code != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    code,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(200),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

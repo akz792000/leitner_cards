@@ -27,13 +27,14 @@ class DeckEntityAdapter extends TypeAdapter<DeckEntity> {
           ? tz.TZDateTime.from(fields[7], tz.local)
           : tz.TZDateTime.now(tz.local),
       groupCode: (fields[8] ?? '') as String,
+      sortOrder: (fields[9] ?? 0) as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, DeckEntity obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -51,7 +52,9 @@ class DeckEntityAdapter extends TypeAdapter<DeckEntity> {
       ..writeByte(7)
       ..write(obj.modifiedAt)
       ..writeByte(8)
-      ..write(obj.groupCode);
+      ..write(obj.groupCode)
+      ..writeByte(9)
+      ..write(obj.sortOrder);
   }
 
   @override

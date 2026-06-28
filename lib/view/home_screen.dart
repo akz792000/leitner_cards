@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../config/app_theme.dart';
 import '../config/route_config.dart';
+import '../entity/card_entity.dart';
 import '../entity/deck_entity.dart';
 import '../enums/group_code.dart';
 import '../repository/card_repository.dart';
@@ -36,12 +37,17 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: ValueListenableBuilder<Box<DeckEntity>>(
                 valueListenable: Get.find<DeckRepository>().listenable(),
-                builder: (context, box, _) {
-                  final decks = Get.find<DeckRepository>().findAll();
-                  if (decks.isEmpty) {
-                    return _buildEmptyState(context);
-                  }
-                  return _buildDeckList(context, decks);
+                builder: (context, deckBox, _) {
+                  return ValueListenableBuilder<Box<CardEntity>>(
+                    valueListenable: Get.find<CardRepository>().listenable(),
+                    builder: (context, cardBox, _) {
+                      final decks = Get.find<DeckRepository>().findAll();
+                      if (decks.isEmpty) {
+                        return _buildEmptyState(context);
+                      }
+                      return _buildDeckList(context, decks);
+                    },
+                  );
                 },
               ),
             ),
@@ -53,23 +59,43 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildDeckList(BuildContext context, List<DeckEntity> decks) {
     final cardRepo = Get.find<CardRepository>();
-    return SingleChildScrollView(
+    final deckRepo = Get.find<DeckRepository>();
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...decks.map((deck) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildDeckCard(context, deck, cardRepo),
-              )),
-          const SizedBox(height: 80), // space for FAB
-        ],
-      ),
+      itemCount: decks.length + 1, // +1 for bottom spacer
+      proxyDecorator: (child, index, animation) {
+        return Material(
+          color: Colors.transparent,
+          elevation: 4,
+          borderRadius: BorderRadius.circular(16),
+          child: child,
+        );
+      },
+      onReorderItem: (oldIndex, newIndex) {
+        if (oldIndex >= decks.length || newIndex >= decks.length) return;
+        final moved = decks.removeAt(oldIndex);
+        decks.insert(newIndex, moved);
+        for (var i = 0; i < decks.length; i++) {
+          decks[i].sortOrder = i;
+          deckRepo.merge(decks[i]);
+        }
+      },
+      itemBuilder: (context, index) {
+        if (index == decks.length) {
+          return SizedBox(key: const ValueKey('_spacer'), height: 80);
+        }
+        return Padding(
+          key: ValueKey(decks[index].id),
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildDeckCard(context, decks[index], cardRepo, index),
+        );
+      },
     );
   }
 
-  Widget _buildDeckCard(
-      BuildContext context, DeckEntity deck, CardRepository cardRepo) {
+  Widget _buildDeckCard(BuildContext context, DeckEntity deck,
+      CardRepository cardRepo, int index) {
     final color = Color(deck.colorValue);
     final lighterColor = Color.lerp(color, Colors.white, 0.3) ?? color;
 
@@ -102,53 +128,56 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Deck body — tappable to open the deck.
+          // Deck body — tap to open, long-press to drag/reorder.
           Expanded(
-            child: GestureDetector(
-              onTap: () => _onDeckTap(deck),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(51),
-                        borderRadius: BorderRadius.circular(12),
+            child: ReorderableDelayedDragStartListener(
+              index: index,
+              child: GestureDetector(
+                onTap: () => _onDeckTap(deck),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(51),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        // ignore: non_const_argument_for_const_parameter
+                        child: Icon(
+                          IconData(deck.iconCodePoint,
+                              fontFamily: 'MaterialIcons'),
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
-                      // ignore: non_const_argument_for_const_parameter
-                      child: Icon(
-                        IconData(deck.iconCodePoint,
-                            fontFamily: 'MaterialIcons'),
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            deck.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              deck.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$cardCount cards · ${deck.sourceLang.toUpperCase()} → ${deck.targetLang.toUpperCase()}',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 13),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '$cardCount cards · ${deck.groupCode.isNotEmpty ? deck.groupCode : '${deck.sourceLang.toUpperCase()}_${deck.targetLang.toUpperCase()}'}',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -253,13 +282,24 @@ class HomeScreen extends StatelessWidget {
               child: const Icon(Icons.school, color: Colors.white, size: 26),
             ),
             const SizedBox(width: 14),
-            const Text(
-              'Ready to learn today?',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ready to learn today?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Hold to reorder',
+                  style: TextStyle(color: Colors.white60, fontSize: 11),
+                ),
+              ],
             ),
           ],
         ),

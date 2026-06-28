@@ -142,7 +142,18 @@ if $CLEAN; then
 fi
 
 yellow "Building release APK..."
-flutter build apk --release --android-skip-build-dependency-validation
+# Load secrets from .env if it exists
+if [ -f .env ]; then
+  # shellcheck disable=SC1091
+  source .env
+fi
+
+DART_DEFINES=""
+[ -n "$GOOGLE_CLIENT_ID" ] && DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"
+[ -n "$GOOGLE_CLIENT_SECRET" ] && DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET"
+
+# shellcheck disable=SC2086
+flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation $DART_DEFINES
 
 # ── install via adb directly (avoids interactive device picker) ───────────────
 yellow "Installing on device $DEVICE_SERIAL..."

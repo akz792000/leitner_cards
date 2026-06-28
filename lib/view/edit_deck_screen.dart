@@ -132,44 +132,12 @@ class _EditDeckScreenState extends State<EditDeckScreen> {
 
     final cs = Theme.of(context).colorScheme;
 
-    final name =
-        _nameCtrl.text.trim().isEmpty ? 'Deck Name' : _nameCtrl.text.trim();
-
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(51),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              // ignore: non_const_argument_for_const_parameter
-              child: Icon(
-                IconData(_selectedIcon, fontFamily: 'MaterialIcons'),
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                name,
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${deck.sourceLang.toUpperCase()} → ${deck.targetLang.toUpperCase()}',
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-          ],
+        title: Text(
+          deck.groupCode.isNotEmpty
+              ? deck.groupCode
+              : '${deck.sourceLang.toUpperCase()}_${deck.targetLang.toUpperCase()}',
         ),
         backgroundColor: _accentColor,
         foregroundColor: Colors.white,
