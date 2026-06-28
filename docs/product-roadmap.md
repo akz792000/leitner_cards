@@ -10,16 +10,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Completed (Phases 1, 2, 4)
-
-- **Auth:** Google Sign-In (mobile + desktop OAuth), auth guard, silent restore, secrets via `.env`/`--dart-define`
-- **Deck Management:** Create/edit/delete decks, wizard flow, language picker, icon/color, long-press drag reorder (sortOrder synced to Drive)
-- **Study Engine:** Leitner algorithm (levels 0–15), deck-based progress, STT pronunciation grading, TTS with word highlighting, stats per deck, settings in Hive
-- **Core features:** Markdown rendering, AMOLED burn-in protection, dark/light/system theme, study time tracking, card ordering options
-
----
-
-## Phase 3 — Card Management (CRUD) — Remaining
+## Phase 1 — Card Management (CRUD)
 
 **Tasks:**
 - [ ] "Add Card" screen — in-app card creation (source text + target text)
@@ -30,35 +21,11 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 5 — Google Drive Sync — Partial ✅
+## Phase 2 — Google Drive Sync (Remaining)
 
-**Goal:** Sync deck data to each user's own Google Drive. Zero server cost.
-
-**Storage:** Google Drive user-visible folder (full Drive scope — users can manually manage files).
-
-```
-My Drive/
-  FlashMind/
-    FA_EN/
-      cards.json        ← card data
-      progress.json     ← study progress
-      deck.json         ← deck metadata (name, color, icon, sortOrder)
-    EN_DE/
-      ...
-```
+**Goal:** Complete sync features. Core sync already working.
 
 **Tasks:**
-- [x] DriveService: REST API calls via `http` package (list, create, update, download, delete)
-- [x] Platform-specific OAuth: mobile (google_sign_in) / desktop (browser loopback)
-- [x] Upload: cards.json, progress.json, deck.json per deck folder
-- [x] Download: merge remote cards/progress into local Hive
-- [x] Deck metadata sync (name, color, icon, sortOrder via deck.json)
-- [x] Cloud-only deck discovery — detect Drive folders not yet local
-- [x] Sync screen with checkboxes and batch Download/Upload/Reset
-- [x] Manual cloud folder scan (☁ button)
-- [x] Compact JSON uploads (skip null/empty fields)
-- [x] Pretty-printed JSON for readability
-- [x] Secrets moved to .env / --dart-define (not in source)
 - [ ] Auto-sync on app open (background, if online)
 - [ ] Push dirty decks on app pause/background
 - [ ] Sync conflict resolution (currently last-write-wins)
@@ -68,7 +35,7 @@ My Drive/
 
 ---
 
-## Phase 6 — Polish & Pre-Launch Prep
+## Phase 3 — Polish & Pre-Launch Prep
 
 **Goal:** Make the app store-ready.
 
@@ -79,20 +46,16 @@ My Drive/
 - [ ] Empty states — friendly UI when user has no decks / no cards
 - [ ] Error handling — network errors, auth errors, graceful fallbacks
 - [ ] Loading states — skeletons / shimmer while fetching data
-- [ ] App icon finalized ✅ (already exists: `assets/icon.png`)
 - [ ] Splash screen
 - [ ] Responsive layout — test phone + tablet
 - [ ] Accessibility basics (font scaling, screen reader labels)
-- [ ] Remove all hardcoded GitHub URL references
-- [x] Delete orphaned code (LoginScreen, AnimatedFlag, IconButtonWidget, export_progress)
 - [ ] Fix technical debt:
   - [ ] `withOpacity` → `withValues(alpha:)` migration
   - [ ] `RadioListTile` deprecated API in settings_screen
-  - [x] Document Hive adapter manual maintenance (comments in .g.dart files)
 
 ---
 
-## Phase 7 — Google Play Store (Android)
+## Phase 4 — Google Play Store (Android)
 
 **Goal:** Publish on Google Play Store.
 
@@ -130,7 +93,7 @@ My Drive/
 
 ---
 
-## Phase 8 — Apple App Store (iOS)
+## Phase 5 — Apple App Store (iOS)
 
 **Goal:** Publish on Apple App Store.
 
@@ -166,7 +129,7 @@ My Drive/
 
 ---
 
-## Phase 9 — Monetisation Strategy
+## Phase 6 — Monetisation Strategy
 
 ### Recommended Model: **Freemium**
 
@@ -210,7 +173,7 @@ My Drive/
 
 ---
 
-## Phase 10 — Post-Launch Growth
+## Phase 7 — Post-Launch Growth
 
 **Goal:** Grow user base and improve the app based on feedback.
 
@@ -252,14 +215,11 @@ My Drive/
 
 | Phase | Duration | Status |
 |-------|----------|--------|
-| ~~Phase 1 — Google Sign-In~~ | — | ✅ Done |
-| ~~Phase 2 — Deck Management~~ | — | ✅ Done |
-| Phase 3 — Card CRUD | 1–2 weeks | 🟡 In-app add/edit/delete remaining |
-| ~~Phase 4 — Study Engine~~ | — | ✅ Done |
-| Phase 5 — Google Drive Sync | 1–2 weeks | 🟡 Auto-sync, conflict resolution remaining |
-| Phase 6 — Polish | 1–2 weeks | 🟡 UI polish, error handling remaining |
-| Phase 7 — Google Play | 1 week | ⬜ Not started |
-| Phase 8 — App Store | 1 week | ⬜ Not started |
-| Phase 9 — Monetisation | 1 week | ⬜ Not started |
-| Phase 10 — Post-Launch | Ongoing | ⬜ Not started |
-| **Total to first store launch** | **~7–9 weeks** | **~60% complete** |
+| Phase 1 — Card CRUD | 1–2 weeks | ⬜ Not started |
+| Phase 2 — Drive Sync (remaining) | 1–2 weeks | ⬜ Not started |
+| Phase 3 — Polish | 1–2 weeks | ⬜ Not started |
+| Phase 4 — Google Play | 1 week | ⬜ Not started |
+| Phase 5 — App Store | 1 week | ⬜ Not started |
+| Phase 6 — Monetisation | 1 week | ⬜ Not started |
+| Phase 7 — Post-Launch | Ongoing | ⬜ Not started |
+| **Total to first store launch** | **~7–9 weeks** | |
