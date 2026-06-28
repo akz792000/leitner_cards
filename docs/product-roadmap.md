@@ -1,12 +1,12 @@
 # FlashMind — Product Roadmap
 
-Last updated: 2026-06-27
+Last updated: 2026-06-28
 
 ---
 
 ## Vision
 
-FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repetition algorithm. There are no pre-loaded decks — every user signs in, creates their own decks, adds their own cards, and tracks their own progress. All data lives **locally in Hive** (offline-first) and syncs to each user's **own Google Drive** (`appDataFolder`) — zero server cost.
+FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repetition algorithm. There are no pre-loaded decks — every user signs in, creates their own decks, adds their own cards, and tracks their own progress. All data lives **locally in Hive** (offline-first) and syncs to each user's **own Google Drive** (user-visible `FlashMind/` folder) — zero server cost.
 
 ---
 
@@ -26,94 +26,112 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 1 — Authentication (Google Sign-In)
+## Phase 1 — Authentication (Google Sign-In) ✅
 
 **Goal:** Every user must sign in before using the app.
 
 **Tasks:**
-- [x] Google Sign-In via `google_sign_in` v7
+- [x] Google Sign-In via `google_sign_in` v7 (mobile) + `googleapis_auth` (desktop)
 - [x] Login screen — clean UI with Google sign-in button
 - [x] Auth guard — redirect unauthenticated users to login
 - [x] Sign-out functionality (drawer)
 - [x] Silent session restore on app relaunch (`attemptLightweightAuthentication`)
-- [x] macOS debug: bypass auth guard (Desktop OAuth not configured)
+- [x] Desktop OAuth: browser loopback with client ID/secret via `--dart-define`
+- [x] Test Google Sign-In on Android device (Samsung SM-A528B)
+- [x] Secrets externalized to `.env` / `--dart-define` (not in source)
 - [ ] Apple Sign-In (mandatory for App Store — Phase 8)
-- [ ] Test Google Sign-In on Android device
 
 ---
 
-## Phase 2 — Deck Management
+## Phase 2 — Deck Management ✅
 
 **Goal:** Users can create, edit, and delete their own decks via a wizard. All data in Hive (local-first).
 
 **Tasks:**
-- [ ] DeckEntity (Hive typeId=3): id, name, sourceLang, targetLang, icon, color, createdAt, modifiedAt
-- [ ] DeckRepository: Hive CRUD for deck box
-- [ ] Home screen redesign — dynamic grid/list of user's decks (no hardcoded decks)
-- [ ] "Create Deck" button → wizard flow:
-  1. Pick source language (e.g., Farsi, English, German, Spanish, French, ...)
-  2. Pick target language
+- [x] DeckEntity (Hive typeId=3): id, name, sourceLang, targetLang, icon, color, createdAt, modifiedAt, groupCode, sortOrder
+- [x] DeckRepository: Hive CRUD for deck box
+- [x] Home screen redesign — dynamic list of user's decks (no hardcoded decks)
+- [x] "Create Deck" button → wizard flow:
+  1. Pick source language (I speak)
+  2. Pick target language (I learn)
   3. Auto-suggest name (e.g., "Farsi → English") — user can edit
   4. Optional: pick icon and color
-  5. Confirm → deck created in Hive
-- [ ] Deck edit (rename, change icon/color)
-- [ ] Deck delete (with confirmation — deletes all cards + progress)
-- [ ] Deck list shows: name, card count, last studied, progress indicator
-- [ ] Supported languages list (expandable — stored as config)
+  5. Preview card with groupCode (e.g., FA_EN)
+  6. Confirm → deck created in Hive with groupCode set
+- [x] Deck edit (rename, change icon/color) — dedicated edit screen
+- [x] Deck delete (with confirmation — cascades to all cards + progress)
+- [x] Deck list shows: name, card count, groupCode
+- [x] Supported languages list (expandable — stored as LanguageCode enum)
+- [x] Deck reorder via long-press drag (sortOrder persisted in Hive + Drive)
 
 ---
 
-## Phase 3 — Card Management (CRUD)
+## Phase 3 — Card Management (CRUD) — Partial ✅
 
 **Goal:** Users can add, edit, and delete cards within a deck.
 
 **Tasks:**
-- [ ] "Add Card" screen — source text + target text + optional groupCode
-- [ ] Edit existing card
-- [ ] Delete card (with confirmation)
-- [ ] Card list view within a deck (searchable, sortable)
-- [ ] Bulk import from JSON or CSV file (for power users / migration)
-- [ ] Bulk export deck as JSON or CSV
+- [x] Card list view within a deck (DeckDetailScreen — sortable)
+- [x] Bulk import from JSON via Google Drive sync
+- [x] Bulk export deck as JSON via Google Drive sync
+- [ ] "Add Card" screen — in-app card creation (source text + target text)
+- [ ] Edit existing card in-app
+- [ ] Delete individual card (with confirmation)
+- [ ] Search within card list
+- [ ] Bulk import from CSV file
 
 ---
 
-## Phase 4 — Study Engine (Leitner + Progress)
+## Phase 4 — Study Engine (Leitner + Progress) ✅
 
 **Goal:** Connect the existing Leitner algorithm to the new deck-based data model.
 
 **Tasks:**
-- [ ] Refactor study engine to read cards by deckId (instead of GroupCode)
-- [ ] Progress tracking stays in Hive (per card, per deck)
-- [ ] Study time tracking per deck in Hive
-- [ ] STT pronunciation grading works with any language pair
-- [ ] TTS works with any language pair (auto-detect language from deck config)
-- [ ] Stats screen reads from Hive progress data per deck
-- [ ] Settings stored locally in Hive
+- [x] Refactor study engine to read cards by deckCode (unified groupCode/deckId)
+- [x] Progress tracking in Hive (per card, per deck)
+- [x] Study time tracking per deck in Hive (StudyLogService with ByCode methods)
+- [x] STT pronunciation grading works with any language pair
+- [x] TTS works with any language pair (auto-detect language from deck config)
+- [x] Stats screen reads from Hive progress data per deck
+- [x] Settings stored locally in Hive
 
 ---
 
-## Phase 5 — Google Drive Sync
+## Phase 5 — Google Drive Sync — Partial ✅
 
 **Goal:** Sync deck data to each user's own Google Drive. Zero server cost.
 
-**Storage:** Google Drive `appDataFolder` — hidden, app-only folder per user.
+**Storage:** Google Drive user-visible folder (full Drive scope — users can manually manage files).
 
 ```
-appDataFolder/
-  manifest.json           ← deck list + timestamps
-  deck_{deckId}.json      ← deck info + cards + progress
+My Drive/
+  FlashMind/
+    FA_EN/
+      cards.json        ← card data
+      progress.json     ← study progress
+      deck.json         ← deck metadata (name, color, icon, sortOrder)
+    EN_DE/
+      ...
 ```
 
 **Tasks:**
-- [ ] Request `drive.appdata` scope during Google Sign-In
-- [ ] DriveService: REST API calls via `http` package (list, create, update, download, delete)
-- [ ] SyncEngine: compare local vs Drive timestamps per deck
-- [ ] Sync flow: newer version wins (last-write-wins by `modifiedAt`)
+- [x] DriveService: REST API calls via `http` package (list, create, update, download, delete)
+- [x] Platform-specific OAuth: mobile (google_sign_in) / desktop (browser loopback)
+- [x] Upload: cards.json, progress.json, deck.json per deck folder
+- [x] Download: merge remote cards/progress into local Hive
+- [x] Deck metadata sync (name, color, icon, sortOrder via deck.json)
+- [x] Cloud-only deck discovery — detect Drive folders not yet local
+- [x] Sync screen with checkboxes and batch Download/Upload/Reset
+- [x] Manual cloud folder scan (☁ button)
+- [x] Compact JSON uploads (skip null/empty fields)
+- [x] Pretty-printed JSON for readability
+- [x] Secrets moved to .env / --dart-define (not in source)
 - [ ] Auto-sync on app open (background, if online)
 - [ ] Push dirty decks on app pause/background
+- [ ] Sync conflict resolution (currently last-write-wins)
 - [ ] Handle deletions via tombstone list
 - [ ] Visual indicator: sync status in app bar (syncing / synced / offline)
-- [ ] Manual sync button in settings
+- [ ] Offline detection and graceful fallback
 
 ---
 
@@ -133,11 +151,11 @@ appDataFolder/
 - [ ] Responsive layout — test phone + tablet
 - [ ] Accessibility basics (font scaling, screen reader labels)
 - [ ] Remove all hardcoded GitHub URL references
-- [ ] Delete orphaned code (`sync_screen.dart`, old download logic)
+- [x] Delete orphaned code (LoginScreen, AnimatedFlag, IconButtonWidget, export_progress)
 - [ ] Fix technical debt:
   - [ ] `withOpacity` → `withValues(alpha:)` migration
   - [ ] `RadioListTile` deprecated API in settings_screen
-  - [ ] Document Hive adapter manual maintenance
+  - [x] Document Hive adapter manual maintenance (comments in .g.dart files)
 
 ---
 
@@ -299,16 +317,16 @@ appDataFolder/
 
 ## Timeline Estimate
 
-| Phase | Duration | Target |
+| Phase | Duration | Status |
 |-------|----------|--------|
-| Phase 1 — Google Sign-In | 2 weeks | |
-| Phase 2 — Deck Management | 2 weeks | |
-| Phase 3 — Card CRUD | 1–2 weeks | |
-| Phase 4 — Study Engine | 2 weeks | |
-| Phase 5 — Offline Sync | 1–2 weeks | |
-| Phase 6 — Polish | 1–2 weeks | |
-| Phase 7 — Google Play | 1 week | |
-| Phase 8 — App Store | 1 week | |
-| Phase 9 — Monetisation | 1 week | |
-| Phase 10 — Post-Launch | Ongoing | |
-| **Total to first store launch** | **~10–14 weeks** | |
+| Phase 1 — Google Sign-In | 2 weeks | ✅ Done |
+| Phase 2 — Deck Management | 2 weeks | ✅ Done |
+| Phase 3 — Card CRUD | 1–2 weeks | 🟡 Partial (import/export via Drive done; in-app add/edit/delete remaining) |
+| Phase 4 — Study Engine | 2 weeks | ✅ Done |
+| Phase 5 — Google Drive Sync | 1–2 weeks | 🟡 Partial (core sync done; auto-sync, conflict resolution remaining) |
+| Phase 6 — Polish | 1–2 weeks | 🟡 Partial (dead code cleaned; UI polish, error handling remaining) |
+| Phase 7 — Google Play | 1 week | ⬜ Not started |
+| Phase 8 — App Store | 1 week | ⬜ Not started |
+| Phase 9 — Monetisation | 1 week | ⬜ Not started |
+| Phase 10 — Post-Launch | Ongoing | ⬜ Not started |
+| **Total to first store launch** | **~10–14 weeks** | **~60% complete** |
