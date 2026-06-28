@@ -35,8 +35,4 @@ class RouteService {
   void pop<T extends Object?>([T? result]) {
     navigatorKey.currentState?.pop(result);
   }
-
-  bool canPop() {
-    return navigatorKey.currentState?.canPop() ?? false;
-  }
 }

@@ -2,7 +2,6 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-import '../enums/group_code.dart';
 import '../util/date_time_util.dart';
 
 /// Stores per-session study records in Hive so study time can be queried by
@@ -22,15 +21,10 @@ class StudyLogService extends GetxService {
     _box = Hive.box(boxId);
   }
 
-  /// Records a completed study session for [groupCode] lasting [durationSecs].
+  /// Records a completed study session lasting [durationSecs].
   /// [date] defaults to today — pass the session's *start* date so that
   /// sessions crossing midnight are attributed to the day they began.
   /// Sessions shorter than 1 second are ignored.
-  void logSession(GroupCode groupCode, int durationSecs, {String? date}) {
-    logSessionByCode(groupCode.code, durationSecs, date: date);
-  }
-
-  /// Logs a study session by raw code string (works for both legacy and UUID decks).
   void logSessionByCode(String code, int durationSecs, {String? date}) {
     if (durationSecs < 1) return;
     final now = DateTimeUtil.now();
@@ -41,11 +35,7 @@ class StudyLogService extends GetxService {
     });
   }
 
-  /// Seconds studied for [groupCode] on a specific [dateKey] string (YYYY-MM-DD).
-  int daySecs(GroupCode groupCode, String dateKey) =>
-      daySecsByCode(groupCode.code, dateKey);
-
-  /// Seconds studied for a raw code on a specific date key.
+  /// Seconds studied for a code on a specific [dateKey] string (YYYY-MM-DD).
   int daySecsByCode(String code, String dateKey) {
     return _entries
         .where(
@@ -53,10 +43,7 @@ class StudyLogService extends GetxService {
         .fold(0, (sum, e) => sum + _secs(e));
   }
 
-  /// Seconds studied for [groupCode] on today's date.
-  int todaySecs(GroupCode groupCode) => todaySecsByCode(groupCode.code);
-
-  /// Seconds studied for a raw code on today's date.
+  /// Seconds studied for a code on today's date.
   int todaySecsByCode(String code) {
     final now = DateTimeUtil.now();
     final today = dateKey(now);
@@ -66,11 +53,7 @@ class StudyLogService extends GetxService {
         .fold(0, (sum, e) => sum + _secs(e));
   }
 
-  /// Seconds studied for [groupCode] over the last [days] days (inclusive today).
-  int periodSecs(GroupCode groupCode, {required int days}) =>
-      periodSecsByCode(groupCode.code, days: days);
-
-  /// Seconds studied for a raw code over the last [days] days.
+  /// Seconds studied for a code over the last [days] days (inclusive today).
   int periodSecsByCode(String code, {required int days}) {
     final from = DateTimeUtil.now().subtract(Duration(days: days - 1));
     final fromKey = dateKey(from);

@@ -10,9 +10,8 @@ part 'deck_entity.g.dart';
 /// Each deck has a source and target language, a display name,
 /// and optional visual customisation (icon code point and color).
 ///
-/// For legacy decks seeded from [GroupCode], [groupCode] maps back
-/// to the original enum value (e.g. "FA_EN"). User-created decks
-/// leave [groupCode] empty.
+/// [groupCode] is always set at creation to 'SOURCELANG_TARGETLANG'
+/// (e.g. "FA_EN"). Legacy decks seeded from [GroupCode] use the same format.
 ///
 /// ⚠️ deck_entity.g.dart is maintained manually — do NOT run build_runner.
 @HiveType(typeId: HiveTypeIds.deckId)
@@ -42,8 +41,7 @@ class DeckEntity {
   tz.TZDateTime modifiedAt;
 
   @HiveField(8)
-  String
-      groupCode; // legacy mapping: "FA_EN", "EN_DE", etc. Empty for new decks.
+  String groupCode; // e.g. "FA_EN", "EN_DE" — set at creation for all decks.
 
   @HiveField(9)
   int sortOrder; // manual ordering on home screen (lower = higher)

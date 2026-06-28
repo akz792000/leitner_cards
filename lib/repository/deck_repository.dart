@@ -6,7 +6,6 @@ import '../entity/deck_entity.dart';
 /// Hive CRUD for the "deck" box.
 ///
 /// Each deck is stored with its [DeckEntity.id] (UUID) as the Hive key.
-/// Legacy decks seeded from GroupCode have a non-empty [DeckEntity.groupCode].
 class DeckRepository {
   static const String boxId = 'deck';
 
@@ -23,13 +22,6 @@ class DeckRepository {
 
   /// Find a deck by id.
   DeckEntity? findById(String id) => _box.get(id);
-
-  /// Find a deck by its legacy groupCode (e.g. "FA_EN").
-  DeckEntity? findByGroupCode(String groupCode) {
-    if (groupCode.isEmpty) return null;
-    final matches = _box.values.where((d) => d.groupCode == groupCode);
-    return matches.isEmpty ? null : matches.first;
-  }
 
   /// All decks, ordered by sortOrder (lower first), then creation date.
   List<DeckEntity> findAll() {

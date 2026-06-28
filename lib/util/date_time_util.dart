@@ -27,11 +27,6 @@ class DateTimeUtil {
     return intl.DateFormat("yyyy-MM-dd HH:mm").format(adjust);
   }
 
-  static int daysToNow(tz.TZDateTime from) {
-    final now = tz.TZDateTime.now(tz.local);
-    return now.difference(from).inDays;
-  }
-
   /// Compares calendar dates (midnight-to-midnight) rather than raw timestamps.
   ///
   /// Using UTC midnight for both sides ensures a card modified at 11 pm is
