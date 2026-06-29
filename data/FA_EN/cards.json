@@ -1909,7 +1909,7 @@
   },
   {
     "id": 378,
-    "fa": "دقیقاً همان چیزی است که زودتر گفتم",
+    "fa": "آن است دقیقاً چیزی که من گفتم زودتر",
     "en": "That is exactly what I said earlier"
   },
   {
@@ -25869,5 +25869,10 @@
     "id": 5076,
     "fa": "این سرویس داره در حال حاضر اجرا می شود بدون فضای ذخیره سازی پایدار، بنابراین هر بار pod راه اندازی مجدد می شود، از دست می دهد تمام جداول و داده را",
     "en": "This service is currently running without persistent storage, so every time the pod restarts it loses all tables and data"
+  },
+  {
+    "id": 5077,
+    "fa": "این است یک لاگ کار روزانه که شما می توانید به اشتراک بگذارید با مدیر خود",
+    "en": "This is a daily work log that you can share with your manager"
   }
 ]
