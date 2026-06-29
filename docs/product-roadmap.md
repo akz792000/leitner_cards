@@ -1,6 +1,6 @@
 # FlashMind — Product Roadmap
 
-Last updated: 2026-06-28
+Last updated: 2026-06-29
 
 ---
 
@@ -17,7 +17,19 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 2 — Google Drive Sync (Remaining)
+## Phase 2 — Feature Improvements
+
+**Goal:** Improve existing features and fix known issues.
+
+**Tasks:**
+- [ ] Add `correct` column to cards table (multi-language support — store the correct answer field per card)
+- [ ] Review and verify statistics calculation logic (accuracy, streaks, session stats)
+- [ ] Speech-to-text: accept contractions (e.g. "I've" matches "I have", "don't" matches "do not")
+- [ ] German verbs: search all sentences containing a given verb and display them
+
+---
+
+## Phase 3 — Google Drive Sync (Remaining)
 
 **Goal:** Complete sync features. Core sync already working.
 
@@ -31,7 +43,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 3 — Polish & Pre-Launch Prep
+## Phase 4 — Polish & Pre-Launch Prep
 
 **Goal:** Make the app store-ready.
 
@@ -51,7 +63,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 4 — Google Play Store (Android)
+## Phase 5 — Google Play Store (Android)
 
 **Goal:** Publish on Google Play Store.
 
@@ -89,7 +101,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 5 — Apple App Store (iOS)
+## Phase 6 — Apple App Store (iOS)
 
 **Goal:** Publish on Apple App Store.
 
@@ -125,7 +137,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 6 — Monetisation Strategy
+## Phase 7 — Monetisation Strategy
 
 ### Recommended Model: **Freemium**
 
@@ -169,7 +181,7 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 
 ---
 
-## Phase 7 — Post-Launch Growth
+## Phase 8 — Post-Launch Growth
 
 **Goal:** Grow user base and improve the app based on feedback.
 
@@ -212,10 +224,11 @@ FlashMind is a **user-driven** flashcard app powered by the Leitner spaced-repet
 | Phase | Duration | Status |
 |-------|----------|--------|
 | Phase 1 — Card CRUD | 1–2 weeks | ⬜ Not started |
-| Phase 2 — Drive Sync (remaining) | 1–2 weeks | ⬜ Not started |
-| Phase 3 — Polish | 1–2 weeks | ⬜ Not started |
-| Phase 4 — Google Play | 1 week | ⬜ Not started |
-| Phase 5 — App Store | 1 week | ⬜ Not started |
-| Phase 6 — Monetisation | 1 week | ⬜ Not started |
-| Phase 7 — Post-Launch | Ongoing | ⬜ Not started |
-| **Total to first store launch** | **~7–9 weeks** | |
+| Phase 2 — Feature Improvements | 1–2 weeks | ⬜ Not started |
+| Phase 3 — Drive Sync (remaining) | 1–2 weeks | ⬜ Not started |
+| Phase 4 — Polish | 1–2 weeks | ⬜ Not started |
+| Phase 5 — Google Play | 1 week | ⬜ Not started |
+| Phase 6 — App Store | 1 week | ⬜ Not started |
+| Phase 7 — Monetisation | 1 week | ⬜ Not started |
+| Phase 8 — Post-Launch | Ongoing | ⬜ Not started |
+| **Total to first store launch** | **~8–11 weeks** | |

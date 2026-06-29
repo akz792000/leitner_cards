@@ -4496,7 +4496,7 @@
   },
   {
     "id": 886,
-    "fa": "من دیروز برای یک ساعت در آسانسور گیر کردم. نسبتاً کلافه کننده بود",
+    "fa": "من دیروز برای یک ساعت در آسانسور گیر کردم. خیلی (کاملاً) کلافه کننده بود",
     "en": "I got stuck in the elevator for an hour yesterday. It was quite frustrating"
   },
   {
@@ -6327,7 +6327,7 @@
   },
   {
     "id": 1244,
-    "fa": "این جریان مداوم انرژی نسبتاً هیجان انگیز است",
+    "fa": "این جریان مداوم انرژی خیلی (کاملاً) هیجان انگیز است",
     "en": "This continuous flow of energy is quite thrilling"
   },
   {
@@ -15135,7 +15135,7 @@
   },
   {
     "id": 2973,
-    "fa": "برادرم و من نسبتاً با هم خوب هستیم",
+    "fa": "برادرم و من خیلی (کاملاً) با هم خوب هستیم",
     "en": "My brother and I get along quite well"
   },
   {
@@ -16379,7 +16379,7 @@
   },
   {
     "id": 3215,
-    "fa": "من احساس بی طرفی می کنم نسبتاً در مورد شیرینی های",
+    "fa": "من احساس بی طرفی می کنم خیلی (کاملاً) در مورد شیرینی های",
     "en": "I feel quite neutral about sweets"
   },
   {
@@ -16513,7 +16513,7 @@
   },
   {
     "id": 3241,
-    "fa": "ادرارم نسبتاً کف کرده است. آیا بدان معنی است که کلیه هایم آسیب دیده؟",
+    "fa": "ادرارم خیلی (کاملاً) کف کرده است. آیا بدان معنی است که کلیه هایم آسیب دیده؟",
     "en": "My urine has been quite foamy. Does it mean that my kidneys are damaged?"
   },
   {
@@ -23266,7 +23266,7 @@
   },
   {
     "id": 4564,
-    "fa": "ما نسبتاً مشغول هستیم در بخش پشتیبانی",
+    "fa": "ما خیلی (کاملاً) مشغول هستیم در بخش پشتیبانی",
     "en": "We're quite busy on the backend"
   },
   {
@@ -24079,7 +24079,7 @@
   },
   {
     "id": 4724,
-    "fa": "من فکر نمی کنم مردم زیادی بدونن، برای اینکه من حس میکنم من می تونم پوشش بدمش نسبتاً خوب",
+    "fa": "من فکر نمی کنم مردم زیادی بدونن، برای اینکه من حس میکنم من می تونم پوشش بدمش خیلی (کاملاً) خوب",
     "en": "I don't think many people know, because I feel like I can cover it quite well",
     "desc": "I feel like…\timpression, desire, idea\t“I feel like we should leave.”\nI feel…\tphysical/emotional feeling\t“I feel nervous.”"
   },
@@ -25706,7 +25706,7 @@
   },
   {
     "id": 5044,
-    "fa": "ما عقب هستیم نسبتا (پشت) از مهلت های",
+    "fa": "ما عقب هستیم خیلی (کاملاً) (پشت) از مهلت های",
     "en": "We are lagging quite behind the deadlines"
   },
   {
@@ -25787,8 +25787,8 @@
   },
   {
     "id": 5060,
-    "fa": "مانیتور من گاهی اوقات نشان می دهد یک تصویر \"شبح\" ضعیف از آنچه بوده روی صفحه یک ثانیه زودتر. فریم قبلی به نظر می رسد چسبیده روی صفحه نمایش و باقی می ماند قابل مشاهده روی تصویر فعلی. تنها راهی که من پیدا کردم تا پاک کنمش است تا خاموش کنم مانیتور برای چند ساعت، گاهی تا یک روز",
-    "en": "My monitor sometimes shows a faint 'ghost' image of what was on the screen a second earlier. The previous frame seems to stick on the display and remains visible on top of the current image. The only way I've found to clear it is to turn the monitor off for several hours, sometimes up to a day"
+    "fa": "مانیتور من گاهی اوقات نشان می دهد یک تصویر \"شبح\" ضعیف از آنچه بوده روی صفحه یک ثانیه زودتر. فریم قبلی به نظر می رسد چسبیده روی صفحه نمایش و باقی می ماند قابل مشاهده روی تصویر فعلی. تنها راهی که من پیدا کردم تا پاک کنمش است تا خاموش کنم مانیتور برای چند ساعت",
+    "en": "My monitor sometimes shows a faint 'ghost' image of what was on the screen a second earlier. The previous frame seems to stick on the display and remains visible on top of the current image. The only way I've found to clear it is to turn the monitor off for several hours"
   },
   {
     "id": 5061,
@@ -25829,5 +25829,45 @@
     "id": 5068,
     "fa": "\n 1.من نیاز دارم به تو برسم \n 2.من نیاز دارم به کار هایم برسم",
     "en": "\n 1.I need to catch up with you \n 2.I need to catch up on my work"
+  },
+  {
+    "id": 5069,
+    "fa": "در واقع خیلی (کاملاً) فعال است",
+    "en": "It's actually quite active"
+  },
+  {
+    "id": 5070,
+    "fa": "این است هنوز فضای بی دوام. جداول از بین خواهند رفت دوباره در راه اندازی مجدد pod بعدی",
+    "en": "This is still ephemeral storage. Tables will be lost again on the next pod restart"
+  },
+  {
+    "id": 5071,
+    "fa": "وب سایت ممکن است نمایش ندهد همه وضعیت های میانی را",
+    "en": "The website may not display every intermediate status"
+  },
+  {
+    "id": 5072,
+    "fa": "به روزرسانی های وضعیت آنی نیستند",
+    "en": "Status updates are not instantaneous"
+  },
+  {
+    "id": 5073,
+    "fa": "این احتمالاً اتفاق افتاده است برای اینکه پاد مجدداً راه اندازی شده و از دست داده داده هایش را. داره احتمالاً استفاده می کند حافظه موقت و نه یک حافظه دائمی",
+    "en": "This likely happened because the pod was restarted and lost its data. It's probably using ephemeral storage and not a persistent volume"
+  },
+  {
+    "id": 5074,
+    "fa": "می بایستی من ادامه دهم با commit کردن ایتجا؟",
+    "en": "Should I proceed with committing here?"
+  },
+  {
+    "id": 5075,
+    "fa": "او (مرد) گفت پروژه تمام خواهد شد فردا، اما بگیرش با یک کمی تردید (یعنی با احتیاط باور کن)",
+    "en": "He said the project will finish tomorrow, but take it with a grain of salt"
+  },
+  {
+    "id": 5076,
+    "fa": "این سرویس داره در حال حاضر اجرا می شود بدون فضای ذخیره سازی پایدار، بنابراین هر بار pod راه اندازی مجدد می شود، از دست می دهد تمام جداول و داده را",
+    "en": "This service is currently running without persistent storage, so every time the pod restarts it loses all tables and data"
   }
 ]
